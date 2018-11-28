@@ -36,73 +36,80 @@
 ! Software Standards: COSMO Standards for Source Code Development
 !---------------------------------------------------------------------
 !
-MODULE dust_org
-!---------------------------------------------------------------------
-! Description:
-! This module contains general parameters for dust emisson
-!---------------------------------------------------------------------
-USE mo_dust2, ONLY: &
-  DustBins  ! number of dust particle fractions
-
-
-  IMPLICIT NONE
-
-  ! fixed dimensions for soil data
-  INTEGER, PARAMETER :: &
-    SoilNumb = 5,       & ! number of soil properties
-    SoilFrac = 1          ! number of soil fraction
-
-  ! ! MUSCAT grid structure
-  ! TYPE dust_subdomain
-  !   REAL(8), POINTER ::     &
-  !     soilprop (:,:,:,:),   & !soil properties
-  !     lai (:,:,:,:),        & !fraction of vegetation
-  !     vegmin (:,:,:),       & !minimum of vegetation
-  !     alpha (:,:,:),        & !ratio horiz/vertical flux
-  !     c_eff (:,:,:),        & !fraction efficace
-  !     lai_eff (:,:,:,:),    & !effective surface for dust deflation from LAI condition
-  !     w_str (:,:,:),        & !threshold soil moisture w' (Fecan, F. et al., 1999)
-  !     umin2(:,:,:),         &
-  !     d_emis(:,:,:)          !dust emission
-  ! END TYPE dust_subdomain
-  ! TYPE (dust_subdomain), ALLOCATABLE, TARGET :: dust(:)
-
-  ! ! LM grid arrays
-  ! REAL(8), POINTER ::   &
-  !   SG_soilprop (:,:,:,:),     & ! soil properties
-  !   SG_veg (:,:,:,:),          & ! leafe area index
-  !   SG_vegmin (:,:,:)            ! minimum of vegetation
-
-  ! soil class properties
-  INTEGER, PARAMETER :: &
-    nats   = 45,        & ! amount of soil types
-    nclass = 196          ! amount of particule classes
-
-  ! dummy variable for input, allocate new when switch from 2d to 3d
-  REAL(8), ALLOCATABLE ::  &
-    read_input(:,:,:)       ! (j,i,time)
-
-  ! new dust datatype with less in it.
-  TYPE dust_it
-  REAL(8), POINTER ::   &
-    soiltype(:,:),      & ! soil properties
-    z0  (:,:),          & ! roughness length
-    biome(:,:),         &
-    cult(:,:),          &
-    veg (:,:,:),        & !leafe area index
-    vegmin(:,:)
-  END TYPE dust_it
-  TYPE (dust_it), ALLOCATABLE, TARGET :: dust_ini(:)
-
-
-
-  ! internal switches
-  LOGICAL     :: &
-    lvegdaily,     &   ! daily or monthly input of lai
-    laidaily,    & ! daily or monthly input of lai     MF
-    lvegmin        ! daily or monthly input of lai     MF
-
-END MODULE dust_org
+! MODULE dust_org
+! !---------------------------------------------------------------------
+! ! Description:
+! ! This module contains general parameters for dust emisson
+! !---------------------------------------------------------------------
+! USE mo_dust, ONLY: &
+!   DustBins  ! number of dust particle fractions
+!
+!
+!   IMPLICIT NONE
+!
+!   ! fixed dimensions for soil data
+!   INTEGER, PARAMETER :: &
+!     SoilNumb = 5,       & ! number of soil properties
+!     SoilFrac = 1          ! number of soil fraction
+!
+!   ! ! MUSCAT grid structure
+!   ! TYPE dust_subdomain
+!   !   REAL(8), POINTER ::     &
+!   !     soilprop (:,:,:,:),   & !soil properties
+!   !     lai (:,:,:,:),        & !fraction of vegetation
+!   !     vegmin (:,:,:),       & !minimum of vegetation
+!   !     alpha (:,:,:),        & !ratio horiz/vertical flux
+!   !     c_eff (:,:,:),        & !fraction efficace
+!   !     lai_eff (:,:,:,:),    & !effective surface for dust deflation from LAI condition
+!   !     w_str (:,:,:),        & !threshold soil moisture w' (Fecan, F. et al., 1999)
+!   !     umin2(:,:,:),         &
+!   !     d_emis(:,:,:)          !dust emission
+!   ! END TYPE dust_subdomain
+!   ! TYPE (dust_subdomain), ALLOCATABLE, TARGET :: dust(:)
+!
+!   ! ! LM grid arrays
+!   ! REAL(8), POINTER ::   &
+!   !   SG_soilprop (:,:,:,:),     & ! soil properties
+!   !   SG_veg (:,:,:,:),          & ! leafe area index
+!   !   SG_vegmin (:,:,:)            ! minimum of vegetation
+!
+!   ! soil class properties
+!   INTEGER, PARAMETER :: &
+!     nats   = 45,        & ! amount of soil types
+!     nclass = 196          ! amount of particule classes
+!
+!   ! dummy variable for input, allocate new when switch from 2d to 3d
+!   REAL(8), ALLOCATABLE ::  &
+!     read_input(:,:,:)       ! (j,i,time)
+!
+!   REAL (8)   :: &
+!     Uth(Nclass)!,              & ! threshold friction velocity
+!
+!   ! 2D Arrays
+!   REAL(8) ::                  &
+!     srel(nats,nclass),        & !
+!     srelV(nats,nclass),       & !
+!     su_srelV(nats,nclass)!,    & !
+!
+!   ! new dust datatype with less in it.
+!   TYPE dust_it
+!   REAL(8), POINTER ::   &
+!     biome(:,:),         &
+!     cult(:,:),          &
+!     veg (:,:,:),        & !leafe area index
+!     vegmin(:,:)
+!   END TYPE dust_it
+!   TYPE (dust_it), ALLOCATABLE, TARGET :: dust_ini(:)
+!
+!
+!
+!   ! internal switches
+!   LOGICAL     :: &
+!     lvegdaily,     &   ! daily or monthly input of lai
+!     laidaily,    & ! daily or monthly input of lai     MF
+!     lvegmin        ! daily or monthly input of lai     MF
+!
+! END MODULE dust_org
 
 
 
@@ -117,7 +124,7 @@ MODULE dust_tegen_param
 ! Description:
 ! This module contains parameters for the Tegen dust emisson scheme
 !---------------------------------------------------------------------
-  USE mo_dust2, ONLY: &
+  USE mo_dust, ONLY: &
     DustBins  ! number of dust particle fractions
 
   IMPLICIT NONE
@@ -183,7 +190,7 @@ MODULE dust_tegen_data
 ! Description:
 ! This module contains parameters for the Tegen dust emisson scheme
 !---------------------------------------------------------------------
-  USE dust_org, ONLY: &
+  USE mo_dust, ONLY: &
     nats
   USE dust_tegen_param, ONLY: &
   combimax,nspe

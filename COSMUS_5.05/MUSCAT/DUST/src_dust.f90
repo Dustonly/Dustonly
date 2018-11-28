@@ -40,8 +40,8 @@ MODULE src_dust
 
 
   ! Modules MUSCAT
-  USE  mo_dust2
-  USE  dust_org
+  USE  mo_dust
+  ! USE  dust_org
   USE  partition
   USE  sub_geo
   USE  mo_ctm , ONLY: nalloc         & ! Size of Allocated Arrays
@@ -337,9 +337,9 @@ MODULE src_dust
       ! - Init of 'dust' type 'dust_subdomain', see data_dust
 
       ! allocate datatype 'dust' as array with nb number of blocks
-      ! ALLOCATE(dust(nb))
-      ALLOCATE(dust_ini(nb))
-      ALLOCATE(dust_flux(nb))
+      ALLOCATE(dust(nb))
+      ! ALLOCATE(dust_ini(nb))
+      ! ALLOCATE(dust_flux(nb))
 
       ! Bolck strukture of muscat, loop over blocks
       DO ibLoc=1,nbLoc
@@ -365,26 +365,31 @@ MODULE src_dust
         !          decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
 
         ! Allocate dust_ini
-        ALLOCATE(dust_ini(ib1)%soiltype(decomp(ib1)%iy0+1:decomp(ib1)%iy1,  &
+        ALLOCATE(dust(ib1)%biome(decomp(ib1)%iy0+1:decomp(ib1)%iy1,      &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
-        ALLOCATE(dust_ini(ib1)%z0(decomp(ib1)%iy0+1:decomp(ib1)%iy1,        &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
-        ALLOCATE(dust_ini(ib1)%biome(decomp(ib1)%iy0+1:decomp(ib1)%iy1,      &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
-        ALLOCATE(dust_ini(ib1)%veg(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
+        ALLOCATE(dust(ib1)%cult(decomp(ib1)%iy0+1:decomp(ib1)%iy1,      &
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1))
+        ALLOCATE(dust(ib1)%veg(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
-        ALLOCATE(dust_ini(ib1)%vegmin(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
+        ALLOCATE(dust(ib1)%vegmin2(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
 
         ! Allocate dust_flux
-        ALLOCATE(dust_flux(ib1)%source(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
+        ALLOCATE(dust(ib1)%soiltype(decomp(ib1)%iy0+1:decomp(ib1)%iy1,  &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
-        ALLOCATE(dust_flux(ib1)%alpha(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
+        ALLOCATE(dust(ib1)%z0(decomp(ib1)%iy0+1:decomp(ib1)%iy1,        &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
-        ALLOCATE(dust_flux(ib1)%feff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
+        ALLOCATE(dust(ib1)%source(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
+        ALLOCATE(dust(ib1)%alpha2(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
+        ALLOCATE(dust(ib1)%feff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
-        ALLOCATE(dust_flux(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
+        ALLOCATE(dust(ib1)%veff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+        ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
+
       END DO
 
 
@@ -453,13 +458,13 @@ MODULE src_dust
           ! copy to muscat block structur
           DO ibLoc=1,nbLoc
             ib1 = LocGlob(ibLoc)
-            IF (filenum == 1) copy2d => dust_ini(ib1)%soiltype
-            IF (filenum == 2) copy2d => dust_flux(ib1)%source
-            IF (filenum == 3) copy2d => dust_ini(ib1)%z0
-            IF (filenum == 4) copy2d => dust_ini(ib1)%biome
-            IF (filenum == 5) copy3d => dust_ini(ib1)%veg
-            IF (filenum == 6) copy3d => dust_ini(ib1)%veg
-            IF (filenum == 7) copy2d => dust_ini(ib1)%vegmin
+            IF (filenum == 1) copy2d => dust(ib1)%soiltype
+            IF (filenum == 2) copy2d => dust(ib1)%source
+            IF (filenum == 3) copy2d => dust(ib1)%z0
+            IF (filenum == 4) copy2d => dust(ib1)%biome
+            IF (filenum == 5) copy3d => dust(ib1)%veg
+            IF (filenum == 6) copy3d => dust(ib1)%veg
+            IF (filenum == 7) copy2d => dust(ib1)%vegmin2
 
             IF (dim == 2) CALL copy2block(decomp(ib1),dim,read_input,too2d=copy2d)
             IF (dim == 3) CALL copy2block(decomp(ib1),dim,read_input,too3d=copy3d)
@@ -485,7 +490,8 @@ MODULE src_dust
 
         IF (dust_scheme == 1) THEN
           ! init of the dust emission sheme by Tegen et al. 2002
-          CALL init_tegen(decomp(ib1))!ierr,yerr)
+          ! CALL init_tegen(decomp(ib1))!ierr,yerr)
+          CALL init_tegen(decomp(ib1),ndays=dimveg)!ierr,yerr)
         END IF
 
 
@@ -513,14 +519,15 @@ MODULE src_dust
 
     ! +-+-+- Sec 1.5 clean up -+-+-+
 
-    DEALLOCATE(dust_it)
+    ! DEALLOCATE(dust_it)
 
     ! ------------------------------------
     ! +-+-+- Section 2 Dust flux calculation -+-+-+
     ! ------------------------------------
     ELSEIF (yaction == "calc") THEN
 
-      STOP 'TESTING'
+      CALL emission_tegen(subdomain,flux)
+      ! STOP 'TESTING'
 
     END IF ! (yaction == "***")
 
@@ -530,7 +537,7 @@ MODULE src_dust
 
   !+ init_tegen
   !---------------------------------------------------------------------
-  SUBROUTINE init_tegen(subdomain)
+  SUBROUTINE init_tegen(subdomain,ndays)
   !---------------------------------------------------------------------
   ! Description:
   !   This subroutine performes the initialization for
@@ -548,14 +555,16 @@ MODULE src_dust
     USE dust_tegen_param
     USE dust_tegen_data
 
+
     IMPLICIT NONE
 
     TYPE(rectangle), INTENT(IN) :: subdomain
+    INTEGER, OPTIONAL, INTENT(IN) :: ndays
 
     INTEGER    :: &
       nn,ns,kk,nm,      & ! loops
       nd,nsi,np,        &
-      i,j,              &
+      i,j,t,            &
       isoiltype
 
     REAL (8)   :: &
@@ -569,7 +578,7 @@ MODULE src_dust
 
     ! 1D Arrays
     REAL (8)   :: &
-      Uth(Nclass),              & ! threshold friction velocity
+      ! Uth(Nclass),              & ! threshold friction velocity
       ! Uth_bod(Nclass),          & ! threshold friction velocity
       gransize(nclass),         & !granulometric class size
       dlastj (nclass),          & ! ???
@@ -579,11 +588,11 @@ MODULE src_dust
       su_classV(nclass),        & !volume occupied by each granulometric class
       utest(nats)
 
-    ! 2D Arrays
-    REAL(8) ::                  &
-      srel(nats,nclass),        & !
-      srelV(nats,nclass),       & !
-      su_srelV(nats,nclass)!,    & !
+    ! ! 2D Arrays
+    ! REAL(8) ::                  &
+    !   srel(nats,nclass),        & !
+    !   srelV(nats,nclass),       & !
+    !   su_srelV(nats,nclass)!,    & !
 
     REAL(8) ::          &
       dmy_B,            & ! Dummy for B Factor (Marticorena 95)
@@ -597,12 +606,16 @@ MODULE src_dust
       soiltype(:,:),     &
       source(:,:),       &
       z0(:,:),           &
-      alpha(:,:)
+      alpha(:,:),        &
+      feff(:,:,:)
 
-    soiltype => dust_ini(subdomain%ib)%soiltype(:,:)
-    source => dust_flux(subdomain%ib)%source(:,:)
-    z0 => dust_ini(subdomain%ib)%z0(:,:)
-    alpha => dust_flux(subdomain%ib)%alpha(:,:)
+    REAL(8), ALLOCATABLE :: printvar(:,:,:,:)
+
+    soiltype => dust(subdomain%ib)%soiltype(:,:)
+    source => dust(subdomain%ib)%source(:,:)
+    z0 => dust(subdomain%ib)%z0(:,:)
+    alpha => dust(subdomain%ib)%alpha2(:,:)
+    feff => dust(subdomain%ib)%feff(:,:,:)
     !  => dust_ini(ib1)%biome
     !  => dust_ini(ib1)%veg
     !  => dust_ini(ib1)%veg
@@ -614,6 +627,9 @@ MODULE src_dust
 
     gransize(:) = 0.
     Uth(:)  = 0.
+    su_srelV(:,:) =  0.
+    srelV(:,:) = 0.
+    srel(:,:)= 0.
 
     nn = 0
     dp = Dmin
@@ -646,6 +662,8 @@ MODULE src_dust
       kk = 0
       su_class(:) = 0.
       su_classV(:) = 0.
+      utest(:) = 0.
+
 
       ! particle size loop
       DO WHILE (dp <= Dmax+1E-5)
@@ -698,10 +716,11 @@ MODULE src_dust
           srelV(ns,nn) = su_classV(nn)/StotalV
           utest(ns)=utest(ns)+srelV(ns,nn)
           su_srelV(ns,nn)=utest(ns)
+          ! if (ns == 27 .and. nn == 99) print*, 'utest',ns,nn,utest(ns),su_srelV(ns,nn)!,srelV(ns,nn),su_classV(nn),StotalV,su_class(nn),Stotal
         END IF
       END DO !nn=1,nclass
     END DO !ns (soil type)
-
+    ! print*, 'su_srelV',su_srelV(23,99)!,su_srelV(21,123)
     ! +-+-+- Sec 3 Prepare the flux calculation -+-+-+
     ! start lon-lat-loop
     DO i=1,subdomain%ntx
@@ -738,6 +757,7 @@ MODULE src_dust
         ENDIF
 
 
+
         isoiltype = int(soiltype(j,i)) ! index of soiltype
 
         ! change everthing that not fits the soiltype table to 9 = ICE
@@ -745,6 +765,9 @@ MODULE src_dust
 
         ! init alpha from lookup table
         alpha(j,i) = solspe(isoiltype,nmode*3+1)
+
+        ! avoid z0 = 0. at any place
+        IF (z0(j,i) == 0.0) z0(j,i)=1.E-9
 
 
     !     !---------------------------------------------------------------------------------------
@@ -787,12 +810,85 @@ MODULE src_dust
     END DO
     ! end lon-lat-loop
 
+    ! !--------TEST NC OUTPUT     only activate when needed
+    !        AllOCATE(printvar(subdomain%ntx,subdomain%nty,1,ndays))
+    !
+    !        do i=1,subdomain%ntx
+    !          do j=1,subdomain%nty
+    !
+    !              ! do t=1,ndays
+    !              !   ! ! if (lai(j,i,1,t) /= 0. .and. lai(j,i,1,t) < 1) then
+    !              !   ! if (lai(j,i,1,t) /= maxval(lai(:,:,1,:))) then
+    !              !   !   if (sp(j,i,1,2) == 0.) then
+    !              !   !     printvar(i,j,1,t)=99.
+    !              !   !   else
+    !              !   !     printvar(i,j,1,t)=lai(j,i,1,t)!lai_eff(j,i,1,t)
+    !              !   !   end if
+    !              !   ! ELSEIF(lai(j,i,1,t) == 0.) then
+    !              !   !   printvar(i,j,1,t)=-99.
+    !              !   ! end if
+    !              ! printvar(i,j,1,t)=feff(j,i,t)
+    !              ! ! printvar(i,j,1,t)=lai_eff(j,i,1,t)
+    !              ! ! printvar(i,j,1,t)=lai(j,i,1,t)!vegmin(j,i,1)
+    !              ! end do
+    !
+    !
+    !
+    !              ! printvar(i,j,1,1)=vegmin(j,i,1)
+    !
+    !              ! soiltype
+    !              printvar(i,j,1,1)=soiltype(j,i)
+    !
+    !              ! !biom
+    !              ! printvar(i,j,1,1)=sp(j,i,1,5)
+    !
+    !              !cosmo lai
+    !              ! printvar(i,j,1,1)=newlai(i,j)
+    !
+    !               !cosmo z0
+    !               ! printvar(i,j,1,1)=sp (j,i,1,4)
+    !
+    !               !cult
+    !               ! printvar(i,j,1,1)=sp (j,i,1,3)
+    !
+    !          end do
+    !        end do
+    !       if (subdomain%ib == 1) then
+    !
+    !          ! call quick_nc(0,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !          ! call quick_nc(0,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !          ! call quick_nc(0,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !         !  call quick_nc(0,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !         ! call quick_nc(0,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !         ! call quick_nc(0,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !                 ! call quick_nc(0,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !
+    !          call quick_nc(0,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !       ELSE
+    !         CALL SLEEP(1)
+    !       end if
+    !
+    !       do i=0, num_compute
+    !         if (i==subdomain%ib) then
+    !            ! call quick_nc(1,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb
+    !             ! call quick_nc(1,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !            ! call quick_nc(1,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !           !  call quick_nc(1,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !           ! call quick_nc(1,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !           ! call quick_nc(1,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !           ! call quick_nc(1,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !           call quick_nc(1,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+    !         ELSE
+    !           CALL SLEEP(1)
+    !         end if
+    !       end do
+
   END SUBROUTINE init_tegen
 
 
   !+ emission_tegen
   !---------------------------------------------------------------------
-  SUBROUTINE emission_tegen(subdomain,Flux)
+  SUBROUTINE emission_tegen(subdomain,flux)
   !---------------------------------------------------------------------
   ! Description:
   !   This subroutine performes the dust flux calculation for
@@ -807,245 +903,302 @@ MODULE src_dust
   !--------------------------------------------------------------------
 
     ! Modules
-   USE partition
-   USE sub_block
-   USE sub_geo
-   USE sub_met
-   USE mo_ctm
-   USE mo_gas, ONLY: mol2part, nradm
-   USE mo_dust2
-   USE dust_tegen_param
-   USE dust_tegen_data
-   USE dust_org
-   USE data_io,  ONLY : ydate_ini
-   USE data_runcontrol,    ONLY : hstart, ntstep
-   USE data_modelconfig, ONLY: dt
+    USE partition
+    USE sub_block
+    USE sub_geo
+    USE sub_met
+    USE mo_ctm
+    USE mo_gas, ONLY: mol2part, nradm
+    USE mo_dust
+    USE dust_tegen_param
+    USE dust_tegen_data
+    ! USE dust_org
+    USE data_io,  ONLY : ydate_ini
+    USE data_runcontrol,    ONLY : hstart, ntstep
+    USE data_modelconfig, ONLY: dt
+    USE data_fields, ONLY:  ustar_fv
 
-  IMPLICIT NONE
+    IMPLICIT NONE
 
-  TYPE (rectangle), INTENT(IN)    :: &
-    subdomain
+    TYPE (rectangle), INTENT(IN)    :: &
+      subdomain
 
-  REAL(8),          INTENT(INOUT) :: &
-    Flux(ntz,subdomain%nty,subdomain%ntx,nt)
+    REAL(8),          INTENT(INOUT) :: &
+      Flux(ntz,subdomain%nty,subdomain%ntx,nt)
 
-  ! Internal variables
-  INTEGER :: it
-  REAL(8) :: del,tnm,sum
-  INTEGER :: i,j,k,nn,tnow
-  REAL(8) :: uwind, vwind
-  REAL(8) :: mfac             !factor due to soil moisture [Fecan, F. et al., 1999]
-  REAL(8) :: FDust(subdomain%nty,subdomain%ntx,ntrace)
-  REAL(8) :: time_start,time_now
+    ! Internal variables
+    INTEGER :: it
+    REAL(8) :: del,tnm,sum
 
-  ! Pointer
-  REAL(8), POINTER :: dxK(:,:)
-  REAL(8), POINTER :: dyK(:,:)
-  REAL(8), POINTER :: dz(:,:,:)
-
-  REAL(8), POINTER :: usur(:,:)
-  REAL(8), POINTER :: vsur(:,:)
-  REAL(8), POINTER :: qrsur(:,:)
-  REAL(8), POINTER :: rhosur(:,:)
-  REAL(8), POINTER :: sp(:,:)
-  REAL(8), POINTER :: sp_psrc(:,:)
-  REAL(8), POINTER :: z0(:,:)
-  REAL(8), POINTER :: alpha(:,:)
-  REAL(8), POINTER :: lai_eff(:,:,:,:)
-  REAL(8), POINTER :: umin2(:,:)
-  REAL(8), POINTER :: c_eff(:,:)
-  REAL(8), POINTER :: w_str(:,:)
-  REAL(8), POINTER :: DustEmis(:,:,:), EmiRate(:,:,:,:)
+    INTEGER ::   &
+      i,j,nn,    &
+      k,kk,kkk,  &
+      kfirst,    &
+      kkmin,     &
+      tnow,      &
+      i_s1,      &
+      i_s11!,     &
 
 
 
-
-  IF (nDust == 0) RETURN
-  IF (DustMod <= 0) RETURN
-
-
-  dxK => geo(ib)%dxK(:,:)
-  dyK => geo(ib)%dyK(:,:)
-  dz  => geo(ib)%dz(:,:,:)
-  rhosur  => meteo(subdomain%ib)%rho(1,:,:,ScalCur)
-  qrsur   => meteo(subdomain%ib)%QRSur(:,:,ScalCur)
-  usur    => meteo(subdomain%ib)%u(1,:,:,WindCur)
-  vsur    => meteo(subdomain%ib)%v(1,:,:,WindCur)
-
-  sp      => dust(subdomain%ib)%soilprop(:,:,1,1)
-  sp_psrc => dust(subdomain%ib)%soilprop(:,:,1,2)
-  z0      => dust(subdomain%ib)%soilprop(:,:,1,4)
-
-  alpha   => dust(subdomain%ib)%alpha(:,:,1)
-  lai_eff => dust(subdomain%ib)%lai_eff(:,:,:,:)
-  umin2   => dust(subdomain%ib)%umin2(:,:,1)
-  c_eff   => dust(subdomain%ib)%c_eff(:,:,1)
-  w_str   => dust(subdomain%ib)%w_str(:,:,1)
-
-  DustEmis => dust(subdomain%ib)%d_emis(:,:,:)
-  EmiRate  => block(subdomain%ib)%EmiRate(:,:,:,:)
+    REAL (8)   :: &
+      dp,               & ! particle size inside the loop
+      dpd,              & ! particle size inside the loop
+      uthp,             & ! threshold friction velocity for each particle diam.
+      fdp1,fdp2,        & !
+      flux_umean,       & ! dust flux with in terms of the mean Ustar thrsld
+      flux_diam,        & ! vertical dust flux,
+      Ustar_var,        & !
+      dbstart,          & !minimum dust bin for sandblasting
+      en_kin,           & !kinetic energy of dust
+      dlast,            &
+      cultfac
 
 
-  ! +-+-+- Sec 1 init of threshold friction velocity Uth -+-+-+
-  ! Marticorena and Bergametti 1995 Sec 2.2, eq. (3)-(7)
-  ! https://doi.org/10.1029/95JD00690
+    REAL(8) :: uwind, vwind,van
+    REAL(8) :: mfac             !factor due to soil moisture [Fecan, F. et al., 1999]
+    REAL(8) :: FDust(subdomain%nty,subdomain%ntx,ntrace)
+    REAL(8) :: time_start,time_now
 
-  ! find the exact day and set "tnow" with the number of the actually day
-  ! READ(ydate_ini(1:8),*) idate
-  tnow = 1
-  READ(ydate_ini(9:10),*) time_start
-  time_start=time_start + hstart
-  time_now=time_start+ntstep*dt/3600.
-  tnow=time_now+1!/24 + 1 !remove + 1 soon hardcoded
-  print*,'tnow',tnow
-
-
-     do i=1,subdomain%ntx
-       do j=1,subdomain%nty
-
- !---  flux initialisations
-          uwind = usur(j,i+1)/dyK(j,i+1)+usur(j,i)/dyK(j,i)
-          uwind = 0.5E0 * uwind / dz(1,j,i)
-          vwind = vsur(j+1,i)/dxK(j+1,i)+vsur(j,i)/dxK(j,i)
-          vwind = 0.5E0 * vwind / dz(1,j,i)
-
-          van = SQRT(uwind*uwind+vwind*vwind)/rhosur(j,i)
-
- !---  zero setting
-          DO nn=1,ntrace
-             dbmin(nn)=0.E0
-             dbmax(nn)=0.E0
-             fluxtot(nn) = 0.E0
-          END DO
-
-          fluxtyp=0
-          fluxbin=0
-
-          i_s1 = int(sp(j,i))
-          IF(i_s1.EQ.0)i_s1 = 9
-          i_s11=i_s1
-          IF(i_s1.EQ.10.OR.i_s1.EQ.12)i_s11=11
- !        IF((i_s1.EQ.10.OR.i_s1.EQ.12).AND.van.GT.10)i_s11=11
-          IF(i_s1.EQ.13)i_s11=14
+    REAL(8) :: &
+      ustar
+    REAL(8) ::                                &
+      dpk (ntrace),                           & !dpk
+      dbmin (ntrace),                         & !bin size limit
+      dbmax (ntrace),                         & !bin size limit
+      fluxtot (ntrace),                       & !total dust flux at 06am and 06 pm fluxtot06
+      fluxtyp (nclass),                       & !
+      fluxbin (ntrace)!,                       & !
 
 
- !---  calculation of mfac: ratio between threshold friction velocities wet/dry
- !  [Fecan, F. et al., 1999]
-          mfac = 1! (1 + 1.21 * ( qrsur(j,i) - w_str(j,i))**0.68 )**0.5 !dont use mfac MF
+    ! Pointer
+    REAL(8), POINTER :: dxK(:,:)
+    REAL(8), POINTER :: dyK(:,:)
+    REAL(8), POINTER :: dz(:,:,:)
 
- !---  computation of emission fluxes
- !----------------------------------------------------------------------
- !    Friction velocity of the wind (Ustar)
- !----------------------------------------------------------------------
+    REAL(8), POINTER :: usur(:,:)
+    REAL(8), POINTER :: vsur(:,:)
+    REAL(8), POINTER :: qrsur(:,:)
+    REAL(8), POINTER :: rhosur(:,:)
+    REAL(8), POINTER :: soiltype(:,:)
+    REAL(8), POINTER :: source(:,:)
+    REAL(8), POINTER :: z0(:,:)
+    REAL(8), POINTER :: alpha(:,:)
+    REAL(8), POINTER :: feff(:,:,:)
+    REAL(8), POINTER :: veff(:,:,:)
+    ! REAL(8), POINTER :: umin2(:,:)
+    REAL(8), PARAMETER :: umin2=umin
 
-         ! c_eff is now defined by the vegitation
-         c_eff(j,i)=sqrt(lai_eff(j,i,1,tnow))
+    REAL(8), POINTER :: w_str(:,:)
+    REAL(8), POINTER :: DustEmis(:,:,:), EmiRate(:,:,:,:)
 
 
-         IF(c_eff(j,i).LE.0.) THEN
-           Ustar = 0.
-         ELSE
-           Ustar = (VK * van *100.)/(log(0.5E0 * 100 * dz(1,j,i)/z0(j,i))) !!cm/s
-         END IF  !! IF(c_eff(j,i).LE.0.)
 
- !----------------------------------------------------------------------
- !    Flux calculation
- !----------------------------------------------------------------------
- 	IF (c_eff(j,i).GT.0.) THEN
-     IF (Ustar.GT.0.AND.(Ustar.GT.umin2(j,i)/c_eff(j,i)))THEN
- 	    kk = 0
-       dp = Dmin
-       DO WHILE(dp.LE.Dmax+1E-5)
- 	      kk = kk+1
-         uthp=uth(kk)*umin2(j,i)/umin*u1fac !reduce threshold for cultivated soils
- ! Marticorena:
- 	      fdp1 = (1.-(Uthp/(c_eff(j,i) * Ustar)))
- 	      fdp2 = (1.+(Uthp/(c_eff(j,i) * Ustar)))**2.
- ! Shao:
- !             fdp1 = (1.-(Uthp/(c_eff(j,i) * Ustar))**2)
- !             fdp2 = 1.
-         IF(fdp1.LE.0.OR.fdp2.LE.0) THEN
- 	        flux_umean = 0.
-         ELSE
- 		      flux_umean = srel(i_s1,kk) * fdp1 * fdp2    &
-                            * cd * Ustar**3 *alpha(j,i)
-                 !if(flux_umean > 1) print*,'flux',flux_umean,srel(i_s1,kk),fdp1,fdp2,cd,Ustar**3,alpha(j,i)
-                 flux_diam = flux_umean
- !----------------------------------------------------------------------
- !   taking subgrid-scale variations of Ustar into account
- !----------------------------------------------------------------------
-             Ustar_var = Ustar_min
- !               DO WHILE(Ustar_var.le.Ustar_max+1E-5)
- !                 flux_diam = flux_diam + flux_umean * 2*(Ustar_var/(Ustar**2)) * &
- !                             exp(-(Ustar_var/Ustar)**2) *                        &
- !                             (Ustar_var*exp(Ustar_step)-Ustar_var)
- !                 Ustar_var=Ustar_var*exp(Ustar_step)
- !               END DO !Ustar_var
- !----------------------------------------------------------------------
- !   calculate kinetic energy of saltating particle fraction en_kin
- !   and minimum dust particle size for emitted dust (Alfaro et al JGR 1999)
 
- !#############################################################################
- !V_start
-     !   This is only done for diatomite fields (Bodele) (Tegen et al ACP 2006).
- 	!   In other regions, all sizes are mobilised.
- 	!----------------------------------------------------------------------
-                 dbstart=dp
-                 IF(i_s1.EQ.13) THEN
-                   en_kin=  0.5*1./24.*rop_bod*pi2*(dp**3)*(95.*van)**2  !g*cm2/s2
-                   IF(en_kin.GT.0.)dbstart=-1./0.53*log(en_kin*20/14.9)*0.0001
-                   IF(dbstart.LT.dmin)dbstart=dmin
-                 ELSE
-                   dbstart=dmin        !all sizes mobilised
-                 END IF
+    IF (nDust == 0) RETURN
+    IF (DustMod <= 0) RETURN
 
- !V_end
- !#############################################################################
 
-                 IF(dbstart.GE.dp)THEN
+    dxK => geo(ib)%dxK(:,:)
+    dyK => geo(ib)%dyK(:,:)
+    dz  => geo(ib)%dz(:,:,:)
+    rhosur  => meteo(subdomain%ib)%rho(1,:,:,ScalCur)
+    qrsur   => meteo(subdomain%ib)%QRSur(:,:,ScalCur)
+    usur    => meteo(subdomain%ib)%u(1,:,:,WindCur)
+    vsur    => meteo(subdomain%ib)%v(1,:,:,WindCur)
+
+    soiltype => dust(subdomain%ib)%soiltype(:,:)
+    source   => dust(subdomain%ib)%source(:,:)
+    z0       => dust(subdomain%ib)%z0(:,:)
+    alpha   => dust(subdomain%ib)%alpha2(:,:)
+    feff     => dust(subdomain%ib)%feff(:,:,:)
+    veff     => dust(subdomain%ib)%veff(:,:,:)
+
+    ! lai_eff => dust(subdomain%ib)%lai_eff(:,:,:,:)
+    ! umin2    => dust(subdomain%ib)%umin2(:,:,1)
+    !
+    ! w_str   => dust(subdomain%ib)%w_str(:,:,1)
+    !
+    DustEmis => dust(subdomain%ib)%d_emis(:,:,:)
+    EmiRate  => block(subdomain%ib)%EmiRate(:,:,:,:)
+
+
+    ! +-+-+- Sec 1 Set the actually date -+-+-+
+
+    ! the drag partition (feff) has a dependency on time
+    IF (lvegdaily) THEN
+      ! find the exact day and set "tnow" with the number of the actually day
+      READ(ydate_ini(9:10),*) time_start
+      time_start=time_start + hstart
+      time_now=time_start+ntstep*dt/3600.
+      tnow=time_now/24 + 1
+    ELSE ! if the drag partition has monthly values "tnow" is the number of the month
+      READ(StartDate,'(4x,i2)') tnow
+    END IF
+
+
+
+    DO i=1,subdomain%ntx
+      DO j=1,subdomain%nty
+
+        ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
+
+        !---  flux initialisations
+        uwind = usur(j,i+1)/dyK(j,i+1)+usur(j,i)/dyK(j,i)
+        uwind = 0.5E0 * uwind / dz(1,j,i)
+        vwind = vsur(j+1,i)/dxK(j+1,i)+vsur(j,i)/dxK(j,i)
+        vwind = 0.5E0 * vwind / dz(1,j,i)
+
+        van = SQRT(uwind**2+vwind**2)/rhosur(j,i)
+
+        !---  zero setting
+        dbmin(:)=0.E0
+        dbmax(:)=0.E0
+        fluxtot(:) = 0.E0
+        fluxtyp(:)=0.0
+        fluxbin(:)=0.0
+
+
+        i_s1 = int(soiltype(j,i))  ! soiltype value of grid cell
+
+        IF (i_s1 == 0) i_s1 = 9    ! set "0" (mostly 0->Water) to 9->Ice
+
+        i_s11=i_s1                 ! ??? i_s11 strong emitting soiltype for optimisation??
+
+        IF (i_s1 == 10 .OR. i_s1 == 12) i_s11 = 11  ! i_s1=10  ->  Potential Lakes,
+                                                    ! i_s1=12  ->  Potential Lakes Australia,
+                                                    ! i_s11=11 ->  Potential Lakes (Clay)
+
+        ! IF((i_s1.EQ.10.OR.i_s1.EQ.12).AND.van.GT.10)i_s11=11
+
+        IF (i_s1 == 13) i_s11 = 14  ! i_s1=13  ->  Potential Lakes BODELE,
+                                    ! i_s11=14 ->  Potential Lakes BODELE (Clay)
+
+
+
+
+        ! calculation of mfac: ratio between threshold friction velocities wet/dry
+        ! [Fecan, F. et al., 1999]
+        mfac = 1! (1 + 1.21 * ( qrsur(j,i) - w_str(j,i))**0.68 )**0.5 !dont use mfac MF
+
+
+
+        ! Friction velocity of the wind (ustar)
+
+        IF(feff(j,i,tnow) <= 0.) THEN
+         ustar = 0.
+        ELSE
+         ustar = (VK * van *100.)/(log(0.5E0 * 100 * dz(1,j,i)/z0(j,i))) !!cm/s
+         ! print*, i,j,ustar,dz(1,j,i)/z0(j,i),ustar_fv(i,j)
+        END IF  !! IF(feff(j,i,tnow).LE.0.)
+
+
+        ! +-+-+- Sec 3 Flux calculation -+-+-+
+
+        IF (feff(j,i,tnow) > 0.) THEN
+          IF (Ustar > 0 .AND. Ustar > umin2/feff(j,i,tnow) ) THEN
+   	        kk = 0
+            dp = Dmin
+            DO WHILE (dp <= Dmax+1E-5)
+   	          kk = kk+1
+
+              ! original Tegen Code
+              ! ! Is this reduction necessary (MF)?
+              uthp=uth(kk)!*umin2/umin*u1fac !reduce threshold for cultivated soils
+              ! Marticorena:
+   	          fdp1 = (1.-(Uthp/(feff(j,i,tnow) * Ustar)))
+   	          fdp2 = (1.+(Uthp/(feff(j,i,tnow) * Ustar)))**2.
+
+              ! ! Shao:
+              ! fdp1 = (1.-(Uthp/(feff(j,i,tnow) * Ustar))**2)
+              ! fdp2 = 1.
+
+              IF (fdp1 <= 0 .OR. fdp2 <= 0) THEN
+   	            flux_umean = 0.
+              ELSE
+   		          flux_umean = srel(i_s1,kk) * fdp1 * fdp2 * cd * Ustar**3 *alpha(j,i)
+                flux_diam = flux_umean
+
+
+                Ustar_var = Ustar_min
+
+                ! ! taking subgrid-scale variations of Ustar into account
+                ! DO WHILE(Ustar_var <= Ustar_max+1E-5)
+                !   flux_diam = flux_diam + flux_umean * 2*(Ustar_var/(Ustar**2)) * &
+                !               exp(-(Ustar_var/Ustar)**2) * (Ustar_var*exp(Ustar_step)-Ustar_var)
+                !   Ustar_var=Ustar_var*exp(Ustar_step)
+                ! END DO !Ustar_var
+
+                ! calculate kinetic energy of saltating particle fraction en_kin
+                !   and minimum dust particle size for emitted dust (Alfaro et al JGR 1999)
+
+                !#############################################################################
+                !V_start
+                !   This is only done for diatomite fields (Bodele) (Tegen et al ACP 2006).
+   	            !   In other regions, all sizes are mobilised.
+   	            !----------------------------------------------------------------------
+                dbstart=dp
+                IF(i_s1 == 13) THEN
+                  en_kin = 0.5*1./24.*rop_bod*pi2*(dp**3)*(95.*van)**2  !g*cm2/s2
+
+                  IF (en_kin > 0.) dbstart = -1./0.53*log(en_kin*20/14.9)*0.0001
+
+                  IF(dbstart < dmin) dbstart = dmin
+                ELSE
+                  dbstart = dmin        !all sizes mobilised
+                END IF
+
+                !V_end
+                !#############################################################################
+
+                IF (dbstart >= dp) THEN
                   fluxtyp(kk)=fluxtyp(kk)+flux_diam
-                 ELSE
- !----------------------------------------------------------------------
- !  loop over dislocated dust particle sizes
- !----------------------------------------------------------------------
-                   dpd=dmin
-                   kkk=0
-                   kfirst=0
-                   DO WHILE(dpd.le.dp+1e-5)
-                     kkk=kkk+1
-                     IF(dpd.GE.dbstart)THEN
-                       IF(kfirst.EQ.0)kkmin=kkk
-                         kfirst=1
- !----------------------------------------------------------------------
- !  scaling with relative contribution of dust size  fraction
- !----------------------------------------------------------------------
-                       IF(kk.GT.kkmin) THEN
-      	                fluxtyp(kkk) = fluxtyp(kkk) +flux_diam               &
+                ELSE
+
+                  ! loop over dislocated dust particle sizes
+                  dpd=dmin
+                  kkk=0
+                  kfirst=0
+                  DO WHILE(dpd <= dp+1e-5)
+                    kkk=kkk+1
+
+                    IF (dpd >= dbstart) THEN
+                      IF(kfirst == 0) kkmin=kkk
+                      kfirst=1
+
+                      ! scaling with relative contribution of dust size  fraction
+                      IF (kk > kkmin) THEN
+                        fluxtyp(kkk) = fluxtyp(kkk) +flux_diam               &
                                       *srelV(i_s11,kkk)/((su_srelV(i_s11,kk) &
                                       -su_srelV(i_s11,kkmin)))
-                       END IF !kk.gt.kmin
-                     END IF !dpd.gt.dbstart
-                     dpd=dpd*exp(dstep)
-                   END DO !dpd
- !----------------------------------------------------------------------
- !  end of saltation loop
- !----------------------------------------------------------------------
-                END IF !dbstart.lt.dp
 
-              END IF !fdp1
+                        ! if (fluxtyp(kkk) /= fluxtyp(kkk) .or. fluxtyp(kkk) > 10.) THEN
+                        !   print*, 'su_srelV',i_s11,kk,kkmin,srelV(i_s11,kkk),su_srelV(i_s11,kk),-su_srelV(i_s11,kkmin)
+                        !   STOP
+                        ! end if
+                        ! if (fluxtyp(kkk) == 0. .and. i_s1 >0 .and. i_s1 /= 8 .and. i_s1 /= 9)print*,'ftyp', i_s1,i_s11,srelV(i_s11,kkk),su_srelV(i_s11,kk),su_srelV(i_s11,kkmin)
+
+                      END IF ! (kk > kkmin)
+                    END IF ! (dpd >= dbstart)
+                    dpd=dpd*exp(dstep)
+                  END DO !dpd
+                  ! end of saltation loop
+                END IF ! (dbstart >= dp)
+              END IF ! (fdp1 <= 0 .OR. fdp2 <= 0)
 
               dp = dp * exp(Dstep)
-            END DO !dp
- !----------------------------------------------------------------------
- !  assign fluxes to bins
- !----------------------------------------------------------------------
+            END DO ! WHILE (dp <= Dmax+1E-5)
+
+            ! +-+-+- Sec 4 Section assign fluxes to bins -+-+-+
+
             dp=dmin
             dlast=dmin
             nn=1
             kk=0
-            DO WHILE (dp.LE.dmax+1e-5)
+
+            DO WHILE (dp <= dmax+1e-5)
               kk=kk+1
-              IF (nn.LE.ntrace) THEN
+              IF (nn <= ntrace) THEN
                 fluxbin(nn) = fluxbin(nn)+fluxtyp(kk)
                 IF(mod(kk,nbin).EQ.0) THEN
                   dbmax(nn)=dp*10000.*0.5  !radius in um
@@ -1055,56 +1208,68 @@ MODULE src_dust
                   dlast=dp
                 END IF
               END IF
-                dp = dp * exp(Dstep)
+              dp = dp * exp(Dstep)
             END DO !dp
- 	   DO nn=1,ntrace
- 	     fluxtot(nn) = fluxtot(nn) + fluxbin(nn)
- 	   END DO
 
-  	  END IF   !ustar
-         END IF   !c_eff
+            DO nn=1,ntrace
+              fluxtot(nn) = fluxtot(nn) + fluxbin(nn)
+              ! if (fluxtot(nn) == 0. .and. i_s1 >0 .and. i_s1 /= 8 .and. i_s1 /= 9)print*,'ftot', i_s1,fluxtot(nn),fluxbin(nn)
+            END DO
 
-         clfc1=0
-         cultfac=1.
-
-         DO nn=1,ntrace
- !          fluxtot: g/cm2/sec --> kg/m2/sec
- !    MASK: Effective area determined by cultfac/snow
-                fdust(j,i,nn) = fluxtot(nn) * 10000 / 1000          &
-                   *cultfac!*(1.-snow365(j,i))
-
- !    MASK: Effective area determined by LAI:
-                fdust(j,i,nn)=                                      &
-                fdust(j,i,nn)*sp_psrc(j,i)!*lai_eff(j,i,1,tnow) ! turn off vegetation limitation here!
+          END IF   ! (Ustar > 0 .AND. Ustar > umin2/feff(j,i,tnow) )
+        END IF   ! (feff(j,i,tnow) > 0.)
 
 
- ! !    MASK: Soil moisture threshold, using w0 !MF don't use this
- !              IF(qrsur(j,i).GE.w0) THEN
- !                fdust(j,i,nn)=0.
- !              END IF
-         END DO
 
- !---  transformation to chemistry units  (RW)
-          FDust(j,i,:) = FDust(j,i,:) * 1.E3         ! kg/m2/s ==> g/m2/s
-          IF (nradm == 1)  THEN                      ! chemistry units: g/m2/s ==> g/m2/s * mol2part
-            FDust(j,i,:) = FDust(j,i,:) * mol2part
+        ! clfc1=0
+        cultfac=1.
+
+        DO nn=1,ntrace
+          ! fluxtot: g/cm2/sec --> kg/m2/sec
+          ! MASK: Effective area determined by cultfac/snow
+          fdust(j,i,nn) = fluxtot(nn) * 10000 / 1000          &
+                          *cultfac!*(1.-snow365(j,i))
+
+          ! Mask Effective area determined by preferential source fraction:
+          ! only for psrcType = 2
+          IF (psrcType == 2) THEN
+            fdust(j,i,nn) = fdust(j,i,nn) * source(j,i)
+          END IF
+
+          ! Mask Effective area determined by vegetation fraction:
+          ! only for veg_scheme = 2
+          IF (veg_scheme == 2) THEN
+            fdust(j,i,nn) = fdust(j,i,nn) * veff(j,i,tnow)
           END IF
 
 
- !---  add fluxes to right hand side
-          DO nn=1,DustBins
-             Flux(1,j,i,DustInd(nn))   = Flux(1,j,i,DustInd(nn)) + FDust(j,i,nn)/dz(1,j,i)
-             DustEmis(j,i,DustInd(nn)) = FDust(j,i,nn)
+          ! ! MASK: Soil moisture threshold, using w0 !MF don't use this
+          ! IF(qrsur(j,i).GE.w0) THEN
+          !   fdust(j,i,nn)=0.
+          ! END IF
 
- !---------------------------------------------------------------------
- !---  summarize biogenic and total emission rates
-            EmiRate(EmiIndBio,j,i,DustInd(nn)) = EmiRate(EmiIndBio,j,i,DustInd(nn)) + FDust(j,i,nn)
-            EmiRate(EmiIndSum,j,i,DustInd(nn)) = EmiRate(EmiIndSum,j,i,DustInd(nn)) + FDust(j,i,nn)
-          END DO
-       END DO
-     END DO
+        END DO ! nn=1,ntrace
 
-   END SUBROUTINE emission_tegen
+        !---  transformation to chemistry units  (RW)
+        FDust(j,i,:) = FDust(j,i,:) * 1.E3         ! kg/m2/s ==> g/m2/s
+        IF (nradm == 1)  THEN                      ! chemistry units: g/m2/s ==> g/m2/s * mol2part
+          FDust(j,i,:) = FDust(j,i,:) * mol2part
+        END IF
+
+        ! IF (FDust(j,i,1) /= FDust(j,i,1) ) print*,'Fdust', i,j,FDust(j,i,1)
+
+        !---  add fluxes to right hand side
+        DO nn=1,DustBins
+          Flux(1,j,i,DustInd(nn))   = Flux(1,j,i,DustInd(nn)) + FDust(j,i,nn)/dz(1,j,i)
+          DustEmis(j,i,DustInd(nn)) = FDust(j,i,nn)
+
+          !---  summarize biogenic and total emission rates
+          EmiRate(EmiIndBio,j,i,DustInd(nn)) = EmiRate(EmiIndBio,j,i,DustInd(nn)) + FDust(j,i,nn)
+          EmiRate(EmiIndSum,j,i,DustInd(nn)) = EmiRate(EmiIndSum,j,i,DustInd(nn)) + FDust(j,i,nn)
+        END DO
+      END DO
+    END DO
+  END SUBROUTINE emission_tegen
 
   !+ okin_vegetation
   !---------------------------------------------------------------------
@@ -1114,9 +1279,9 @@ MODULE src_dust
   ! Okin aprroach (G. Okin, 2008, DOI:10.1029/2007JF000758 )
   !
   ! Reduction of dust emission caused by vegetation.
-  ! The fractional plant cover (FCOVER) (dust_ini%veg(:,:,:))
-  ! decreases the drag partition (dust_flux%feff). A reduced
-  ! drag partition leads to a decrease in the horizontal dust_flux.
+  ! The fractional plant cover (FCOVER) (dust%veg(:,:,:))
+  ! decreases the drag partition (dust%feff). A reduced
+  ! drag partition leads to a decrease in the horizontal dust flux.
   !--------------------------------------------------------------------
 
     IMPLICIT NONE
@@ -1142,9 +1307,9 @@ MODULE src_dust
       feff(:,:,:)!,       &
 
 
-    veg => dust_ini(subdomain%ib)%veg(:,:,:)
-    vegmin => dust_ini(subdomain%ib)%vegmin(:,:)
-    feff => dust_flux(subdomain%ib)%feff(:,:,:)
+    veg     => dust(subdomain%ib)%veg(:,:,:)
+    vegmin => dust(subdomain%ib)%vegmin2(:,:)
+    feff    => dust(subdomain%ib)%feff(:,:,:)
 
     ! start lon-lat-loop
     DO i=1,subdomain%ntx
@@ -1213,8 +1378,8 @@ MODULE src_dust
   SUBROUTINE linear_vegetation(subdomain,dimveg)
   !---------------------------------------------------------------------
   ! Description:
-  ! Based on the fractional vegetation cover (dust_ini%veg(:,:,:))
-  ! an effective fraction for dust emission is calculated (dust_flux%veff).
+  ! Based on the fractional vegetation cover (dust%veg(:,:,:))
+  ! an effective fraction for dust emission is calculated (dust%veff).
   ! veff=1 -> full emission, veff=0 -> no emission
   ! veff reached its minimum when the threshold vegetation cover is reached.
   ! The threshold is defined as veg_lim in dust_tegen_param (data_dust.f90)
@@ -1250,10 +1415,10 @@ MODULE src_dust
       biome(:,:),        &
       veff(:,:,:)!,       &
 
-    veg   => dust_ini(subdomain%ib)%veg(:,:,:)
-    cult  => dust_ini(subdomain%ib)%cult(:,:)
-    biome => dust_ini(subdomain%ib)%biome(:,:)
-    veff => dust_flux(subdomain%ib)%veff(:,:,:)
+    veg   => dust(subdomain%ib)%veg(:,:,:)
+    cult  => dust(subdomain%ib)%cult(:,:)
+    biome => dust(subdomain%ib)%biome(:,:)
+    veff  => dust(subdomain%ib)%veff(:,:,:)
 
     ! start lon-lat-loop
     DO i=1,subdomain%ntx
@@ -1330,9 +1495,9 @@ MODULE src_dust
   ! Description:
   !
   ! Reduction of dust emission caused by roughness elements.
-  ! A rough surface (dust_ini%z0) decreases the drag partition
-  ! (dust_flux%feff). A reduced drag partition leads to a decrease
-  ! in the horizontal dust_flux.
+  ! A rough surface (dust%z0) decreases the drag partition
+  ! (dust%feff). A reduced drag partition leads to a decrease
+  ! in the horizontal dust flux.
   !
   ! The Physics based on the paper of Marticorena and Bergametti 1995
   ! https://doi.org/10.1029/95JD00690
@@ -1369,8 +1534,8 @@ MODULE src_dust
       z0(:,:),           &
       feff(:,:,:)!,       &
 
-    z0   => dust_ini(subdomain%ib)%z0(:,:)
-    feff => dust_flux(subdomain%ib)%feff(:,:,:)
+    z0   => dust(subdomain%ib)%z0(:,:)
+    feff => dust(subdomain%ib)%feff(:,:,:)
 
     ! z0s  = dp / 30.
     z0s  = 0.001 !! en cm, these Marticorena p.85
@@ -1963,5 +2128,77 @@ MODULE src_dust
 
   !----------------------------------------------------------------
   END SUBROUTINE copy2block
+
+
+
+  SUBROUTINE quick_nc(prep,name,vname,var,xe,ye,ze,te,xmin,xmax,ymin,ymax,isub,nblocs)
+
+    USE mo_dust
+    USE data_parallel, ONLY: my_cart_id
+    USE netcdf
+
+    IMPLICIT NONE
+
+    CHARACTER(*), INTENT(IN) :: name
+    CHARACTER(*), INTENT(IN) :: vname
+
+    REAL(8),INTENT(IN) :: var(:,:,:,:)
+
+    INTEGER, INTENT(IN) :: prep, xe, ye, ze, te, xmin,xmax,ymin,ymax,isub,nblocs
+
+    LOGICAL :: firstbloc
+
+    INTEGER :: i,istat,ncID,xID,yID,zID,tID,varID
+
+    xID=0
+    yID=0
+    zID=0
+    tID=0
+
+    if(prep == 0) then
+      print*,my_cart_id,isub,"create nc"
+      istat=nf90_create(name, NF90_SHARE, ncID)
+      if (xe >1) istat=nf90_def_dim(ncID, 'x', xe, xID)
+      if (ye >1) istat=nf90_def_dim(ncID, 'y', ye, yID)
+      if (ze >1) istat=nf90_def_dim(ncID, 'z', ze, zID)
+      if (te >1) istat=nf90_def_dim(ncID, 't', te, tID)
+
+      IF (xID /=0 .and. yID/=0 .and. zID == 0 .and. tID==0) &
+        istat=nf90_def_var(ncID, vname, NF90_FLOAT, (/xID,yID/), varID)
+      IF (xID /=0 .and. yID/=0 .and. zID /= 0 .and. tID==0) &
+        istat=nf90_def_var(ncID, vname, NF90_FLOAT, (/xID,yID,zID/), varID)
+      IF (xID /=0 .and. yID/=0 .and. zID /= 0 .and. tID/=0) &
+        istat=nf90_def_var(ncID, vname, NF90_FLOAT, (/xID,yID,zID,tID/), varID)
+      IF (xID /=0 .and. yID/=0 .and. zID == 0 .and. tID/=0) &
+        istat=nf90_def_var(ncID, vname, NF90_FLOAT, (/xID,yID,tID/), varID)
+
+      istat=nf90_enddef(ncID)
+
+      istat=nf90_close(ncID)
+
+    else
+      do i=1,nblocs
+        if (i==isub) then
+          print*,my_cart_id,isub,'wirte data',xmin,ymin,xmax,ymax,xe,ye
+           istat=nf90_open(name, NF90_WRITE, ncID)
+           istat=nf90_inq_varid(ncID, vname, varID)
+           IF (xe /=1 .and. ye/=1 .and. ze == 1 .and. te==1) &
+             istat=nf90_put_var(ncID, varID,var(:,:,1,1),    &
+                           start = (/ xmin, ymin/), &
+                           count = (/ xmax-xmin, ymax-ymin/))
+           IF (xe /=1 .and. ye/=1 .and. ze == 1 .and. te/=1) &
+             istat=nf90_put_var(ncID, varID,var(:,:,1,:),    &
+                           start = (/ xmin, ymin,1/), &
+                           count = (/ xmax-xmin, ymax-ymin,te/))
+          if(istat /= nf90_NoErr) print*,'fuck fail buhhh',nf90_strerror(istat)
+          istat=nf90_close(ncID)
+        end if
+      end do
+    end if
+
+    ! print*,var
+
+  END SUBROUTINE quick_nc
+
 
 END MODULE src_dust
