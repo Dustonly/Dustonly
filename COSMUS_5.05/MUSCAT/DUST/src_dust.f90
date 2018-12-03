@@ -390,6 +390,18 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
 
+        dust(ib1)%biome(:,:)=0.
+        dust(ib1)%cult(:,:)=0.
+        dust(ib1)%veg(:,:,:)=0.
+        dust(ib1)%vegmin2(:,:)=0.
+        dust(ib1)%soiltype(:,:)=0.
+        dust(ib1)%z0(:,:)=0.
+        dust(ib1)%source(:,:)=0.
+        dust(ib1)%alpha2(:,:)=0.
+        dust(ib1)%feff(:,:,:)=0.
+        dust(ib1)%veff(:,:,:)=0.
+        dust(ib1)%d_emis(:,:,:)=0.
+
       END DO
 
 
@@ -810,78 +822,78 @@ MODULE src_dust
     END DO
     ! end lon-lat-loop
 
-    ! !--------TEST NC OUTPUT     only activate when needed
-    !        AllOCATE(printvar(subdomain%ntx,subdomain%nty,1,ndays))
-    !
-    !        do i=1,subdomain%ntx
-    !          do j=1,subdomain%nty
-    !
-    !              ! do t=1,ndays
-    !              !   ! ! if (lai(j,i,1,t) /= 0. .and. lai(j,i,1,t) < 1) then
-    !              !   ! if (lai(j,i,1,t) /= maxval(lai(:,:,1,:))) then
-    !              !   !   if (sp(j,i,1,2) == 0.) then
-    !              !   !     printvar(i,j,1,t)=99.
-    !              !   !   else
-    !              !   !     printvar(i,j,1,t)=lai(j,i,1,t)!lai_eff(j,i,1,t)
-    !              !   !   end if
-    !              !   ! ELSEIF(lai(j,i,1,t) == 0.) then
-    !              !   !   printvar(i,j,1,t)=-99.
-    !              !   ! end if
-    !              ! printvar(i,j,1,t)=feff(j,i,t)
-    !              ! ! printvar(i,j,1,t)=lai_eff(j,i,1,t)
-    !              ! ! printvar(i,j,1,t)=lai(j,i,1,t)!vegmin(j,i,1)
-    !              ! end do
-    !
-    !
-    !
-    !              ! printvar(i,j,1,1)=vegmin(j,i,1)
-    !
-    !              ! soiltype
-    !              printvar(i,j,1,1)=soiltype(j,i)
-    !
-    !              ! !biom
-    !              ! printvar(i,j,1,1)=sp(j,i,1,5)
-    !
-    !              !cosmo lai
-    !              ! printvar(i,j,1,1)=newlai(i,j)
-    !
-    !               !cosmo z0
-    !               ! printvar(i,j,1,1)=sp (j,i,1,4)
-    !
-    !               !cult
-    !               ! printvar(i,j,1,1)=sp (j,i,1,3)
-    !
-    !          end do
-    !        end do
-    !       if (subdomain%ib == 1) then
-    !
-    !          ! call quick_nc(0,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !          ! call quick_nc(0,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !          ! call quick_nc(0,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         !  call quick_nc(0,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         ! call quick_nc(0,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         ! call quick_nc(0,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !                 ! call quick_nc(0,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !
-    !          call quick_nc(0,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !       ELSE
-    !         CALL SLEEP(1)
-    !       end if
-    !
-    !       do i=0, num_compute
-    !         if (i==subdomain%ib) then
-    !            ! call quick_nc(1,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb
-    !             ! call quick_nc(1,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !            ! call quick_nc(1,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           !  call quick_nc(1,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           ! call quick_nc(1,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           ! call quick_nc(1,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           ! call quick_nc(1,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           call quick_nc(1,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         ELSE
-    !           CALL SLEEP(1)
-    !         end if
-    !       end do
+    !--------TEST NC OUTPUT     only activate when needed
+           AllOCATE(printvar(subdomain%ntx,subdomain%nty,1,ndays))
+
+           do i=1,subdomain%ntx
+             do j=1,subdomain%nty
+
+                 ! do t=1,ndays
+                 !   ! ! if (lai(j,i,1,t) /= 0. .and. lai(j,i,1,t) < 1) then
+                 !   ! if (lai(j,i,1,t) /= maxval(lai(:,:,1,:))) then
+                 !   !   if (sp(j,i,1,2) == 0.) then
+                 !   !     printvar(i,j,1,t)=99.
+                 !   !   else
+                 !   !     printvar(i,j,1,t)=lai(j,i,1,t)!lai_eff(j,i,1,t)
+                 !   !   end if
+                 !   ! ELSEIF(lai(j,i,1,t) == 0.) then
+                 !   !   printvar(i,j,1,t)=-99.
+                 !   ! end if
+                 ! printvar(i,j,1,t)=feff(j,i,t)
+                 ! ! printvar(i,j,1,t)=lai_eff(j,i,1,t)
+                 ! ! printvar(i,j,1,t)=lai(j,i,1,t)!vegmin(j,i,1)
+                 ! end do
+
+
+
+                 ! printvar(i,j,1,1)=vegmin(j,i,1)
+
+                 ! soiltype
+                 printvar(i,j,1,1)=soiltype(j,i)
+
+                 ! !biom
+                 ! printvar(i,j,1,1)=sp(j,i,1,5)
+
+                 !cosmo lai
+                 ! printvar(i,j,1,1)=newlai(i,j)
+
+                  !cosmo z0
+                  ! printvar(i,j,1,1)=sp (j,i,1,4)
+
+                  !cult
+                  ! printvar(i,j,1,1)=sp (j,i,1,3)
+
+             end do
+           end do
+          if (subdomain%ib == 1) then
+
+             ! call quick_nc(0,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+             ! call quick_nc(0,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+             ! call quick_nc(0,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+            !  call quick_nc(0,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+            ! call quick_nc(0,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+            ! call quick_nc(0,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+                    ! call quick_nc(0,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+
+             call quick_nc(0,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+          ELSE
+            CALL SLEEP(1)
+          end if
+
+          do i=0, num_compute
+            if (i==subdomain%ib) then
+               ! call quick_nc(1,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb
+                ! call quick_nc(1,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+               ! call quick_nc(1,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              !  call quick_nc(1,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              ! call quick_nc(1,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              ! call quick_nc(1,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              ! call quick_nc(1,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              call quick_nc(1,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+            ELSE
+              CALL SLEEP(1)
+            end if
+          end do
 
   END SUBROUTINE init_tegen
 
@@ -1104,7 +1116,7 @@ MODULE src_dust
 
               ! original Tegen Code
               ! ! Is this reduction necessary (MF)?
-              uthp=uth(kk)!*umin2/umin*u1fac !reduce threshold for cultivated soils
+              uthp=uth(kk)*umin2/umin*u1fac !reduce threshold for cultivated soils
               ! Marticorena:
    	          fdp1 = (1.-(Uthp/(feff(j,i,tnow) * Ustar)))
    	          fdp2 = (1.+(Uthp/(feff(j,i,tnow) * Ustar)))**2.
