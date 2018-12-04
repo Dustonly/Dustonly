@@ -71,7 +71,7 @@ MODULE src_dust
     num_compute               ! number of compute PEs
 
   ! Modules External
-  USE  mo_mpi
+  USE  mpi
 
 
 
@@ -128,8 +128,8 @@ MODULE src_dust
       igy0, igy1,     &
       ix0,  ix1,      &
       iy0,  iy1,      &
-      i,filenum!,      & ! loop
-      ! ierr              ! error code for mpi
+      i,filenum,      & ! loop
+      ierr              ! error code for mpi
 
     INTEGER :: ifind  ! muscat funktion /INIT/ifind.f90
     EXTERNAL   ifind  ! search indices for species
@@ -165,7 +165,6 @@ MODULE src_dust
     ! Subroutine Body
     !---------------------------------------------------------------------
 
-    ierr = 0
 
     ! ------------------------------------
     ! +-+-+- Section 1 Init + Input -+-+-+
@@ -178,7 +177,7 @@ MODULE src_dust
 
       ! dust_scheme need right values
       IF (dust_scheme < 0 .OR. dust_scheme > 1) THEN
-        ierr = 100001
+        ierr = 100002
         yerr = 'wrong value for dust_scheme'
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
@@ -188,7 +187,7 @@ MODULE src_dust
 
       ! soiltypeFile always necessary
       IF (TRIM(soiltypeFile) == 'without') THEN
-        ierr = 100002
+        ierr = 100001
         yerr = 'SoilTypeFile is missing'
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
@@ -199,7 +198,7 @@ MODULE src_dust
 
       ! psrcType need right values
       IF (psrcType < 0 .OR. psrcType > 2) THEN
-        ierr = 100003
+        ierr = 100002
         yerr = 'wrong value for psrcType'
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
@@ -209,7 +208,7 @@ MODULE src_dust
 
       ! psrcFile always necessary
       IF (TRIM(psrcFile) == 'without') THEN
-        ierr = 100004
+        ierr = 100003
         yerr = 'psrcFile is missing'
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
@@ -220,7 +219,7 @@ MODULE src_dust
       ! z0File maybe necessary
       IF (lwithz0) THEN
         IF (TRIM(z0File) == 'without') THEN
-          ierr = 100005
+          ierr = 100004
           yerr = 'z0File is missing'
           PRINT*,'ERROR    src_dust "init" '
           PRINT*,'         #',ierr
@@ -246,7 +245,7 @@ MODULE src_dust
       ! biomFile maybe necessary
       IF (lwithbiom) THEN
         IF (TRIM(biomeFile) == 'without') THEN
-          ierr = 100006
+          ierr = 100005
           yerr = 'biomFile is missing'
           PRINT*,'ERROR    src_dust "init" '
           PRINT*,'         #',ierr
@@ -259,7 +258,7 @@ MODULE src_dust
 
       ! veg_scheme need right values
       IF (veg_scheme < 0 .OR. veg_scheme > 2) THEN
-        ierr = 100007
+        ierr = 100006
         yerr = 'wrong value for veg_scheme'
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
@@ -270,7 +269,7 @@ MODULE src_dust
       ! any vegFile maybe necessary
       IF (veg_scheme > 0) THEN
         IF (TRIM(vegmonFile) == 'without' .AND. TRIM(vegdayFile) == 'without') THEN
-          ierr = 100008
+          ierr = 100007
           yerr = 'vegmonFile or vegdayFile is missing'
           PRINT*,'ERROR    src_dust "init" '
           PRINT*,'         #',ierr
@@ -326,16 +325,12 @@ MODULE src_dust
       END IF
 
 
-      ! Init of vegitation time dimension
-      !   climatological or daily data
+      ! - Init of vegitation
       IF (veg_scheme > 0 ) THEN
         ! If there is no daily data monthly data will be used
         dimveg = 12
         ! when daily data is available calc max number of days in the simulation
         IF (lvegdaily) dimveg = CEILING(hstop/24) + 1 ! hardcoding at this point my be helpfull for some tests 366 370!1096!1858!366!
-      ELSE
-        ! if no vegetation scheme is used then dimveg = 1
-        dimveg = 1
       END IF
 
 
@@ -400,11 +395,11 @@ MODULE src_dust
         dust(ib1)%veg(:,:,:)=0.
         dust(ib1)%vegmin2(:,:)=0.
         dust(ib1)%soiltype(:,:)=0.
-        dust(ib1)%z0(:,:)=0.001 !cm
+        dust(ib1)%z0(:,:)=0.
         dust(ib1)%source(:,:)=0.
         dust(ib1)%alpha2(:,:)=0.
-        dust(ib1)%feff(:,:,:)=1.
-        dust(ib1)%veff(:,:,:)=1.
+        dust(ib1)%feff(:,:,:)=0.
+        dust(ib1)%veff(:,:,:)=0.
         dust(ib1)%d_emis(:,:,:)=0.
 
       END DO
@@ -462,15 +457,6 @@ MODULE src_dust
               IF (filenum == 5) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,dimveg,.FALSE.,ierr,yerr)
               IF (filenum == 6) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,dimveg,.TRUE. ,ierr,yerr)
               IF (filenum == 7) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,1     ,.FALSE.,ierr,yerr)
-
-              IF (ierr /= 0) THEN
-                ierr = 100009
-                PRINT*,'ERROR    src_dust "init" '
-                PRINT*,'         #',ierr
-                PRINT*,'         ERROR reading',TRIM(filename)
-                PRINT*,'         ',yerr
-                STOP yerr
-              END IF
             ELSE
               CALL read_ascii(TRIM(filename),read_input)
             END IF
@@ -836,78 +822,78 @@ MODULE src_dust
     END DO
     ! end lon-lat-loop
 
-    ! !--------TEST NC OUTPUT     only activate when needed
-    !        AllOCATE(printvar(subdomain%ntx,subdomain%nty,1,ndays))
-    !
-    !        do i=1,subdomain%ntx
-    !          do j=1,subdomain%nty
-    !
-    !              ! do t=1,ndays
-    !              !   ! ! if (lai(j,i,1,t) /= 0. .and. lai(j,i,1,t) < 1) then
-    !              !   ! if (lai(j,i,1,t) /= maxval(lai(:,:,1,:))) then
-    !              !   !   if (sp(j,i,1,2) == 0.) then
-    !              !   !     printvar(i,j,1,t)=99.
-    !              !   !   else
-    !              !   !     printvar(i,j,1,t)=lai(j,i,1,t)!lai_eff(j,i,1,t)
-    !              !   !   end if
-    !              !   ! ELSEIF(lai(j,i,1,t) == 0.) then
-    !              !   !   printvar(i,j,1,t)=-99.
-    !              !   ! end if
-    !              ! printvar(i,j,1,t)=feff(j,i,t)
-    !              ! ! printvar(i,j,1,t)=lai_eff(j,i,1,t)
-    !              ! ! printvar(i,j,1,t)=lai(j,i,1,t)!vegmin(j,i,1)
-    !              ! end do
-    !
-    !
-    !
-    !              ! printvar(i,j,1,1)=vegmin(j,i,1)
-    !
-    !              ! soiltype
-    !              printvar(i,j,1,1)=soiltype(j,i)
-    !
-    !              ! !biom
-    !              ! printvar(i,j,1,1)=sp(j,i,1,5)
-    !
-    !              !cosmo lai
-    !              ! printvar(i,j,1,1)=newlai(i,j)
-    !
-    !               !cosmo z0
-    !               ! printvar(i,j,1,1)=sp (j,i,1,4)
-    !
-    !               !cult
-    !               ! printvar(i,j,1,1)=sp (j,i,1,3)
-    !
-    !          end do
-    !        end do
-    !       if (subdomain%ib == 1) then
-    !
-    !          ! call quick_nc(0,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !          ! call quick_nc(0,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !          ! call quick_nc(0,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         !  call quick_nc(0,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         ! call quick_nc(0,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         ! call quick_nc(0,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !                 ! call quick_nc(0,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !
-    !          call quick_nc(0,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !       ELSE
-    !         CALL SLEEP(1)
-    !       end if
-    !
-    !       do i=0, num_compute
-    !         if (i==subdomain%ib) then
-    !            ! call quick_nc(1,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb
-    !             ! call quick_nc(1,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !            ! call quick_nc(1,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           !  call quick_nc(1,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           ! call quick_nc(1,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           ! call quick_nc(1,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           ! call quick_nc(1,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           call quick_nc(1,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         ELSE
-    !           CALL SLEEP(1)
-    !         end if
-    !       end do
+    !--------TEST NC OUTPUT     only activate when needed
+           AllOCATE(printvar(subdomain%ntx,subdomain%nty,1,ndays))
+
+           do i=1,subdomain%ntx
+             do j=1,subdomain%nty
+
+                 ! do t=1,ndays
+                 !   ! ! if (lai(j,i,1,t) /= 0. .and. lai(j,i,1,t) < 1) then
+                 !   ! if (lai(j,i,1,t) /= maxval(lai(:,:,1,:))) then
+                 !   !   if (sp(j,i,1,2) == 0.) then
+                 !   !     printvar(i,j,1,t)=99.
+                 !   !   else
+                 !   !     printvar(i,j,1,t)=lai(j,i,1,t)!lai_eff(j,i,1,t)
+                 !   !   end if
+                 !   ! ELSEIF(lai(j,i,1,t) == 0.) then
+                 !   !   printvar(i,j,1,t)=-99.
+                 !   ! end if
+                 ! printvar(i,j,1,t)=feff(j,i,t)
+                 ! ! printvar(i,j,1,t)=lai_eff(j,i,1,t)
+                 ! ! printvar(i,j,1,t)=lai(j,i,1,t)!vegmin(j,i,1)
+                 ! end do
+
+
+
+                 ! printvar(i,j,1,1)=vegmin(j,i,1)
+
+                 ! soiltype
+                 printvar(i,j,1,1)=soiltype(j,i)
+
+                 ! !biom
+                 ! printvar(i,j,1,1)=sp(j,i,1,5)
+
+                 !cosmo lai
+                 ! printvar(i,j,1,1)=newlai(i,j)
+
+                  !cosmo z0
+                  ! printvar(i,j,1,1)=sp (j,i,1,4)
+
+                  !cult
+                  ! printvar(i,j,1,1)=sp (j,i,1,3)
+
+             end do
+           end do
+          if (subdomain%ib == 1) then
+
+             ! call quick_nc(0,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+             ! call quick_nc(0,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+             ! call quick_nc(0,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+            !  call quick_nc(0,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+            ! call quick_nc(0,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+            ! call quick_nc(0,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+                    ! call quick_nc(0,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+
+             call quick_nc(0,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+          ELSE
+            CALL SLEEP(1)
+          end if
+
+          do i=0, num_compute
+            if (i==subdomain%ib) then
+               ! call quick_nc(1,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb
+                ! call quick_nc(1,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+               ! call quick_nc(1,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              !  call quick_nc(1,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              ! call quick_nc(1,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              ! call quick_nc(1,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              ! call quick_nc(1,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              call quick_nc(1,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+            ELSE
+              CALL SLEEP(1)
+            end if
+          end do
 
   END SUBROUTINE init_tegen
 
@@ -1052,18 +1038,14 @@ MODULE src_dust
     ! +-+-+- Sec 1 Set the actually date -+-+-+
 
     ! the drag partition (feff) has a dependency on time
-    IF (veg_scheme > 0) THEN
-      IF (lvegdaily) THEN
-        ! find the exact day and set "tnow" with the number of the actually day
-        READ(ydate_ini(9:10),*) time_start
-        time_start=time_start + hstart
-        time_now=time_start+ntstep*dt/3600.
-        tnow=time_now/24 + 1
-      ELSE ! if the drag partition has monthly values "tnow" is the number of the month
-        READ(StartDate,'(4x,i2)') tnow
-      END IF
-    ELSE
-      tnow = 1
+    IF (lvegdaily) THEN
+      ! find the exact day and set "tnow" with the number of the actually day
+      READ(ydate_ini(9:10),*) time_start
+      time_start=time_start + hstart
+      time_now=time_start+ntstep*dt/3600.
+      tnow=time_now/24 + 1
+    ELSE ! if the drag partition has monthly values "tnow" is the number of the month
+      READ(StartDate,'(4x,i2)') tnow
     END IF
 
 
