@@ -42,6 +42,8 @@ MODULE src_dust
   ! Modules MUSCAT
   USE  mo_dust
   ! USE  dust_org
+
+#ifndef OFFLINE
   USE  partition
   USE  sub_geo
   USE  mo_ctm , ONLY: nalloc         & ! Size of Allocated Arrays
@@ -72,7 +74,7 @@ MODULE src_dust
 
   ! Modules External
   USE  mo_mpi
-
+#endif
 
 
 
@@ -105,7 +107,11 @@ MODULE src_dust
   !---------------------------------------------------------------------
 
     ! Modules
+#ifndef OFFLINE
     USE data_runcontrol,    ONLY : hstop
+#else
+    USE offline_org
+#endif
 
     IMPLICIT NONE
 
@@ -298,8 +304,12 @@ MODULE src_dust
       ! Set Indices of Dust Tracer
       ! necessary for AOD Calc?
       DO js=1,DustBins
+#ifndef OFFLINE
         string = TRIM(ADJUSTL(DustName(js)))
         DustInd(js)  = ifind(nt, string, tracer_name)   ! ifind -> muscat funktion /INIT/ifind.f90
+#else
+        DustInd(js) = js
+#endif
         IF (DustInd(js) <= 0)  THEN
           WRITE(*,8010)  string
           STOP  'Dust_Init: Error in Input Data !!'
@@ -346,28 +356,33 @@ MODULE src_dust
       ! ALLOCATE(dust_ini(nb))
       ! ALLOCATE(dust_flux(nb))
 
+
       ! Bolck strukture of muscat, loop over blocks
       DO ibLoc=1,nbLoc
+#ifndef OFFLINE
         ib1 = LocGlob(ibLoc)
+#else
+        ib1 = 1
+#endif
         ! allocate arrays in dust for each block
-        ! ALLOCATE(dust(ib1)%soilprop(decomp(ib1)%iy0+1:decomp(ib1)%iy1,      &
-        !          decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac,1:SoilNumb))
-        ! ALLOCATE(dust(ib1)%lai(decomp(ib1)%iy0+1:decomp(ib1)%iy1,           &
-        !          decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac,1:dimveg))
-        ! ALLOCATE(dust(ib1)%vegmin(decomp(ib1)%iy0+1:decomp(ib1)%iy1,        &
-        !          decomp(ib1)%ix0+1:decomp(ib1)%ix1,1))
-        ! ALLOCATE(dust(ib1)%alpha(decomp(ib1)%iy0+1:decomp(ib1)%iy1,         &
-        !          decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac))
-        ! ALLOCATE(dust(ib1)%c_eff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,         &
-        !          decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac))
-        ! ALLOCATE(dust(ib1)%umin2(decomp(ib1)%iy0+1:decomp(ib1)%iy1,         &
-        !          decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac))
-        ! ALLOCATE(dust(ib1)%lai_eff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
-        !          decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac,1:dimveg))
-        ! ALLOCATE(dust(ib1)%w_str(decomp(ib1)%iy0+1:decomp(ib1)%iy1,         &
-        !          decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac))
-        ! ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,        &
-        !          decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
+        ALLOCATE(dust(ib1)%soilprop(decomp(ib1)%iy0+1:decomp(ib1)%iy1,      &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac,1:SoilNumb))
+        ALLOCATE(dust(ib1)%lai(decomp(ib1)%iy0+1:decomp(ib1)%iy1,           &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac,1:dimveg))
+        ALLOCATE(dust(ib1)%vegmin(decomp(ib1)%iy0+1:decomp(ib1)%iy1,        &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1))
+        ALLOCATE(dust(ib1)%alpha(decomp(ib1)%iy0+1:decomp(ib1)%iy1,         &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac))
+        ALLOCATE(dust(ib1)%c_eff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,         &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac))
+        ALLOCATE(dust(ib1)%umin2(decomp(ib1)%iy0+1:decomp(ib1)%iy1,         &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac))
+        ALLOCATE(dust(ib1)%lai_eff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac,1:dimveg))
+        ALLOCATE(dust(ib1)%w_str(decomp(ib1)%iy0+1:decomp(ib1)%iy1,         &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac))
+        ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,        &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
 
         ! Allocate dust_ini
         ALLOCATE(dust(ib1)%biome(decomp(ib1)%iy0+1:decomp(ib1)%iy1,      &
@@ -476,14 +491,19 @@ MODULE src_dust
             END IF
           END IF ! (my_cart_id == 0)
 
+#ifndef OFFLINE
           ! distribut input to all px if necessary
-          IF (num_compute > 0) THEN
+          IF (num_compute > 1) THEN
             CALL MPI_BCAST(read_input,size(read_input),imp_reals,0,icomm_cart,ierr)
           END IF
-
+#endif
           ! copy to muscat block structur
           DO ibLoc=1,nbLoc
+#ifndef OFFLINE
             ib1 = LocGlob(ibLoc)
+#else
+            ib1 = 1
+#endif
             IF (filenum == 1) copy2d => dust(ib1)%soiltype
             IF (filenum == 2) copy2d => dust(ib1)%source
             IF (filenum == 3) copy2d => dust(ib1)%z0
@@ -494,6 +514,7 @@ MODULE src_dust
 
             IF (dim == 2) CALL copy2block(decomp(ib1),dim,read_input,too2d=copy2d)
             IF (dim == 3) CALL copy2block(decomp(ib1),dim,read_input,too3d=copy3d)
+
 
           END DO
 
@@ -509,7 +530,11 @@ MODULE src_dust
 
       ! block loop
       DO ibLoc=1,nbLoc
+#ifndef OFFLINE
         ib1 = LocGlob(ibLoc)
+#else
+        ib1 = 1
+#endif
 
 
         ! +-+-+- Sec 1.4.1 dust flux -+-+-+
@@ -551,7 +576,8 @@ MODULE src_dust
     ! +-+-+- Section 2 Dust flux calculation -+-+-+
     ! ------------------------------------
     ELSEIF (yaction == "calc") THEN
-
+      ! print*, maxval(dust_flux)
+      ! print*, minval(dust_flux)
       CALL emission_tegen(subdomain,flux)
       ! STOP 'TESTING'
 
@@ -578,8 +604,12 @@ MODULE src_dust
   !--------------------------------------------------------------------
 
     ! Modules
+    USE mo_dust
     USE dust_tegen_param
     USE dust_tegen_data
+#ifdef OFFLINE
+    USE offline_org
+#endif
 
 
     IMPLICIT NONE
@@ -832,82 +862,92 @@ MODULE src_dust
     !       !             umin2(j,i,1)=umin*0.5
     !    END IF !cult=1
 
-     END DO
+      END DO
     END DO
     ! end lon-lat-loop
 
-    ! !--------TEST NC OUTPUT     only activate when needed
-    !        AllOCATE(printvar(subdomain%ntx,subdomain%nty,1,ndays))
-    !
-    !        do i=1,subdomain%ntx
-    !          do j=1,subdomain%nty
-    !
-    !              ! do t=1,ndays
-    !              !   ! ! if (lai(j,i,1,t) /= 0. .and. lai(j,i,1,t) < 1) then
-    !              !   ! if (lai(j,i,1,t) /= maxval(lai(:,:,1,:))) then
-    !              !   !   if (sp(j,i,1,2) == 0.) then
-    !              !   !     printvar(i,j,1,t)=99.
-    !              !   !   else
-    !              !   !     printvar(i,j,1,t)=lai(j,i,1,t)!lai_eff(j,i,1,t)
-    !              !   !   end if
-    !              !   ! ELSEIF(lai(j,i,1,t) == 0.) then
-    !              !   !   printvar(i,j,1,t)=-99.
-    !              !   ! end if
-    !              ! printvar(i,j,1,t)=feff(j,i,t)
-    !              ! ! printvar(i,j,1,t)=lai_eff(j,i,1,t)
-    !              ! ! printvar(i,j,1,t)=lai(j,i,1,t)!vegmin(j,i,1)
-    !              ! end do
-    !
-    !
-    !
-    !              ! printvar(i,j,1,1)=vegmin(j,i,1)
-    !
-    !              ! soiltype
-    !              printvar(i,j,1,1)=soiltype(j,i)
-    !
-    !              ! !biom
-    !              ! printvar(i,j,1,1)=sp(j,i,1,5)
-    !
-    !              !cosmo lai
-    !              ! printvar(i,j,1,1)=newlai(i,j)
-    !
-    !               !cosmo z0
-    !               ! printvar(i,j,1,1)=sp (j,i,1,4)
-    !
-    !               !cult
-    !               ! printvar(i,j,1,1)=sp (j,i,1,3)
-    !
-    !          end do
-    !        end do
-    !       if (subdomain%ib == 1) then
-    !
-    !          ! call quick_nc(0,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !          ! call quick_nc(0,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !          ! call quick_nc(0,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         !  call quick_nc(0,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         ! call quick_nc(0,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         ! call quick_nc(0,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !                 ! call quick_nc(0,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !
-    !          call quick_nc(0,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !       ELSE
-    !         CALL SLEEP(1)
-    !       end if
-    !
-    !       do i=0, num_compute
-    !         if (i==subdomain%ib) then
-    !            ! call quick_nc(1,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb
-    !             ! call quick_nc(1,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !            ! call quick_nc(1,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           !  call quick_nc(1,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           ! call quick_nc(1,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           ! call quick_nc(1,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           ! call quick_nc(1,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           call quick_nc(1,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         ELSE
-    !           CALL SLEEP(1)
-    !         end if
-    !       end do
+
+
+    !--------TEST NC OUTPUT     only activate when needed
+           AllOCATE(printvar(subdomain%ntx,subdomain%nty,1,ndays))
+
+           do i=1,subdomain%ntx
+             do j=1,subdomain%nty
+
+                 ! do t=1,ndays
+                 !   ! ! if (lai(j,i,1,t) /= 0. .and. lai(j,i,1,t) < 1) then
+                 !   ! if (lai(j,i,1,t) /= maxval(lai(:,:,1,:))) then
+                 !   !   if (sp(j,i,1,2) == 0.) then
+                 !   !     printvar(i,j,1,t)=99.
+                 !   !   else
+                 !   !     printvar(i,j,1,t)=lai(j,i,1,t)!lai_eff(j,i,1,t)
+                 !   !   end if
+                 !   ! ELSEIF(lai(j,i,1,t) == 0.) then
+                 !   !   printvar(i,j,1,t)=-99.
+                 !   ! end if
+                 ! printvar(i,j,1,t)=feff(j,i,t)
+                 ! ! printvar(i,j,1,t)=lai_eff(j,i,1,t)
+                 ! ! printvar(i,j,1,t)=lai(j,i,1,t)!vegmin(j,i,1)
+                 ! end do
+
+
+
+                 ! printvar(i,j,1,1)=vegmin(j,i,1)
+
+                 ! soiltype
+                 printvar(i,j,1,1)=soiltype(j,i)
+
+                 if (i==20 .and. j==20) printvar(i,j,1,1)=50
+
+
+                 ! !biom
+                 ! printvar(i,j,1,1)=sp(j,i,1,5)
+
+                 !cosmo lai
+                 ! printvar(i,j,1,1)=newlai(i,j)
+
+                  !cosmo z0
+                  ! printvar(i,j,1,1)=sp (j,i,1,4)
+
+                  !cult
+                  ! printvar(i,j,1,1)=sp (j,i,1,3)
+
+             end do
+           end do
+
+           ! print*, 'pvar 20/20',printvar(20,20,1,1)
+           ! print*, 'pvar 19/21',printvar(19,21,1,1)
+          if (subdomain%ib == 1) then
+
+             ! call quick_nc(0,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+             ! call quick_nc(0,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+             ! call quick_nc(0,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+            !  call quick_nc(0,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+            ! call quick_nc(0,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+            ! call quick_nc(0,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+                    ! call quick_nc(0,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+
+             call quick_nc(0,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0, &
+             subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+          ELSE
+            CALL SLEEP(1)
+          end if
+
+          do i=0, num_compute
+            if (i==subdomain%ib) then
+               ! call quick_nc(1,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb
+                ! call quick_nc(1,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+               ! call quick_nc(1,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              !  call quick_nc(1,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              ! call quick_nc(1,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              ! call quick_nc(1,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              ! call quick_nc(1,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
+              call quick_nc(1,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0+1,subdomain%igx1+1, &
+              subdomain%igy0+1,subdomain%igy1+1,subdomain%ib,nb)
+            ELSE
+              CALL SLEEP(1)
+            end if
+          end do
 
   END SUBROUTINE init_tegen
 
@@ -929,20 +969,24 @@ MODULE src_dust
   !--------------------------------------------------------------------
 
     ! Modules
+    USE mo_dust
+    USE dust_tegen_param
+    USE dust_tegen_data
+#ifndef OFFLINE
     USE partition
     USE sub_block
     USE sub_geo
     USE sub_met
     USE mo_ctm
     USE mo_gas, ONLY: mol2part, nradm
-    USE mo_dust
-    USE dust_tegen_param
-    USE dust_tegen_data
     ! USE dust_org
     USE data_io,  ONLY : ydate_ini
     USE data_runcontrol,    ONLY : hstart, ntstep
     USE data_modelconfig, ONLY: dt
     USE data_fields, ONLY:  ustar_fv
+#else
+    USE offline_org
+#endif
 
     IMPLICIT NONE
 
@@ -1025,9 +1069,10 @@ MODULE src_dust
     IF (DustMod <= 0) RETURN
 
 
-    dxK => geo(ib)%dxK(:,:)
-    dyK => geo(ib)%dyK(:,:)
-    dz  => geo(ib)%dz(:,:,:)
+
+    dxK     => geo  (subdomain%ib)%dxK(:,:)
+    dyK     => geo  (subdomain%ib)%dyK(:,:)
+    dz      => geo  (subdomain%ib)%dz(:,:,:)
     rhosur  => meteo(subdomain%ib)%rho(1,:,:,ScalCur)
     qrsur   => meteo(subdomain%ib)%QRSur(:,:,ScalCur)
     usur    => meteo(subdomain%ib)%u(1,:,:,WindCur)
@@ -1036,7 +1081,7 @@ MODULE src_dust
     soiltype => dust(subdomain%ib)%soiltype(:,:)
     source   => dust(subdomain%ib)%source(:,:)
     z0       => dust(subdomain%ib)%z0(:,:)
-    alpha   => dust(subdomain%ib)%alpha2(:,:)
+    alpha    => dust(subdomain%ib)%alpha2(:,:)
     feff     => dust(subdomain%ib)%feff(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
 
@@ -1046,7 +1091,11 @@ MODULE src_dust
     ! w_str   => dust(subdomain%ib)%w_str(:,:,1)
     !
     DustEmis => dust(subdomain%ib)%d_emis(:,:,:)
+#ifndef OFFLINE
     EmiRate  => block(subdomain%ib)%EmiRate(:,:,:,:)
+#endif
+
+
 
 
     ! +-+-+- Sec 1 Set the actually date -+-+-+
@@ -1070,9 +1119,11 @@ MODULE src_dust
 
     DO i=1,subdomain%ntx
       DO j=1,subdomain%nty
+        ! print*, 'dxK',dyK(j,i),'dyK',dyK(j,i),'dz',dz(1,j,i)
 
         ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
+#ifndef OFFLINE
         !---  flux initialisations
         uwind = usur(j,i+1)/dyK(j,i+1)+usur(j,i)/dyK(j,i)
         uwind = 0.5E0 * uwind / dz(1,j,i)
@@ -1080,6 +1131,11 @@ MODULE src_dust
         vwind = 0.5E0 * vwind / dz(1,j,i)
 
         van = SQRT(uwind**2+vwind**2)/rhosur(j,i)
+        van = SQRT(15.**2+0.**2)
+#else
+        van = SQRT(usur(j,i)**2+vsur(j,i)**2)
+#endif
+
 
         !---  zero setting
         dbmin(:)=0.E0
@@ -1127,26 +1183,26 @@ MODULE src_dust
 
         IF (feff(j,i,tnow) > 0.) THEN
           IF (Ustar > 0 .AND. Ustar > umin2/feff(j,i,tnow) ) THEN
-   	        kk = 0
+            kk = 0
             dp = Dmin
             DO WHILE (dp <= Dmax+1E-5)
-   	          kk = kk+1
+              kk = kk+1
 
               ! original Tegen Code
               ! ! Is this reduction necessary (MF)?
               uthp=uth(kk)*umin2/umin*u1fac !reduce threshold for cultivated soils
               ! Marticorena:
-   	          fdp1 = (1.-(Uthp/(feff(j,i,tnow) * Ustar)))
-   	          fdp2 = (1.+(Uthp/(feff(j,i,tnow) * Ustar)))**2.
+              fdp1 = (1.-(Uthp/(feff(j,i,tnow) * Ustar)))
+              fdp2 = (1.+(Uthp/(feff(j,i,tnow) * Ustar)))**2.
 
               ! ! Shao:
               ! fdp1 = (1.-(Uthp/(feff(j,i,tnow) * Ustar))**2)
               ! fdp2 = 1.
 
               IF (fdp1 <= 0 .OR. fdp2 <= 0) THEN
-   	            flux_umean = 0.
+                flux_umean = 0.
               ELSE
-   		          flux_umean = srel(i_s1,kk) * fdp1 * fdp2 * cd * Ustar**3 *alpha(j,i)
+                flux_umean = srel(i_s1,kk) * fdp1 * fdp2 * cd * Ustar**3 *alpha(j,i)
                 flux_diam = flux_umean
 
 
@@ -1293,9 +1349,11 @@ MODULE src_dust
           Flux(1,j,i,DustInd(nn))   = Flux(1,j,i,DustInd(nn)) + FDust(j,i,nn)/dz(1,j,i)
           DustEmis(j,i,DustInd(nn)) = FDust(j,i,nn)
 
+#ifndef OFFLINE
           !---  summarize biogenic and total emission rates
           EmiRate(EmiIndBio,j,i,DustInd(nn)) = EmiRate(EmiIndBio,j,i,DustInd(nn)) + FDust(j,i,nn)
           EmiRate(EmiIndSum,j,i,DustInd(nn)) = EmiRate(EmiIndSum,j,i,DustInd(nn)) + FDust(j,i,nn)
+#endif
         END DO
       END DO
     END DO
@@ -1313,6 +1371,9 @@ MODULE src_dust
   ! decreases the drag partition (dust%feff). A reduced
   ! drag partition leads to a decrease in the horizontal dust flux.
   !--------------------------------------------------------------------
+#ifdef OFFLINE
+    USE offline_org
+#endif
 
     IMPLICIT NONE
 
@@ -1422,6 +1483,11 @@ MODULE src_dust
   !--------------------------------------------------------------------
     USE dust_tegen_param
     USE dust_tegen_data
+
+#ifdef OFFLINE
+    USE offline_org
+#endif
+
     IMPLICIT NONE
 
     TYPE(rectangle), INTENT(IN) :: subdomain
@@ -1538,6 +1604,11 @@ MODULE src_dust
 
     USE dust_tegen_param
     USE dust_tegen_data
+
+#ifdef OFFLINE
+    USE offline_org
+#endif
+
     IMPLICIT NONE
 
     TYPE(rectangle), INTENT(IN) :: subdomain
@@ -1836,7 +1907,9 @@ MODULE src_dust
     ! Modules
     USE netcdf
     USE mo_dust
+#ifndef OFFLINE
     USE data_io,  ONLY : ydate_ini    ! start of the forecast
+#endif
     ! USE data_modelconfig,   ONLY :   &
     !   ie_tot,                  & ! number of grid points in zonal direction
     !   je_tot                     ! number of grid points in meridional direction
@@ -2073,7 +2146,6 @@ MODULE src_dust
 
 
 
-
   !+ copy2block
   !---------------------------------------------------------------------
   SUBROUTINE copy2block(subdomain,dim,from, too2d,too3d)
@@ -2088,6 +2160,10 @@ MODULE src_dust
   !     too the var 'too(je_sub,ie_sub,:)'
   !     for 2d (if dim=2) and 3d (if dim=3)
   !----------------------------------------------------------------
+
+#ifdef OFFLINE
+    USE offline_org
+#endif
 
     IMPLICIT NONE
 
@@ -2108,7 +2184,7 @@ MODULE src_dust
 
 
     INTEGER :: i,j,k,jx,jy,in,jn,RefLoc  ! loops and
-    INTEGER :: igx0,igy0,SurfLoc         !   helping integers
+    INTEGER :: igx0,igy0,SurfLoc         ! helping integers
 
 
  !----------------------------------------------------------------
@@ -2130,7 +2206,6 @@ MODULE src_dust
           IF (dim == 3) too3d(jn,in,:) = from(jy,jx,:)
         END DO
       END DO
-
  !----------------------------------------------------------------
  !---  Coarser Grid
  !----------------------------------------------------------------
@@ -2160,12 +2235,15 @@ MODULE src_dust
   END SUBROUTINE copy2block
 
 
-
   SUBROUTINE quick_nc(prep,name,vname,var,xe,ye,ze,te,xmin,xmax,ymin,ymax,isub,nblocs)
 
     USE mo_dust
-    USE data_parallel, ONLY: my_cart_id
     USE netcdf
+
+#ifdef OFFLINE
+    USE offline_org
+#endif
+    ! USE data_parallel, ONLY: my_cart_id
 
     IMPLICIT NONE
 
@@ -2184,6 +2262,7 @@ MODULE src_dust
     yID=0
     zID=0
     tID=0
+
 
     if(prep == 0) then
       print*,my_cart_id,isub,"create nc"
@@ -2210,18 +2289,23 @@ MODULE src_dust
       do i=1,nblocs
         if (i==isub) then
           print*,my_cart_id,isub,'wirte data',xmin,ymin,xmax,ymax,xe,ye
+
            istat=nf90_open(name, NF90_WRITE, ncID)
+           if(istat /= nf90_NoErr) print*,'fail 1',nf90_strerror(istat)
            istat=nf90_inq_varid(ncID, vname, varID)
+           if(istat /= nf90_NoErr) print*,'fail 2',nf90_strerror(istat)
            IF (xe /=1 .and. ye/=1 .and. ze == 1 .and. te==1) &
              istat=nf90_put_var(ncID, varID,var(:,:,1,1),    &
                            start = (/ xmin, ymin/), &
                            count = (/ xmax-xmin, ymax-ymin/))
+             if(istat /= nf90_NoErr) print*,'fail 3',nf90_strerror(istat)
            IF (xe /=1 .and. ye/=1 .and. ze == 1 .and. te/=1) &
              istat=nf90_put_var(ncID, varID,var(:,:,1,:),    &
                            start = (/ xmin, ymin,1/), &
                            count = (/ xmax-xmin, ymax-ymin,te/))
-          if(istat /= nf90_NoErr) print*,'fuck fail buhhh',nf90_strerror(istat)
+             if(istat /= nf90_NoErr) print*,'fail 4',nf90_strerror(istat)
           istat=nf90_close(ncID)
+          if(istat /= nf90_NoErr) print*,'fail 5',nf90_strerror(istat)
         end if
       end do
     end if

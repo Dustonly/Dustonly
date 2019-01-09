@@ -944,3 +944,107 @@ MODULE dust_tegen_data
              3.98E-06,  0.2E0/
 
 END MODULE dust_tegen_data
+
+#ifdef OFFLINE
+MODULE offline_org
+
+  ! data fields for the dust calculation
+  REAL(8), ALLOCATABLE :: &
+    u(:,:,:), &      ! meridional wind
+    v(:,:,:), &      ! zonal wind
+    dust_flux(:,:,:,:), & !
+    dust_em_accum(:,:,:)
+
+
+  ! data type for muscat subdomain
+  TYPE rectangle
+    INTEGER :: ntx,nty
+    INTEGER :: ngx,ngy
+    INTEGER :: ns
+    INTEGER :: igx0,igy0,igx1,igy1
+    INTEGER :: ix0,iy0,ix1,iy1
+    INTEGER :: ib
+    INTEGER :: refine
+  END TYPE rectangle
+  TYPE (rectangle) :: domain
+  TYPE (rectangle), ALLOCATABLE :: decomp(:)
+
+
+  TYPE geo_subdomain
+    REAL(8), POINTER :: dxK(:,:)
+    REAL(8), POINTER :: dyK(:,:)
+    REAL(8), POINTER :: dz(:,:,:)
+  END TYPE geo_subdomain
+  TYPE (geo_subdomain), ALLOCATABLE, TARGET :: geo(:)
+
+
+  TYPE c_submet
+    REAL(8), POINTER :: rho(:,:,:,:)
+    REAL(8), POINTER :: u(:,:,:,:)
+    REAL(8), POINTER :: v(:,:,:,:)
+    ! REAL(8), POINTER :: w(:,:,:,:)
+    REAL(8), POINTER :: QRSur(:,:,:)       ! relative humidity
+  END TYPE c_submet
+  TYPE (c_submet), ALLOCATABLE, TARGET :: meteo(:)
+
+
+
+  INTEGER, PARAMETER :: &
+    num_compute = 1,    &
+    my_cart_id  = 0,    &
+    SurfLevel   = 0,    &
+    nbLoc       = 1,    &
+    nb          = 1,    &
+    DustMod     = 1,    &
+    nradm       = 0,    &
+    mol2part    = 0,    &
+    nt          = 8,    &
+    ntz         = 1,    &
+    ScalCur     = 1,    &
+    WindCur     = 1
+
+  INTEGER :: &
+    SurfRef, &
+    ibloc
+
+  REAL(8) :: &
+    hstart,  &
+    hstop
+
+  CHARACTER(10) :: &
+    StartDate
+
+
+  REAL(8) :: &
+    dt
+
+  INTEGER ::    &
+    ntstep,     &  ! number of actually time step
+    firsttstep, &  ! number of first time step
+    lasttstep      ! number of last time step
+
+  CHARACTER(120) ::&
+    ofilename
+
+  INTEGER :: &
+    ncdfID,        & ! id Var for the nc file
+    timeID,      &
+    rlonID,      &
+    rlatID,      &
+    lonID,       &
+    latID,       &
+    DE01ID,      &
+    DE03ID,      &
+    DE09ID,      &
+    DE26ID,      &
+    DE80ID,      &
+    DETOTID,     &
+    DEPM25ID,    &
+    DEPM10ID,    &
+    timeDim,     &
+    rlonDim,     &
+    rlatDim
+
+
+END MODULE offline_org
+#endif

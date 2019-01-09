@@ -13,7 +13,9 @@
 !
 !======================================================================================
 MODULE mo_dust
+#ifndef OFFLINE
   USE data_modelconfig,   ONLY: DustMod ! Flag for Setting Soil Data
+#endif
   !======================================================================================
   ! Description:
   ! ------------
@@ -147,5 +149,29 @@ MODULE mo_dust
   ! &               ,su_srelV(nats,nclass)      & !
   ! 	&               ,Uth(Nclass)                & ! threshold friction velocity
   ! 	&               ,Uth_bod(Nclass)              ! threshold friction velocity
+
+  ! additional namelist variables for the offline model
+#ifdef OFFLINE
+  INTEGER ::   &
+    ie_tot,    & ! number of lon points
+    je_tot!,    & ! number of lat points
+
+  REAL(8) ::    &
+    startlon_tot, & ! lon of low left corner
+    startlat_tot, & ! lat of low left corner
+    timeinc, &    ! increment of time in hours
+    pollon,  &
+    pollat,  &
+    dlon,    &
+    dlat
+
+
+  CHARACTER(10) :: &
+    ydate_ini, & ! Date when model Start YYYYMMDDHH
+    ydate_end    ! Date when model END   YYYYMMDDHH
+
+  CHARACTER(120) :: &
+    youtdir      ! directory of the output file
+#endif
 
 END MODULE mo_dust
