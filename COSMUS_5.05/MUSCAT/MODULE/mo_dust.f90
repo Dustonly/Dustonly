@@ -171,7 +171,14 @@ MODULE mo_dust
     ydate_end    ! Date when model END   YYYYMMDDHH
 
   CHARACTER(120) :: &
+    windFile,       & ! wind input data
     youtdir      ! directory of the output file
+
+  CHARACTER(3) :: &
+    leveltype       ! 10m, or mlv
+
+  LOGICAL :: &
+    laccumulation
 #endif
 
 END MODULE mo_dust

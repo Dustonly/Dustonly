@@ -952,6 +952,7 @@ MODULE offline_org
   REAL(8), ALLOCATABLE :: &
     u(:,:,:), &      ! meridional wind
     v(:,:,:), &      ! zonal wind
+    dz(:,:,:), &
     dust_flux(:,:,:,:), & !
     dust_em_accum(:,:,:)
 
@@ -970,22 +971,22 @@ MODULE offline_org
   TYPE (rectangle), ALLOCATABLE :: decomp(:)
 
 
-  TYPE geo_subdomain
-    REAL(8), POINTER :: dxK(:,:)
-    REAL(8), POINTER :: dyK(:,:)
-    REAL(8), POINTER :: dz(:,:,:)
-  END TYPE geo_subdomain
-  TYPE (geo_subdomain), ALLOCATABLE, TARGET :: geo(:)
-
-
-  TYPE c_submet
-    REAL(8), POINTER :: rho(:,:,:,:)
-    REAL(8), POINTER :: u(:,:,:,:)
-    REAL(8), POINTER :: v(:,:,:,:)
-    ! REAL(8), POINTER :: w(:,:,:,:)
-    REAL(8), POINTER :: QRSur(:,:,:)       ! relative humidity
-  END TYPE c_submet
-  TYPE (c_submet), ALLOCATABLE, TARGET :: meteo(:)
+  ! TYPE geo_subdomain
+  !   REAL(8), POINTER :: dxK(:,:)
+  !   REAL(8), POINTER :: dyK(:,:)
+  !   REAL(8), POINTER :: dz(:,:,:)
+  ! END TYPE geo_subdomain
+  ! TYPE (geo_subdomain), ALLOCATABLE, TARGET :: geo(:)
+  !
+  !
+  ! TYPE c_submet
+  !   REAL(8), POINTER :: rho(:,:,:,:)
+  !   REAL(8), POINTER :: u(:,:,:,:)
+  !   REAL(8), POINTER :: v(:,:,:,:)
+  !   ! REAL(8), POINTER :: w(:,:,:,:)
+  !   REAL(8), POINTER :: QRSur(:,:,:)       ! relative humidity
+  ! END TYPE c_submet
+  ! TYPE (c_submet), ALLOCATABLE, TARGET :: meteo(:)
 
 
 
@@ -1000,8 +1001,8 @@ MODULE offline_org
     mol2part    = 0,    &
     nt          = 8,    &
     ntz         = 1,    &
-    ScalCur     = 1,    &
-    WindCur     = 1
+    ScalCur     = 1!,    &
+    ! WindCur     = 1
 
   INTEGER :: &
     SurfRef, &

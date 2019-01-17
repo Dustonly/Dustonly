@@ -1042,23 +1042,25 @@ MODULE src_dust
 
 
     ! Pointer
+#ifndef OFFLINE
     REAL(8), POINTER :: dxK(:,:)
     REAL(8), POINTER :: dyK(:,:)
     REAL(8), POINTER :: dz(:,:,:)
-
     REAL(8), POINTER :: usur(:,:)
     REAL(8), POINTER :: vsur(:,:)
     REAL(8), POINTER :: qrsur(:,:)
     REAL(8), POINTER :: rhosur(:,:)
+
+#endif
+
     REAL(8), POINTER :: soiltype(:,:)
     REAL(8), POINTER :: source(:,:)
-    REAL(8), POINTER :: z0(:,:)
     REAL(8), POINTER :: alpha(:,:)
     REAL(8), POINTER :: feff(:,:,:)
     REAL(8), POINTER :: veff(:,:,:)
+    REAL(8), POINTER :: z0(:,:)
     ! REAL(8), POINTER :: umin2(:,:)
     REAL(8), PARAMETER :: umin2=umin
-
     REAL(8), POINTER :: w_str(:,:)
     REAL(8), POINTER :: DustEmis(:,:,:), EmiRate(:,:,:,:)
 
@@ -1069,7 +1071,7 @@ MODULE src_dust
     IF (DustMod <= 0) RETURN
 
 
-
+#ifndef OFFLINE
     dxK     => geo  (subdomain%ib)%dxK(:,:)
     dyK     => geo  (subdomain%ib)%dyK(:,:)
     dz      => geo  (subdomain%ib)%dz(:,:,:)
@@ -1077,14 +1079,14 @@ MODULE src_dust
     qrsur   => meteo(subdomain%ib)%QRSur(:,:,ScalCur)
     usur    => meteo(subdomain%ib)%u(1,:,:,WindCur)
     vsur    => meteo(subdomain%ib)%v(1,:,:,WindCur)
+#endif
 
     soiltype => dust(subdomain%ib)%soiltype(:,:)
     source   => dust(subdomain%ib)%source(:,:)
-    z0       => dust(subdomain%ib)%z0(:,:)
     alpha    => dust(subdomain%ib)%alpha2(:,:)
     feff     => dust(subdomain%ib)%feff(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
-
+    z0       => dust(subdomain%ib)%z0(:,:)
     ! lai_eff => dust(subdomain%ib)%lai_eff(:,:,:,:)
     ! umin2    => dust(subdomain%ib)%umin2(:,:,1)
     !
@@ -1107,7 +1109,7 @@ MODULE src_dust
         READ(ydate_ini(9:10),*) time_start
         time_start=time_start + hstart
         time_now=time_start+ntstep*dt/3600.
-        tnow=time_now/24 + 1
+        tnow=time_now/24 + 1 ! convert to integer
       ELSE ! if the drag partition has monthly values "tnow" is the number of the month
         READ(StartDate,'(4x,i2)') tnow
       END IF
@@ -1131,9 +1133,8 @@ MODULE src_dust
         vwind = 0.5E0 * vwind / dz(1,j,i)
 
         van = SQRT(uwind**2+vwind**2)/rhosur(j,i)
-        van = SQRT(15.**2+0.**2)
 #else
-        van = SQRT(usur(j,i)**2+vsur(j,i)**2)
+        van = SQRT(u(j,i,ntstep)**2+v(j,i,ntstep)**2)
 #endif
 
 
@@ -1399,7 +1400,7 @@ MODULE src_dust
 
 
     veg     => dust(subdomain%ib)%veg(:,:,:)
-    vegmin => dust(subdomain%ib)%vegmin2(:,:)
+    vegmin  => dust(subdomain%ib)%vegmin2(:,:)
     feff    => dust(subdomain%ib)%feff(:,:,:)
 
     ! start lon-lat-loop
@@ -1413,7 +1414,7 @@ MODULE src_dust
 
          ! -- scale up Fcover a bit becaus of the offset FCOVER_MIN = 0.1 !TEST maybe dump
          ! veg(j,i,vegnow) = 10./9. * veg(j,i,vegnow) - 1./9.
-        ! veg(j,i,vegnow) = 1./(1-vegmin(j,i,1)) * veg(j,i,vegnow) - 1./(1-vegmin(j,i,1))*(1-vegmin(j,i,1))
+         IF (lvegmin) veg(j,i,vegnow) = 1./(1-vegmin(j,i)) * veg(j,i,vegnow) - 1./(1-vegmin(j,i))*(vegmin(j,i))
          IF(veg(j,i,vegnow) < 0.) veg(j,i,vegnow)=0.
          IF(veg(j,i,vegnow) > 1.) veg(j,i,vegnow)=1.
 
@@ -2136,7 +2137,7 @@ MODULE src_dust
       END DO
     END DO
 
-    print*,'vegfile inside',outvar(30,30,1)
+    ! print*,'vegfile inside',outvar(30,30,1)
 
     DEALLOCATE (times)
     DEALLOCATE (var_read)
