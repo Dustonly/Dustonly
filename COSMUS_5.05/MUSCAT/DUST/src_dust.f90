@@ -558,11 +558,12 @@ MODULE src_dust
 
         ! +-+-+- Sec 1.4.2 surface roughness -+-+-+
         IF (lwithz0) THEN
+          ! Drag partition
           CALL roughness(decomp(ib1),dimveg)
         END IF
 
 
-        ! +-+-+- Sec 1.4.2 moisture -+-+-+
+        ! +-+-+- Sec 1.4.3 moisture -+-+-+
 
 
       END DO
@@ -576,8 +577,7 @@ MODULE src_dust
     ! +-+-+- Section 2 Dust flux calculation -+-+-+
     ! ------------------------------------
     ELSEIF (yaction == "calc") THEN
-      ! print*, maxval(dust_flux)
-      ! print*, minval(dust_flux)
+
       CALL emission_tegen(subdomain,flux)
       ! STOP 'TESTING'
 
@@ -776,7 +776,7 @@ MODULE src_dust
         END IF
       END DO !nn=1,nclass
     END DO !ns (soil type)
-    ! print*, 'su_srelV',su_srelV(23,99)!,su_srelV(21,123)
+
     ! +-+-+- Sec 3 Prepare the flux calculation -+-+-+
     ! start lon-lat-loop
     DO i=1,subdomain%ntx

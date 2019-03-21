@@ -163,7 +163,10 @@ MODULE mo_dust
     pollon,  &
     pollat,  &
     dlon,    &
-    dlat
+    dlat,    &
+    uconst,  &
+    vconst,  &
+    dzconst
 
 
   CHARACTER(10) :: &
