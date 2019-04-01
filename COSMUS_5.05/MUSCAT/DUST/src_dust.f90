@@ -79,8 +79,7 @@ MODULE src_dust
 
 
   ! Global Variables
-  INTEGER        :: ierr   ! Error code
-  CHARACTER(120) :: yerr   ! Error message
+
 
   ! Local Variables
   PRIVATE
@@ -157,11 +156,11 @@ MODULE src_dust
     REAL(8), POINTER   ::  &
       copy2d(:,:),         & ! Pointer to copy data into block struckture
       copy3d(:,:,:)
-    ! sou  => dust_flux%source
-    ! ! MPI communication
-    ! REAL(8), ALLOCATABLE :: &
-    !   sndbuf(:)
-    !   rcvbuf(:)
+
+
+    INTEGER        :: ierr   ! Error code
+    CHARACTER(120) :: yerr   ! Error message
+
 
 
     !- End of header -----------------------------------------------------
