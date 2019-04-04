@@ -47,7 +47,8 @@ PROGRAM dust_only
   IF (ierr /= 0) THEN
     print*, 'ERROR reading namelist'
     ierr =  100 + ierr
-    STOP ierr
+    print*, ierr
+    STOP
   END IF
 
   print*, 'Define Grid'
@@ -55,7 +56,8 @@ PROGRAM dust_only
   IF (ierr /= 0) THEN
     print*, 'ERROR def grid'
     ierr =  200 + ierr
-    STOP ierr
+    print*, ierr
+    STOP
   END IF
 
 
@@ -66,7 +68,8 @@ PROGRAM dust_only
     IF (ierr /= 0) THEN
       print*, 'ERROR netcdf in'
       ierr =  300 + ierr
-      STOP ierr
+      print*, ierr
+      STOP
     END IF
   ENDIF
 
@@ -76,7 +79,8 @@ PROGRAM dust_only
     IF (ierr /= 0) THEN
       print*, 'ERROR netcdf in'
       ierr =  300 + ierr
-      STOP ierr
+      print*, ierr
+      STOP
     END IF
   ENDIF
   ! CALL netcdf_in()
@@ -95,7 +99,8 @@ print*, maxval(v), minval(v)
   IF (ierr /= 0) THEN
     print*, 'ERROR organize_dust:init'
     ierr =  300 + ierr
-    STOP ierr
+    print*, ierr
+    STOP
   END IF
 
   ! init of the OUTPUT
@@ -119,7 +124,8 @@ print*, maxval(v), minval(v)
     IF (ierr /= 0) THEN
       print*, 'ERROR organize_dust:calc'
       ierr =  400 + ierr
-      STOP ierr
+      print*, ierr
+      STOP
     END IF
 
     ! accumulate dust emisson g m-2 s-1 -> kg m-2
