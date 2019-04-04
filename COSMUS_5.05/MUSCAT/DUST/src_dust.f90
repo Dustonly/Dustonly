@@ -188,7 +188,7 @@ MODULE src_dust
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
         PRINT*,'         ',yerr
-        STOP !yerr
+        STOP
       END IF
 
       ! soiltypeFile always necessary
@@ -198,7 +198,7 @@ MODULE src_dust
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
         PRINT*,'         ',yerr
-        STOP yerr
+        STOP
       END IF
 
 
@@ -209,7 +209,7 @@ MODULE src_dust
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
         PRINT*,'         ',yerr
-        STOP yerr
+        STOP
       END IF
 
       ! psrcFile always necessary
@@ -219,7 +219,7 @@ MODULE src_dust
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
         PRINT*,'         ',yerr
-        STOP yerr
+        STOP
       END IF
 
       ! z0File maybe necessary
@@ -230,7 +230,7 @@ MODULE src_dust
           PRINT*,'ERROR    src_dust "init" '
           PRINT*,'         #',ierr
           PRINT*,'         ',yerr
-          STOP yerr
+          STOP
         END IF
       ELSE
         z0File = 'without'
@@ -256,7 +256,7 @@ MODULE src_dust
           PRINT*,'ERROR    src_dust "init" '
           PRINT*,'         #',ierr
           PRINT*,'         ',yerr
-          STOP yerr
+          STOP
         END IF
       ELSE
         biomeFile = 'without'
@@ -269,7 +269,7 @@ MODULE src_dust
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
         PRINT*,'         ',yerr
-        STOP yerr
+        STOP
       END IF
 
       ! any vegFile maybe necessary
@@ -280,7 +280,7 @@ MODULE src_dust
           PRINT*,'ERROR    src_dust "init" '
           PRINT*,'         #',ierr
           PRINT*,'         ',yerr
-          STOP yerr
+          STOP
         END IF
         ! if vegmonFile and vegdayFile are specified then vegdayFile is prefered
         IF (TRIM(vegmonFile) /= 'without' .AND. TRIM(vegdayFile) /= 'without') vegmonFile = 'without'
@@ -483,7 +483,7 @@ MODULE src_dust
                 PRINT*,'         #',ierr
                 PRINT*,'         ERROR reading',TRIM(filename)
                 PRINT*,'         ',yerr
-                STOP yerr
+                STOP
               END IF
             ELSE
               CALL read_ascii(TRIM(filename),read_input)
