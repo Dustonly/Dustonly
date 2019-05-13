@@ -34,6 +34,7 @@ MODULE mo_dust
     nDust,        & ! Flag for Dust Calculations
     dust_scheme,  & ! 1=Tegen02
     veg_scheme,   & ! =0 no vegitation; =1 Okin scheme; =2 linear Tegen
+    moist_scheme, &
     psrcType        ! Flag for type of potential dust source
                     ! 0 : psrc, 1 : msgsrc, 2 : acDust
 
@@ -46,8 +47,8 @@ MODULE mo_dust
     vegdayFile,         & ! Filename of daily vegetation cover
     vegminFile,         & ! Filename of min vegetation cover MF
     z0File,             & ! Filename of Roughness Length
-    biomeFile             ! Filename of Vegetation Cover/Type Data
-
+    biomeFile,          & ! Filename of Vegetation Cover/Type Data
+    moistFile
 
 
   ! description of dust particles for external use
@@ -90,13 +91,15 @@ MODULE mo_dust
     biome(:,:),         &
     cult(:,:),          &
     veg (:,:,:),        & !leafe area index
+    vmoist(:,:,:),      &
     vegmin2(:,:),        &
     soiltype(:,:),      & ! soil properties
     z0  (:,:),          & ! roughness length
     source  (:,:),      & ! preferential dust source
     alpha2   (:,:),      & ! ratio horiz/vertical flux
     feff    (:,:,:),    & ! drag partition
-    veff    (:,:,:)       ! effective vegetation
+    veff    (:,:,:),    &   ! effective vegetation
+    mfac    (:,:,:)
   END TYPE dust_subdomain
   TYPE (dust_subdomain), ALLOCATABLE, TARGET :: dust(:)
 
@@ -175,7 +178,9 @@ MODULE mo_dust
 
   CHARACTER(120) :: &
     windFile,       & ! wind input data
-    youtdir      ! directory of the output file
+    youtdir,        & ! directory of the output file
+    u_var_name,      &
+    v_var_name
 
   CHARACTER(3) :: &
     leveltype       ! 10m, or mlv

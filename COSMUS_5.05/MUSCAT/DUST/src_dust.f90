@@ -296,6 +296,23 @@ MODULE src_dust
       lvegmin = .FALSE.
       IF (TRIM(vegminFile) /= 'without') lvegmin = .TRUE.
 
+      ! soil moisture need input stream
+      ! at the moment soil moisture only for the offline version
+#ifdef OFFLINE
+      IF (moist_scheme > 0) THEN
+        IF (TRIM(moistFile) == 'without') THEN
+          ierr = 100008
+          yerr = 'moistFile is missing'
+          PRINT*,'ERROR    src_dust "init" '
+          PRINT*,'         #',ierr
+          PRINT*,'         ',yerr
+          STOP
+        END IF
+      END IF
+#else
+      moist_scheme=0
+#endif
+
 
       ! +-+-+- Sec 1.2 Init -+-+-+
 
@@ -390,6 +407,8 @@ MODULE src_dust
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
         ALLOCATE(dust(ib1)%veg(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+        ALLOCATE(dust(ib1)%vmoist(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
         ALLOCATE(dust(ib1)%vegmin2(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
 
@@ -406,12 +425,15 @@ MODULE src_dust
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
         ALLOCATE(dust(ib1)%veff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+        ALLOCATE(dust(ib1)%mfac(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
         ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
 
         dust(ib1)%biome(:,:)=0.
         dust(ib1)%cult(:,:)=0.
         dust(ib1)%veg(:,:,:)=0.
+        dust(ib1)%vmoist(:,:,:)=0.
         dust(ib1)%vegmin2(:,:)=0.
         dust(ib1)%soiltype(:,:)=0.
         dust(ib1)%z0(:,:)=0.001 !cm
@@ -419,6 +441,7 @@ MODULE src_dust
         dust(ib1)%alpha2(:,:)=0.
         dust(ib1)%feff(:,:,:)=1.
         dust(ib1)%veff(:,:,:)=1.
+        dust(ib1)%mfac(:,:,:)=1.
         dust(ib1)%d_emis(:,:,:)=0.
 
       END DO
@@ -428,7 +451,7 @@ MODULE src_dust
       ! +-+-+- Sec 1.3 Input -+-+-+
 
       ! - Loop over all possible input files
-      DO filenum = 1,7
+      DO filenum = 1,8
 
         ! dim = 2 mostly
         dim = 2
@@ -457,6 +480,9 @@ MODULE src_dust
         ! vegmin (2d)
         IF (filenum == 7) filename = vegminFile
 
+        ! vegday (3d)
+        IF (filenum == 8) filename = moistFile
+        IF (filenum == 8) dim = 3
 
         ! if (filename == without) nothing happen
         IF (TRIM(filename) /= 'without') THEN
@@ -476,8 +502,10 @@ MODULE src_dust
               IF (filenum == 5) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,dimveg,.FALSE.,ierr,yerr)
               IF (filenum == 6) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,dimveg,.TRUE. ,ierr,yerr)
               IF (filenum == 7) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,1     ,.FALSE.,ierr,yerr)
+              IF (filenum == 8) CALL read_nc(TRIM(filename),'swvl1' ,read_input,dimveg     ,.FALSE.,ierr,yerr)
 
               IF (ierr /= 0) THEN
+                print*, ierr
                 ierr = 100009
                 PRINT*,'ERROR    src_dust "init" '
                 PRINT*,'         #',ierr
@@ -510,6 +538,7 @@ MODULE src_dust
             IF (filenum == 5) copy3d => dust(ib1)%veg
             IF (filenum == 6) copy3d => dust(ib1)%veg
             IF (filenum == 7) copy2d => dust(ib1)%vegmin2
+            IF (filenum == 8) copy3d => dust(ib1)%vmoist
 
             IF (dim == 2) CALL copy2block(decomp(ib1),dim,read_input,too2d=copy2d)
             IF (dim == 3) CALL copy2block(decomp(ib1),dim,read_input,too3d=copy3d)
@@ -563,7 +592,10 @@ MODULE src_dust
 
 
         ! +-+-+- Sec 1.4.3 moisture -+-+-+
-
+        IF (moist_scheme == 1) THEN
+          print*, 'call fecan'
+          CALL fecan(decomp(ib1),dimveg)
+        END IF
 
       END DO
 
@@ -825,12 +857,7 @@ MODULE src_dust
         IF (z0(j,i) == 0.0) z0(j,i)=1.E-9
 
 
-    !     !---------------------------------------------------------------------------------------
-    !     !       Calculation of the threshold soil moisture (w')  [Fecan, F. et al., 1999]
-    !     !---------------------------------------------------------------------------------------
-    !    w_str(j,i,1) = 0.0014*(solspe(isoiltype,nmode*3)*100)**2 + 0.17*(solspe(isoiltype,nmode*3)*100)
-    !       !          W0   = 0.99! solspe(isoiltype,nmode*3+2)
-    !    feff = 0.
+
 
 
 
@@ -1025,7 +1052,7 @@ MODULE src_dust
 
 
     REAL(8) :: uwind, vwind,van
-    REAL(8) :: mfac             !factor due to soil moisture [Fecan, F. et al., 1999]
+    !REAL(8) :: mfac             !factor due to soil moisture [Fecan, F. et al., 1999]
     REAL(8) :: FDust(subdomain%nty,subdomain%ntx,ntrace)
     REAL(8) :: time_start,time_now
 
@@ -1057,6 +1084,7 @@ MODULE src_dust
     REAL(8), POINTER :: alpha(:,:)
     REAL(8), POINTER :: feff(:,:,:)
     REAL(8), POINTER :: veff(:,:,:)
+    REAL(8), POINTER :: mfac(:,:,:)
     REAL(8), POINTER :: z0(:,:)
     ! REAL(8), POINTER :: umin2(:,:)
     REAL(8), PARAMETER :: umin2=umin
@@ -1085,6 +1113,7 @@ MODULE src_dust
     alpha    => dust(subdomain%ib)%alpha2(:,:)
     feff     => dust(subdomain%ib)%feff(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
+    mfac     => dust(subdomain%ib)%mfac(:,:,:)
     z0       => dust(subdomain%ib)%z0(:,:)
     ! lai_eff => dust(subdomain%ib)%lai_eff(:,:,:,:)
     ! umin2    => dust(subdomain%ib)%umin2(:,:,1)
@@ -1163,9 +1192,7 @@ MODULE src_dust
 
 
 
-        ! calculation of mfac: ratio between threshold friction velocities wet/dry
-        ! [Fecan, F. et al., 1999]
-        mfac = 1! (1 + 1.21 * ( qrsur(j,i) - w_str(j,i))**0.68 )**0.5 !dont use mfac MF
+
 
 
 
@@ -1180,7 +1207,7 @@ MODULE src_dust
 
 
         ! +-+-+- Sec 3 Flux calculation -+-+-+
-
+        ! print*,tnow,shape(feff)
         IF (feff(j,i,tnow) > 0.) THEN
           IF (Ustar > 0 .AND. Ustar > umin2/feff(j,i,tnow) ) THEN
             kk = 0
@@ -1190,10 +1217,16 @@ MODULE src_dust
 
               ! original Tegen Code
               ! ! Is this reduction necessary (MF)?
-              uthp=uth(kk)*umin2/umin*u1fac !reduce threshold for cultivated soils
+              Uthp=uth(kk)*umin2/umin*u1fac !reduce threshold for cultivated soils
+              ! drag coeff
+              ! Uthp=Uthp/feff(j,i,tnow)
+              ! ! moist
+              ! Uthp=Uthp*mfac(j,i,tnow)
               ! Marticorena:
               fdp1 = (1.-(Uthp/(feff(j,i,tnow) * Ustar)))
               fdp2 = (1.+(Uthp/(feff(j,i,tnow) * Ustar)))**2.
+              ! fdp1 = (1.-(Uthp * Ustar))
+              ! fdp2 = (1.+(Uthp * Ustar))**2.
 
               ! ! Shao:
               ! fdp1 = (1.-(Uthp/(feff(j,i,tnow) * Ustar))**2)
@@ -1204,7 +1237,6 @@ MODULE src_dust
               ELSE
                 flux_umean = srel(i_s1,kk) * fdp1 * fdp2 * cd * Ustar**3 *alpha(j,i)
                 flux_diam = flux_umean
-
 
                 Ustar_var = Ustar_min
 
@@ -1682,6 +1714,99 @@ MODULE src_dust
 
   END SUBROUTINE roughness
 
+
+  !+ roughness
+  !---------------------------------------------------------------------
+  SUBROUTINE fecan(subdomain,dimsimu)
+  !---------------------------------------------------------------------
+  ! Description:
+  !
+  ! Reduction of dust emission caused by roughness elements.
+  ! A rough surface (dust%z0) decreases the drag partition
+  ! (dust%feff). A reduced drag partition leads to a decrease
+  ! in the horizontal dust flux.
+  !
+  ! The Physics based on the paper of Marticorena and Bergametti 1995
+  ! https://doi.org/10.1029/95JD00690
+  !
+  ! The code based on Tegen et al. 2002
+  ! https://doi.org/10.1029/2001JD000963
+  !--------------------------------------------------------------------
+
+    USE dust_tegen_param
+    USE dust_tegen_data
+    USE mo_dust
+
+#ifdef OFFLINE
+    USE offline_org
+#endif
+
+    IMPLICIT NONE
+
+    TYPE(rectangle), INTENT(IN) :: subdomain
+
+    INTEGER, INTENT(IN) :: dimsimu
+
+    INTEGER :: &
+      dnow,    &  ! time loop
+      i,j,t,     &  ! loops
+      isoiltype
+
+
+    REAL(8) ::  &
+      w_str,        &  ! feff inside the loop
+      z0s,               &  ! small scale roughness length
+      AAA,               &
+      BB,                &
+      CCC,               &  ! dummys
+      DDD,               &
+      EE,                &
+      FF
+
+
+    REAL(8), POINTER ::  &
+      vmoist(:,:,:),           &
+      mfac(:,:,:),       &
+        soiltype(:,:)!,     &
+
+    vmoist   => dust(subdomain%ib)%vmoist(:,:,:)
+    mfac => dust(subdomain%ib)%mfac(:,:,:)
+    soiltype => dust(subdomain%ib)%soiltype(:,:)
+
+
+
+    ! start lon-lat-loop
+    DO i=1,subdomain%ntx
+      DO j=1,subdomain%nty
+        isoiltype = int(soiltype(j,i))
+        w_str = 0.0014*(solspe(isoiltype,nmode*3)*100)**2 + 0.17*(solspe(isoiltype,nmode*3)*100)
+        DO dnow=1,dimsimu
+            !---------------------------------------------------------------------------------------
+            !       Calculation of the threshold soil moisture (w')  [Fecan, F. et al., 1999]
+            !---------------------------------------------------------------------------------------
+
+        !       !          W0   = 0.99! solspe(isoiltype,nmode*3+2)
+        !    feff = 0.
+        !
+        ! ! calculation of mfac: ratio between threshold friction velocities wet/dry
+        ! ! [Fecan, F. et al., 1999]
+
+          IF ((vmoist(j,i,dnow)*100 - w_str) > 0.0) THEN
+            mfac(j,i,dnow) = (1 + 1.21 * ( vmoist(j,i,dnow)*100 - w_str)**0.68 )**0.5
+          ELSE
+            mfac(j,i,dnow) = 1000.
+          END IF
+            ! mfac(j,i,dnow)=mfac(j,i,dnow)/2
+            ! mfac=1.
+          ! print*, 'mf',mfac(j,i,dnow),vmoist(j,i,dnow)*100,w_str
+        END DO
+      END DO
+    END DO
+
+    ! end lon-lat-loop
+
+  END SUBROUTINE fecan
+
   !+ read_ascii
   !---------------------------------------------------------------------
   SUBROUTINE read_ascii(filename,outvar)
@@ -1951,7 +2076,8 @@ MODULE src_dust
       dimlen       ! length of the above dimension
 
     REAL  :: &
-      var_scale    ! index of the start date in the var file
+      var_scale, &    ! index of the start date in the var file
+      var_offset    ! index of the start date in the var file
 
     INTEGER, ALLOCATABLE :: &
       times(:)
@@ -2106,11 +2232,21 @@ MODULE src_dust
     ENDIF
 
     ! get value of the scaling factor
-    istat = nf90_get_att(ncid, varID, 'scale_factor',var_scale)
+    istat = nf90_get_att(ncID, varID, 'scale_factor',var_scale)
     IF (istat /= nf90_noerr) THEN
-      ierror  = 10016
-      yerrmsg = TRIM(nf90_strerror(istat))
-      RETURN
+      ! ierror  = 10016
+      var_scale = 1
+      ! yerrmsg = TRIM(nf90_strerror(istat))
+      !RETURN
+    ENDIF
+
+    ! get value of the offset
+    istat = nf90_get_att(ncID, varID, 'add_offset',var_offset)
+    IF (istat /= nf90_noerr) THEN
+      ! ierror  = 10016
+      var_offset = 0
+      ! yerrmsg = TRIM(nf90_strerror(istat))
+      !RETURN
     ENDIF
 
     ! get the var
@@ -2129,7 +2265,7 @@ MODULE src_dust
       DO j=1,je_tot
         DO t=1, ndays
           ! digital values to physical values with the scaling factor
-          outvar(j,i,t)=var_read(i,j,t)*var_scale
+          outvar(j,i,t)=var_read(i,j,t)*var_scale+var_offset
           ! physical max of lai is 7 everthing abov is a missing value, in MUSCAT set to 0.
           ! IF (SG_lai(j,i,1,t) > 7.) SG_lai(j,i,1,t) = 0.
         END DO

@@ -11,8 +11,10 @@ PROGRAM dust_only
 
   implicit none
 
-  INTEGER :: &
+  INTEGER        :: &
     ierr
+  CHARACTER(120) :: &
+    yerr
 
   ! INTEGER :: &
   !   ncdfID,        & ! id Var for the nc file
@@ -64,28 +66,26 @@ PROGRAM dust_only
   ! read in u wind
   print*, 'Read wind data'
   IF (uconst == 999.0) THEN
-    CALL netcdf_in(TRIM(windFile),'u10',u,lasttstep,.TRUE.,ierr) !,yerrmsg)
+    CALL netcdf_in(TRIM(windFile),TRIM(u_var_name),u,lasttstep,.TRUE.,ierr,yerr)
     IF (ierr /= 0) THEN
       print*, 'ERROR netcdf in'
       ierr =  300 + ierr
-      print*, ierr
+      print*, ierr, yerr
       STOP
     END IF
   ENDIF
 
   ! read in v wind
   IF (vconst == 999.0) THEN
-    CALL netcdf_in(TRIM(windFile),'v10',v,lasttstep,.TRUE.,ierr) !,yerrmsg)
+    CALL netcdf_in(TRIM(windFile),TRIM(u_var_name),v,lasttstep,.TRUE.,ierr,yerr)
     IF (ierr /= 0) THEN
       print*, 'ERROR netcdf in'
       ierr =  300 + ierr
-      print*, ierr
+      print*, ierr, yerr
       STOP
     END IF
   ENDIF
   ! CALL netcdf_in()
-print*, maxval(u), minval(u)
-print*, maxval(v), minval(v)
 
   ! ! simulation of muscat Species
   ! ALLOCATE(species_name(5))
@@ -376,6 +376,7 @@ SUBROUTINE read_namelist(ierr)
     lwithbiom,         & ! =false without biomes, =true with biomes
     dust_scheme,       & ! 1=Tegen02
     veg_scheme,        & ! =0 no vegitation; =1 Okin scheme; =2 linear Tegen
+    moist_scheme,      &
     psrcType,          & ! Flag for type of potential dust source ! 0 : psrc, 1 : msgsrc, 2 : acDust
     soiltypeFile,      & ! Filename of Soil Type Data
     psrcFile,          & ! Filename of preferential Dust Sources
@@ -385,9 +386,12 @@ SUBROUTINE read_namelist(ierr)
     vegminFile,        & ! Filename of min vegetation cover MF
     z0File,            & ! Filename of Roughness Length
     biomeFile,         & ! Filename of Vegetation Cover/Type Data
+    moistFile,         &
     uconst,            &
     vconst,            &
     dzconst,           &
+    u_var_name,        & ! Name of u variable in Input file
+    v_var_name,        & ! Name of v variable in Input file
     laccumulation
 
   ! Defaults
@@ -399,6 +403,7 @@ SUBROUTINE read_namelist(ierr)
   cultFile      = 'without'   ! Landuse Data
   z0File        = 'without'   ! Z0 Data
   biomeFile     = 'without'   ! Vegetation Classes
+  moistFile     = 'without'
   vegmonFile    = 'without'   ! Leafe Area Index Data
   vegdayFile    = 'without'   ! Leafe Area Index Data   MF
   vegminFile    = 'without'   ! Leafe Area Index Data   MF
@@ -407,6 +412,8 @@ SUBROUTINE read_namelist(ierr)
   uconst        = 999.0
   vconst        = 999.0
   dzconst       = 999.0
+  u_var_name    = 'u10'
+  v_var_name    = 'v10'
   laccumulation = .FALSE.
 
 
@@ -432,7 +439,7 @@ SUBROUTINE read_namelist(ierr)
 
 END SUBROUTINE read_namelist
 
-SUBROUTINE netcdf_in(infile,varname,outvar,ntimes,timecheck,ierror)!,yerrmsg)
+SUBROUTINE netcdf_in(infile,varname,outvar,ntimes,timecheck,ierror,yerrmsg)
 
   ! Modules
   USE mo_dust
@@ -462,9 +469,10 @@ SUBROUTINE netcdf_in(infile,varname,outvar,ntimes,timecheck,ierror)!,yerrmsg)
   INTEGER,        INTENT(OUT)   :: &
     ierror
 
-  ! CHARACTER(*),   INTENT(OUT)   :: &
-  CHARACTER(120) :: &
+  CHARACTER(*),   INTENT(OUT)   :: &
     yerrmsg       ! error message
+  ! CHARACTER(120) :: &
+  !   yerrmsg       ! error message
 
 
   ! local Vars
@@ -642,17 +650,19 @@ SUBROUTINE netcdf_in(infile,varname,outvar,ntimes,timecheck,ierror)!,yerrmsg)
   ! get value of the scaling factor
   istat = nf90_get_att(incid, ivarID, 'scale_factor',var_scale)
   IF (istat /= nf90_noerr) THEN
-    ierror  = 10016
-    yerrmsg = TRIM(nf90_strerror(istat))
-    RETURN
+    ! ierror  = 10016
+    var_scale = 1
+    ! yerrmsg = TRIM(nf90_strerror(istat))
+    !RETURN
   ENDIF
 
   ! get value of the offset
   istat = nf90_get_att(incid, ivarID, 'add_offset',var_offset)
   IF (istat /= nf90_noerr) THEN
-    ierror  = 10016
-    yerrmsg = TRIM(nf90_strerror(istat))
-    RETURN
+    ! ierror  = 10016
+    var_offset = 0
+    ! yerrmsg = TRIM(nf90_strerror(istat))
+    !RETURN
   ENDIF
 
   ! get the var
