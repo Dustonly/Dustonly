@@ -214,7 +214,7 @@ SUBROUTINE def_grid(ierr)
   u=0.
   ALLOCATE(v(je_tot,ie_tot,lasttstep-firsttstep))
   v=0.
-  ALLOCATE(dz(1,ie_tot,je_tot))
+  ALLOCATE(dz(1,je_tot,ie_tot))
   dz=0
 
 

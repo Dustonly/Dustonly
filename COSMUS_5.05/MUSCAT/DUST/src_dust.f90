@@ -496,7 +496,7 @@ MODULE src_dust
             ! decide ascii or netcdf
             IF (filename(LEN(TRIM(filename))-2:) == '.nc') THEN
               IF (filenum == 1) STOP 'nc input not supported yet for soiltype yet' ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
-              IF (filenum == 2) STOP 'nc input not supported yet for psrc yet'     ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
+              IF (filenum == 2) CALL read_nc(TRIM(filename),'acfrac' ,read_input,0,.FALSE.,ierr,yerr)     ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
               IF (filenum == 3) STOP 'nc input not supported yet for z0 yet'       ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
               IF (filenum == 4) STOP 'nc input not supported yet for biome'    ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
               IF (filenum == 5) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,dimveg,.FALSE.,ierr,yerr)
@@ -2066,6 +2066,7 @@ MODULE src_dust
     ! local Vars
     INTEGER  :: &
       i,j,t,    &  ! loop
+      ary_size, &  ! array size
       istart,   &  ! index of the start date in the var file
       idate,    &  ! ydate read into integer
       istat,    &  ! local error code
@@ -2147,81 +2148,84 @@ MODULE src_dust
        RETURN
      END IF
 
-    ! get id of time dimension
-    istat = nf90_inq_dimid(ncID, 'time', dimID)
-    IF (istat /= nf90_noerr) THEN
-      ierror  = 10008
-      yerrmsg = TRIM(nf90_strerror(istat))
-      RETURN
-    ENDIF
+    IF (ndays > 0) THEN
+      ! get id of time dimension
+      istat = nf90_inq_dimid(ncID, 'time', dimID)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10008
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
 
-    ! read the length of the time dimension
-    istat = nf90_inquire_dimension(ncID, dimID, len = dimlen)
-    IF (istat /= nf90_noerr) THEN
-      ierror  = 10009
-      yerrmsg = TRIM(nf90_strerror(istat))
-      RETURN
-    ENDIF
+      ! read the length of the time dimension
+      istat = nf90_inquire_dimension(ncID, dimID, len = dimlen)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10009
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
 
-    ! allocate the var ( times ) that hold the available dates in the nc file
-    istat = 0
-    ALLOCATE (times(dimlen), STAT=istat)
-    IF (istat /= 0) THEN
-      ierror = 10010
-      yerrmsg = 'allocation of times failed'
-      RETURN
-    ENDIF
+      ! allocate the var ( times ) that hold the available dates in the nc file
+      istat = 0
+      ALLOCATE (times(dimlen), STAT=istat)
+      IF (istat /= 0) THEN
+        ierror = 10010
+        yerrmsg = 'allocation of times failed'
+        RETURN
+      ENDIF
 
-    ! get the id of the time var
-    istat = nf90_inq_varid(ncID, 'time', timeID)
-    IF (istat /= nf90_noerr) THEN
-      ierror  = 10005
-      yerrmsg = TRIM(nf90_strerror(istat))
-      RETURN
-    ENDIF
+      ! get the id of the time var
+      istat = nf90_inq_varid(ncID, 'time', timeID)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10005
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
 
-    ! get the dates in the nc file
-    istat = nf90_get_var(ncid, timeID, times)
-    IF (istat /= nf90_noerr) THEN
-      ierror  = 10011
-      yerrmsg = TRIM(nf90_strerror(istat))
-      RETURN
-    ENDIF
+      ! get the dates in the nc file
+      istat = nf90_get_var(ncid, timeID, times)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10011
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
 
-    ! transform date string to an integer
-    READ(ydate_ini(1:8),*) idate
+      ! transform date string to an integer
+      READ(ydate_ini(1:8),*) idate
 
-    ! istart -> fist read time step
-    istart = 1
+      ! istart -> fist read time step
+      istart = 1
 
-    ! match the dates of the model run and the var
-    IF (timecheck) THEN
-      IF (ANY(times(:) == idate)) THEN
-        ! find index of istat
-        DO WHILE(times(istart) /= idate)
-          istart = istart + 1
-        END DO
-        IF (istart + ndays - 1 > size(times)) THEN
-          ierror  = 10012
-          yerrmsg = 'Error reading '//TRIM(infile)//' file: not enough dates in the file'
+      ! match the dates of the model run and the var
+      IF (timecheck) THEN
+        IF (ANY(times(:) == idate)) THEN
+          ! find index of istat
+          DO WHILE(times(istart) /= idate)
+            istart = istart + 1
+          END DO
+          IF (istart + ndays - 1 > size(times)) THEN
+            ierror  = 10012
+            yerrmsg = 'Error reading '//TRIM(infile)//' file: not enough dates in the file'
+            RETURN
+          END IF
+        ELSE
+          ierror  = 10013
+          yerrmsg = 'Error reading '//TRIM(infile)//' file: model start date is not in the file'
           RETURN
         END IF
-      ELSE
-        ierror  = 10013
-        yerrmsg = 'Error reading '//TRIM(infile)//' file: model start date is not in the file'
-        RETURN
       END IF
     END IF
-
     ! Allocate var to read
     istat = 0
-    ALLOCATE (var_read(ie_tot,je_tot,ndays), STAT=istat)
+
+    ary_size = ndays
+    IF ( ndays == 0 ) ary_size = 1
+    ALLOCATE (var_read(ie_tot,je_tot,ary_size), STAT=istat)
     IF (istat /= 0) THEN
       ierror = 10014
       yerrmsg = 'allocation of var_read failed'
       RETURN
     ENDIF
-
 
     ! get the id of the var
     istat = nf90_inq_varid(ncID, varname , varID)
@@ -2274,8 +2278,9 @@ MODULE src_dust
 
     ! print*,'vegfile inside',outvar(30,30,1)
 
-    DEALLOCATE (times)
+
     DEALLOCATE (var_read)
+    IF (ndays > 0) DEALLOCATE (times)
     ! DEALLOCATE (outvar)
     RETURN
   END SUBROUTINE read_nc
