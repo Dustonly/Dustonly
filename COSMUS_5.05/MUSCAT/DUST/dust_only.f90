@@ -65,6 +65,7 @@ PROGRAM dust_only
 
   ! read in u wind
   print*, 'Read wind data'
+  print*, TRIM(u_var_name)
   IF (uconst == 999.0) THEN
     CALL netcdf_in(TRIM(windFile),TRIM(u_var_name),u,lasttstep,.TRUE.,ierr,yerr)
     IF (ierr /= 0) THEN
@@ -517,9 +518,12 @@ SUBROUTINE netcdf_in(infile,varname,outvar,ntimes,timecheck,ierror,yerrmsg)
   ! get id of lat dimension
   istat = nf90_inq_dimid(incID, 'y', idimID)
   IF (istat /= nf90_noerr) THEN
-    ierror  = 10002
-    yerrmsg = TRIM(nf90_strerror(istat))
-    RETURN
+    istat = nf90_inq_dimid(incID, 'rlat', idimID)
+    IF (istat /= nf90_noerr) THEN
+      ierror  = 10002
+      yerrmsg = TRIM(nf90_strerror(istat))
+      RETURN
+    ENDIF
   ENDIF
 
   ! read the length of lat dimension
@@ -540,9 +544,12 @@ SUBROUTINE netcdf_in(infile,varname,outvar,ntimes,timecheck,ierror,yerrmsg)
    ! get id of lon dimension
    istat = nf90_inq_dimid(incID, 'x', idimID)
    IF (istat /= nf90_noerr) THEN
-     ierror  = 10005
-     yerrmsg = TRIM(nf90_strerror(istat))
-     RETURN
+     istat = nf90_inq_dimid(incID, 'rlon', idimID)
+     IF (istat /= nf90_noerr) THEN
+       ierror  = 10005
+       yerrmsg = TRIM(nf90_strerror(istat))
+       RETURN
+     ENDIF
    ENDIF
 
    ! read the length of lon dimension
