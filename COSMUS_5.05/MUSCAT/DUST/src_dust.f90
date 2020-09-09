@@ -1201,7 +1201,8 @@ MODULE src_dust
         IF(feff(j,i,tnow) <= 0.) THEN
          ustar = 0.
         ELSE
-         ustar = (VK * van *100.)/(log(0.5E0 * 100 * dz(1,j,i)/z0(j,i))) !!cm/s
+          !ustar = (VK * van *100.)/(log(0.5E0 * 100 * dz(1,j,i)/z0(j,i))) !!cm/s
+          ustar = (VK * van *100.)/(log(100 * dz(1,j,i)/z0(j,i))) !!cm/s
          ! print*, i,j,ustar,dz(1,j,i)/z0(j,i),ustar_fv(i,j)
         END IF  !! IF(feff(j,i,tnow).LE.0.)
 
