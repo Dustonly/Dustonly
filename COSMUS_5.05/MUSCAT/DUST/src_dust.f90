@@ -436,7 +436,7 @@ MODULE src_dust
         dust(ib1)%vmoist(:,:,:)=0.
         dust(ib1)%vegmin2(:,:)=0.
         dust(ib1)%soiltype(:,:)=0.
-        dust(ib1)%z0(:,:)=0.001 !cm
+        dust(ib1)%z0(:,:)=0.01 !cm
         dust(ib1)%source(:,:)=0.
         dust(ib1)%alpha2(:,:)=0.
         dust(ib1)%feff(:,:,:)=1.
