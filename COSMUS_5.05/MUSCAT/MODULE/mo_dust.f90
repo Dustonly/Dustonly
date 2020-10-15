@@ -13,7 +13,7 @@
 !
 !======================================================================================
  MODULE mo_dust
- USE data_modelconfig,   ONLY: DustMod ! Flag for Setting Soil Data
+ USE src_aerosol, ONLY: DustMod ! Flag for Setting Soil Data
 !======================================================================================
 ! Description:
 ! ------------
