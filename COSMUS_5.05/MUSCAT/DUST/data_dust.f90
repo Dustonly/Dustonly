@@ -997,8 +997,7 @@ MODULE offline_org
     nbLoc       = 1,    &
     nb          = 1,    &
     DustMod     = 1,    &
-    nradm       = 0,    &
-    mol2part    = 0,    &
+    ConvPart    = 1,    &
     nt          = 8,    &
     ntz         = 1,    &
     ScalCur     = 1!,    &

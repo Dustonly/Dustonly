@@ -1004,7 +1004,7 @@ MODULE src_dust
     USE sub_geo
     USE sub_met
     USE mo_ctm
-    USE mo_gas, ONLY: mol2part, nradm
+    USE mo_gas, ONLY: ConvPart
     ! USE dust_org
     USE data_io,  ONLY : ydate_ini
     USE data_runcontrol,    ONLY : hstart, ntstep
@@ -1371,9 +1371,7 @@ MODULE src_dust
 
         !---  transformation to chemistry units  (RW)
         FDust(j,i,:) = FDust(j,i,:) * 1.E3         ! kg/m2/s ==> g/m2/s
-        IF (nradm == 1)  THEN                      ! chemistry units: g/m2/s ==> g/m2/s * mol2part
-          FDust(j,i,:) = FDust(j,i,:) * mol2part
-        END IF
+        FDust(j,i,:) = FDust(j,i,:) * ConvPart     ! chemistry units (nradm=1): g/m2/s ==> g/m2/s * mol2part
 
         ! IF (FDust(j,i,1) /= FDust(j,i,1) ) print*,'Fdust', i,j,FDust(j,i,1)
 
