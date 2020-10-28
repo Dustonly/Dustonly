@@ -14,7 +14,7 @@
 !======================================================================================
 MODULE mo_dust
 #ifndef OFFLINE
-  USE data_modelconfig,   ONLY: DustMod ! Flag for Setting Soil Data
+  USE src_aerosol,   ONLY: DustMod ! Flag for Setting Soil Data
 #endif
   !======================================================================================
   ! Description:
