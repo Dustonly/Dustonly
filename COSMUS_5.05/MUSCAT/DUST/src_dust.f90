@@ -724,12 +724,17 @@ MODULE src_dust
     DO WHILE(dp.lE.Dmax + 1E-05)
       nn = nn + 1
       gransize(nn) = dp
-      dmy_B = a_rnolds * (dp ** x_rnolds) + b_rnolds
-      dmy_K = SQRT(rop * g * dp / roa) * SQRT(1. + 0.006 /(rop * g * dp ** 2.5))
-      IF (dmy_B < 10) THEN
-        Uth(nn) = 0.129 * dmy_K / SQRT(1.928 * (dmy_B ** 0.092) - 1.)
-      ELSE
-        Uth(nn) = 0.129 * dmy_K * ( 1. -0.0858 * EXP(-0.0617 * (dmy_B - 10.)) )
+
+      IF (threshold_scheme == 0) THEN
+        dmy_B = a_rnolds * (dp ** x_rnolds) + b_rnolds
+        dmy_K = SQRT(rop * g * dp / roa) * SQRT(1. + 0.006 /(rop * g * dp ** 2.5))
+        IF (dmy_B < 10) THEN
+          Uth(nn) = 0.129 * dmy_K / SQRT(1.928 * (dmy_B ** 0.092) - 1.)
+        ELSE
+          Uth(nn) = 0.129 * dmy_K * ( 1. -0.0858 * EXP(-0.0617 * (dmy_B - 10.)) )
+        END IF
+      ELSEIF (threshold_scheme == 1) THEN
+        Uth(nn) = SQRT(0.0123 * (rop/roa * g/100 *dp/100 + 3.e-4/(roa*1000*dp/100)) ) * 100
       END IF
       dp = dp * EXP(Dstep)
     END DO
