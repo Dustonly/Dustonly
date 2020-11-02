@@ -35,8 +35,9 @@ MODULE mo_dust
     dust_scheme,  & ! 1=Tegen02
     veg_scheme,   & ! =0 no vegitation; =1 Okin scheme; =2 linear Tegen
     moist_scheme, &
-    psrcType        ! Flag for type of potential dust source
+    psrcType,     & ! Flag for type of potential dust source
                     ! 0 : psrc, 1 : msgsrc, 2 : acDust
+    threshold_scheme   ! 0 : Marticorena, 1 : Shao  !
 
   !-- Files with soil data
   CHARACTER(120) ::     &

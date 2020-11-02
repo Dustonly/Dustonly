@@ -376,6 +376,7 @@ SUBROUTINE read_namelist(ierr)
     lwithz0,           & ! =false without z0, =true with z0
     lwithbiom,         & ! =false without biomes, =true with biomes
     dust_scheme,       & ! 1=Tegen02
+    threshold_scheme,  &
     veg_scheme,        & ! =0 no vegitation; =1 Okin scheme; =2 linear Tegen
     moist_scheme,      &
     psrcType,          & ! Flag for type of potential dust source ! 0 : psrc, 1 : msgsrc, 2 : acDust
