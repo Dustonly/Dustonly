@@ -308,6 +308,8 @@ MODULE src_dust
           PRINT*,'         ',yerr
           STOP
         END IF
+      ELSE
+        moistFile = 'without'
       END IF
 #else
       moist_scheme=0
@@ -594,7 +596,7 @@ MODULE src_dust
         ! +-+-+- Sec 1.4.3 moisture -+-+-+
         IF (moist_scheme == 1) THEN
           print*, 'call fecan'
-          CALL fecan(decomp(ib1),dimveg)
+          CALL fecan(decomp(ib1),dimveg,'init')
         END IF
 
       END DO
@@ -1225,12 +1227,12 @@ MODULE src_dust
               ! ! Is this reduction necessary (MF)?
               Uthp=uth(kk)*umin2/umin*u1fac !reduce threshold for cultivated soils
               ! drag coeff
-              ! Uthp=Uthp/feff(j,i,tnow)
+              Uthp=Uthp/feff(j,i,tnow)
               ! ! moist
               ! Uthp=Uthp*mfac(j,i,tnow)
               ! Marticorena:
-              fdp1 = (1.-(Uthp/(feff(j,i,tnow) * Ustar)))
-              fdp2 = (1.+(Uthp/(feff(j,i,tnow) * Ustar)))**2.
+              fdp1 = 1.+(Uthp/Ustar)
+              fdp2 = 1.-(Uthp/Ustar)**2.
               ! fdp1 = (1.-(Uthp * Ustar))
               ! fdp2 = (1.+(Uthp * Ustar))**2.
 
@@ -1721,20 +1723,10 @@ MODULE src_dust
 
   !+ roughness
   !---------------------------------------------------------------------
-  SUBROUTINE fecan(subdomain,dimsimu)
+  SUBROUTINE fecan(subdomain,dimsimu,yaction)
   !---------------------------------------------------------------------
   ! Description:
   !
-  ! Reduction of dust emission caused by roughness elements.
-  ! A rough surface (dust%z0) decreases the drag partition
-  ! (dust%feff). A reduced drag partition leads to a decrease
-  ! in the horizontal dust flux.
-  !
-  ! The Physics based on the paper of Marticorena and Bergametti 1995
-  ! https://doi.org/10.1029/95JD00690
-  !
-  ! The code based on Tegen et al. 2002
-  ! https://doi.org/10.1029/2001JD000963
   !--------------------------------------------------------------------
 
     USE dust_tegen_param
@@ -1750,6 +1742,9 @@ MODULE src_dust
     TYPE(rectangle), INTENT(IN) :: subdomain
 
     INTEGER, INTENT(IN) :: dimsimu
+
+    CHARACTER(LEN=*), INTENT(IN)            :: &
+      yaction ! action to be performed
 
     INTEGER :: &
       dnow,    &  ! time loop
