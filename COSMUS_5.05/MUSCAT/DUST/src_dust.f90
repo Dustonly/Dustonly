@@ -432,6 +432,15 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
 
+
+        IF (soilmaptype == 0) THEN
+          ALLOCATE(soilmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
+                   decomp(ib1)%ix0+1:decomp(ib1)%ix1,4))
+        ELSE
+          ALLOCATE(soilmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
+                   decomp(ib1)%ix0+1:decomp(ib1)%ix1,3))
+        END IF
+
         dust(ib1)%biome(:,:)=0.
         dust(ib1)%cult(:,:)=0.
         dust(ib1)%veg(:,:,:)=0.
@@ -446,9 +455,11 @@ MODULE src_dust
         dust(ib1)%mfac(:,:,:)=1.
         dust(ib1)%d_emis(:,:,:)=0.
 
+        soilmap = 0.
+
       END DO
 
-
+print*, 'soilmap',soilmap
 
       ! +-+-+- Sec 1.3 Input -+-+-+
 

@@ -380,6 +380,7 @@ SUBROUTINE read_namelist(ierr)
     veg_scheme,        & ! =0 no vegitation; =1 Okin scheme; =2 linear Tegen
     moist_scheme,      &
     psrcType,          & ! Flag for type of potential dust source ! 0 : psrc, 1 : msgsrc, 2 : acDust
+    soilmaptype,       &
     soiltypeFile,      & ! Filename of Soil Type Data
     psrcFile,          & ! Filename of preferential Dust Sources
     cultFile,          & ! Filename of Cultivation Class
@@ -401,6 +402,7 @@ SUBROUTINE read_namelist(ierr)
   psrcType      = 1           ! 0 : psrc, 1 : msgsrc, 2 : acDust  MF
   dust_scheme   = 1           ! 1=Tegen02
   veg_scheme    = 0           ! 0=no vegetation, 1=okin scheme, 2=linear (Tegen02)
+  soilmaptype   = 0
   psrcFile      = 'without'   ! Potential Sources Data
   cultFile      = 'without'   ! Landuse Data
   z0File        = 'without'   ! Z0 Data

@@ -37,6 +37,7 @@ MODULE mo_dust
     moist_scheme, &
     psrcType,     & ! Flag for type of potential dust source
                     ! 0 : psrc, 1 : msgsrc, 2 : acDust
+    soilmaptype,      & ! 0 : solspe table, 1 : soilgrids
     threshold_scheme   ! 0 : Marticorena, 1 : Shao  !
 
   !-- Files with soil data
@@ -118,6 +119,9 @@ MODULE mo_dust
   ! dummy variable for input, allocate new when switch from 2d to 3d
   REAL(8), ALLOCATABLE ::  &
     read_input(:,:,:)       ! (j,i,time)
+
+  REAL(8), ALLOCATABLE ::  &
+    soilmap(:,:,:)       ! (j,i,3)
 
   REAL (8)   :: &
     Uth(Nclass)!,              & ! threshold friction velocity
