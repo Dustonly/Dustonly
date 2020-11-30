@@ -459,7 +459,6 @@ MODULE src_dust
 
       END DO
 
-print*, 'soilmap',soilmap
 
       ! +-+-+- Sec 1.3 Input -+-+-+
 
@@ -580,6 +579,8 @@ print*, 'soilmap',soilmap
 
         CALL init_soilmap(decomp(ib1))
 
+        CALL init_alpha(decomp(ib1),2)
+
         ! +-+-+- Sec 1.4.1 dust flux -+-+-+
 
         IF (dust_scheme == 1) THEN
@@ -677,6 +678,73 @@ print*, 'soilmap',soilmap
     ! end lon-lat-loop
 
   END SUBROUTINE init_soilmap
+
+  !+ init_alpha
+  !---------------------------------------------------------------------
+  SUBROUTINE init_alpha(subdomain,alpha_type)
+  !---------------------------------------------------------------------
+  ! Description:
+
+  !--------------------------------------------------------------------
+
+    USE mo_dust
+    USE dust_tegen_data
+#ifdef OFFLINE
+    USE offline_org
+#endif
+
+    IMPLICIT NONE
+
+    TYPE(rectangle), INTENT(IN) :: subdomain
+
+    INTEGER, INTENT(IN) :: alpha_type
+
+    INTEGER :: &
+      i,j
+
+    REAL(8), POINTER ::  &
+      alpha(:,:), &
+      soiltype(:,:)
+
+
+
+    alpha => dust(subdomain%ib)%alpha2(:,:)
+    soiltype => dust(subdomain%ib)%soiltype(:,:)
+
+    ! start lon-lat-loop
+    DO i=1,subdomain%ntx
+      DO j=1,subdomain%nty
+
+        !alpha_type == 1 : lookup table
+        IF (alpha_type == 1) THEN
+          alpha(j,i) = solspe(soiltype(j,i),13)
+
+        ! alpha_type == 2 : calc from fraction
+        ELSEIF (alpha_type == 2) THEN
+          IF (soilmaptype == 1) THEN
+            alpha = soilmap(j,i,1) * 1.E-7 &
+                  + soilmap(j,i,2) * 1.E-6 &
+                  + soilmap(j,i,3) * 1.E-5 &
+                  + soilmap(j,i,4) * 1.E-6
+            IF (soilmap(j,i,4) > 0.45) THEN
+              alpha = soilmap(j,i,1) * 1.E-7 &
+                    + soilmap(j,i,2) * 1.E-6 &
+                    + soilmap(j,i,3) * 1.E-5 &
+                    + soilmap(j,i,4) * 1.E-7
+            END IF
+          ENDIF
+
+        ! alpha_type == 3 : clay fraction eq from Marticorena
+        !ELSEIF (alpha_type == 3) THEN
+
+        END IF
+
+      END DO
+    END DO
+    ! end lon-lat-loop
+
+  END SUBROUTINE init_alpha
+
   !+ init_tegen
   !---------------------------------------------------------------------
   SUBROUTINE init_tegen(subdomain,ndays)
@@ -915,7 +983,7 @@ print*, 'soilmap',soilmap
         IF(isoiltype < 1 .or. isoiltype > nats) isoiltype=9
 
         ! init alpha from lookup table
-        alpha(j,i) = solspe(isoiltype,nmode*3+1)
+        !alpha(j,i) = solspe(isoiltype,nmode*3+1)
 
         ! avoid z0 = 0. at any place
         IF (z0(j,i) == 0.0) z0(j,i)=1.E-9
