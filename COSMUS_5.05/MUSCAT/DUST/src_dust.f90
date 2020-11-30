@@ -578,6 +578,8 @@ print*, 'soilmap',soilmap
 #endif
 
 
+        CALL init_soilmap(decomp(ib1))
+
         ! +-+-+- Sec 1.4.1 dust flux -+-+-+
 
         IF (dust_scheme == 1) THEN
@@ -631,6 +633,50 @@ print*, 'soilmap',soilmap
     ! STOP 'TESTING'
   END SUBROUTINE organize_dust
 
+  !+ init_soilmap
+  !---------------------------------------------------------------------
+  SUBROUTINE init_soilmap(subdomain)
+  !---------------------------------------------------------------------
+  ! Description:
+
+  !--------------------------------------------------------------------
+
+    USE mo_dust
+    USE dust_tegen_data
+#ifdef OFFLINE
+    USE offline_org
+#endif
+
+    IMPLICIT NONE
+
+    TYPE(rectangle), INTENT(IN) :: subdomain
+
+    INTEGER :: &
+      i,j
+
+    REAL(8), POINTER ::  &
+      soiltype(:,:)
+
+    soiltype => dust(subdomain%ib)%soiltype(:,:)
+
+    ! start lon-lat-loop
+    DO i=1,subdomain%ntx
+      DO j=1,subdomain%nty
+
+        IF (soiltype(j,i) > 0.0) THEN
+          soilmap(j,i,1) = solspe(soiltype(j,i),3)
+          soilmap(j,i,2) = solspe(soiltype(j,i),6)
+          soilmap(j,i,3) = solspe(soiltype(j,i),9)
+          soilmap(j,i,4) = solspe(soiltype(j,i),12)
+        ELSE
+          soilmap(j,i,:) = 0.0
+        END IF
+
+      END DO
+    END DO
+    ! end lon-lat-loop
+
+  END SUBROUTINE init_soilmap
   !+ init_tegen
   !---------------------------------------------------------------------
   SUBROUTINE init_tegen(subdomain,ndays)
