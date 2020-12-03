@@ -502,7 +502,20 @@ SUBROUTINE netcdf_in(infile,varname,outvar,ntimes,timecheck,ierror,yerrmsg)
   REAL, ALLOCATABLE :: &
     var_read(:,:,:)
 
+  CHARACTER (len = 10) :: &
+    lon_names(4), & ! common names for the longitudes
+    lat_names(4)    ! common names for the latitudes
 
+
+    lon_names(1)='x'
+    lon_names(2)='lon'
+    lon_names(3)='rlon'
+    lon_names(4)='longitude'
+
+    lat_names(1)='y'
+    lat_names(2)='lat'
+    lat_names(3)='rlat'
+    lat_names(4)='latitude'
 
   ! start subroutine
   ! ---------------------------------------------------------
@@ -519,14 +532,20 @@ SUBROUTINE netcdf_in(infile,varname,outvar,ntimes,timecheck,ierror,yerrmsg)
   ENDIF
 
   ! get id of lat dimension
-  istat = nf90_inq_dimid(incID, 'y', idimID)
+  DO i = 1, size(lat_names)
+    istat = nf90_inq_dimid(incID, TRIM(lat_names(i)), idimID)
+    IF (istat == nf90_noerr) EXIT
+  END DO
   IF (istat /= nf90_noerr) THEN
-    istat = nf90_inq_dimid(incID, 'rlat', idimID)
-    IF (istat /= nf90_noerr) THEN
-      ierror  = 10002
-      yerrmsg = TRIM(nf90_strerror(istat))
-      RETURN
-    ENDIF
+    ierror  = 10002
+    PRINT*,''
+    PRINT*,'ERROR'
+    PRINT*,'  No latitude dimension was found in ',infile
+    PRINT*,'  possible names for the latitude dimension:'
+    PRINT*,'  ',lat_names
+    PRINT*, ''
+    yerrmsg = TRIM(nf90_strerror(istat))
+    RETURN
   ENDIF
 
   ! read the length of lat dimension
@@ -545,14 +564,20 @@ SUBROUTINE netcdf_in(infile,varname,outvar,ntimes,timecheck,ierror,yerrmsg)
   END IF
 
    ! get id of lon dimension
-   istat = nf90_inq_dimid(incID, 'x', idimID)
+   DO i = 1, size(lon_names)
+     istat = nf90_inq_dimid(incID, TRIM(lon_names(i)), idimID)
+     IF (istat == nf90_noerr) EXIT
+   END DO
    IF (istat /= nf90_noerr) THEN
-     istat = nf90_inq_dimid(incID, 'rlon', idimID)
-     IF (istat /= nf90_noerr) THEN
-       ierror  = 10005
-       yerrmsg = TRIM(nf90_strerror(istat))
-       RETURN
-     ENDIF
+     ierror  = 10005
+     PRINT*,''
+     PRINT*,'ERROR'
+     PRINT*,'  No longitude dimension was found in ',infile
+     PRINT*,'  possible names for the longitude dimension:'
+     PRINT*,'  ',lon_names
+     PRINT*, ''
+     yerrmsg = TRIM(nf90_strerror(istat))
+     RETURN
    ENDIF
 
    ! read the length of lon dimension
