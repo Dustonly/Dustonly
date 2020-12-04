@@ -579,7 +579,7 @@ MODULE src_dust
 
         CALL init_soilmap(decomp(ib1))
 
-        CALL init_alpha(decomp(ib1),2)
+        CALL init_alpha(decomp(ib1),1)
 
         ! +-+-+- Sec 1.4.1 dust flux -+-+-+
 
