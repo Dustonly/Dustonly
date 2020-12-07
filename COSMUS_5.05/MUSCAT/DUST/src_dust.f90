@@ -796,6 +796,32 @@ MODULE src_dust
 
     IF (yaction == 'init') THEN
 
+      ! define particle diameter
+      dp_meter(1) = Dmin
+      DO n = 2, nclass
+        dp_meter(n) = dp_meter(n-1) * EXP(Dstep)
+      END DO
+
+
+
+      ! particle size loop, calculation of Uth for every particle size
+      DO n = 1, nclass
+        dp = dp_meter(n)
+
+        IF (threshold_scheme == 0) THEN
+
+          dmy_K = SQRT(rop * g * dp / roa) * SQRT(10000. + 0.006 /(rop * g * dp ** 2.5))   ! Marticorena 95 eq(4)
+          dmy_B = a_rnolds * (dp ** x_rnolds) + b_rnolds                                   ! Marticorena 95 eq(5)
+          IF (dmy_B < 10) THEN
+            Uth(n) = 0.0013 * dmy_K / SQRT(1.928 * (dmy_B ** 0.092) - 1.)
+          ELSE
+            Uth(n) = 0.001207 * dmy_K * ( 1. -0.0858 * EXP(-0.0617 * (dmy_B - 10.)) )
+          END IF
+        ELSEIF (threshold_scheme == 1) THEN
+          Uth(n) = SQRT(0.0123 * (rop/roa * g *dp + 3.e-4/(roa*dp)) )
+        END IF
+
+      END DO
       stop "end tegen02 init"
     END IF ! yaction == 'init'
 
