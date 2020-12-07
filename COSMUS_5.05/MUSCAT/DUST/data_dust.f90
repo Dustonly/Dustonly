@@ -113,9 +113,39 @@
 
 
 
+MODULE tegen02_param
+!---------------------------------------------------------------------
+! Description:
+! This module contains parameters for the Tegen dust emisson scheme
+!---------------------------------------------------------------------
+  USE mo_dust, ONLY: &
+    DustBins  ! number of dust particle fractions
+
+  IMPLICIT NONE
+
+  INTEGER, PARAMETER ::      &
+    combimax = 29,           &
+    nbin = 24,               & !max number of bins
+    nmode = 4,               &
+    nspe = 14,               & !Nmode*3+2
+    ntrace = DustBins          !max number of bins
 
 
+  REAL(8), PARAMETER ::                   &
+    a_rnolds    = 1.755E6,                & ! Reynolds constant
+    b_rnolds    = 0.38,                   & ! Reynolds constant
+    x_rnolds    = 1.56,                   & ! Reynolds constant
 
+    rop         = 2650.0E0,               & ! particules density (kg.m-3) Sahara; 1.5g/cm3 for Diatomite
+    roa         = 1.227E0,                & ! air density (kg.m-3)
+    g           = 9.81E0,                 & ! gravitational constant (m s-2)
+
+    Dmin        = 2.0E-7,                 & ! minimum particules diameter (cm)
+    Dmax        = 1.55E-3,                & ! maximum particules diameter (cm)
+    Dstep       = 4.6E-2,                 & ! diameter increment (-)
+
+
+END MODULE tegen02_param
 
 
 

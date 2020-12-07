@@ -121,7 +121,13 @@ MODULE mo_dust
     read_input(:,:,:)       ! (j,i,time)
 
   REAL(8), ALLOCATABLE ::  &
-    soilmap(:,:,:)       ! (j,i,3)
+    soilmap(:,:,:),    &   ! (j,i,3)
+    srel2d(:,:)          ! (j,i)
+
+  REAL (8)   :: &
+    dp_meter(nclass)
+
+
 
   REAL (8)   :: &
     Uth(Nclass)!,              & ! threshold friction velocity

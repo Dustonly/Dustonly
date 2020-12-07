@@ -182,7 +182,7 @@ MODULE src_dust
 
 
       ! dust_scheme need right values
-      IF (dust_scheme < 0 .OR. dust_scheme > 1) THEN
+      IF (dust_scheme < 0 .OR. dust_scheme > 2) THEN
         ierr = 100001
         yerr = 'wrong value for dust_scheme'
         PRINT*,'ERROR    src_dust "init" '
@@ -460,6 +460,7 @@ MODULE src_dust
       END DO
 
 
+
       ! +-+-+- Sec 1.3 Input -+-+-+
 
       ! - Loop over all possible input files
@@ -579,7 +580,7 @@ MODULE src_dust
 
         CALL init_soilmap(decomp(ib1))
 
-        CALL init_alpha(decomp(ib1),2)
+        CALL init_alpha(decomp(ib1),1)
 
         ! +-+-+- Sec 1.4.1 dust flux -+-+-+
 
@@ -587,6 +588,11 @@ MODULE src_dust
           ! init of the dust emission sheme by Tegen et al. 2002
           ! CALL init_tegen(decomp(ib1))!ierr,yerr)
           CALL init_tegen(decomp(ib1),ndays=dimveg)!ierr,yerr)
+        END IF
+
+        IF (dust_scheme == 2) THEN
+          ! init of the dust emission sheme by Tegen et al. 2002
+          CALL tegen02('init',decomp(ib1))!ierr,yerr)
         END IF
 
 
@@ -744,6 +750,57 @@ MODULE src_dust
     ! end lon-lat-loop
 
   END SUBROUTINE init_alpha
+
+
+  !+ init_tegen
+  !---------------------------------------------------------------------
+  SUBROUTINE tegen02(yaction,subdomain)
+  !---------------------------------------------------------------------
+  ! Description:
+  !   This subroutine performes the initialization for
+  !   the dust emisson scheme by Tegen et al. 2002
+  !   https://doi.org/10.1029/2001JD000963
+  !
+  !   The Physics used by Tegen based on the paper of
+  !   Marticorena and Bergametti 1995
+  !   https://doi.org/10.1029/95JD00690
+  !
+  ! The code based on Tegen et al. 2002
+  !--------------------------------------------------------------------
+
+    ! Modules
+    USE mo_dust
+    USE tegen02_param
+    USE dust_tegen_data
+#ifdef OFFLINE
+    USE offline_org
+#endif
+
+
+    IMPLICIT NONE
+
+    CHARACTER(LEN=*), INTENT(IN)            :: &
+      yaction ! action to be performed
+
+    TYPE(rectangle), INTENT(IN) :: subdomain
+
+    INTEGER :: &
+      n         ! loops
+
+    REAL(8) :: &
+      dp,      & ! Current diameter
+      dmy_B,   & ! Reynolds number, dummy for thresold friction velocity
+      dmy_K      ! Reynolds number, dummy for thresold friction velocity
+
+
+
+    IF (yaction == 'init') THEN
+
+      stop "end tegen02 init"
+    END IF ! yaction == 'init'
+
+
+  END SUBROUTINE tegen02
 
   !+ init_tegen
   !---------------------------------------------------------------------
