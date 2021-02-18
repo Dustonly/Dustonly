@@ -116,16 +116,26 @@ MODULE mo_dust
     nats   = 45,        & ! amount of soil types
     nclass = 196          ! amount of particule classes
 
+  INTEGER :: &
+    nmode          ! number of soil modes, depending on the soil data set
+                   ! nmode = 3 for soilgrids data
+                   ! nmode = 4 for the lookup table
+
+  REAL, ALLOCATABLE :: &
+    median_dp(:)   ! median particle diameter of mode
+                   ! IF (nmode = 3) median_dp = (707.0E-6,158.0E-6,15.0E-6,2.0E-6)
+                   ! IF (nmode = 4) median_dp = (158.0E-6,15.0E-6,2.0E-6)
+
   ! dummy variable for input, allocate new when switch from 2d to 3d
   REAL(8), ALLOCATABLE ::  &
     read_input(:,:,:)       ! (j,i,time)
 
   REAL(8), ALLOCATABLE ::  &
     soilmap(:,:,:),    &   ! (j,i,3)
-    srel2d(:,:)          ! (j,i)
+    srel_map(:,:,:)          ! (j,i,nclass)
 
   REAL (8)   :: &
-    dp_meter(nclass)
+    dp_meter(nclass) ! particle diameter [m]
 
 
 

@@ -201,6 +201,19 @@ MODULE src_dust
         STOP
       END IF
 
+      IF (soilmaptype == 0) THEN
+        nmode = 4
+      ELSEIF (soilmaptype == 1) THEN
+        nmode = 3
+      ELSE
+        ierr = 1000023
+        yerr = 'wrong value for soilmaptype'
+        PRINT*,'ERROR    src_dust "init" '
+        PRINT*,'         #',ierr
+        PRINT*,'         ',yerr
+        STOP
+      END IF
+
 
       ! psrcType need right values
       IF (psrcType < 0 .OR. psrcType > 2) THEN
@@ -314,6 +327,7 @@ MODULE src_dust
 #else
       moist_scheme=0
 #endif
+
 
 
       ! +-+-+- Sec 1.2 Init -+-+-+
@@ -433,13 +447,9 @@ MODULE src_dust
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
 
 
-        IF (soilmaptype == 0) THEN
-          ALLOCATE(soilmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
-                   decomp(ib1)%ix0+1:decomp(ib1)%ix1,4))
-        ELSE
-          ALLOCATE(soilmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
-                   decomp(ib1)%ix0+1:decomp(ib1)%ix1,3))
-        END IF
+        ALLOCATE(soilmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,nmode))
+
 
         dust(ib1)%biome(:,:)=0.
         dust(ib1)%cult(:,:)=0.
@@ -458,7 +468,6 @@ MODULE src_dust
         soilmap = 0.
 
       END DO
-
 
 
       ! +-+-+- Sec 1.3 Input -+-+-+
@@ -785,16 +794,21 @@ MODULE src_dust
     TYPE(rectangle), INTENT(IN) :: subdomain
 
     INTEGER :: &
-      n         ! loops
+      i,j,n,m         ! loops
 
     REAL(8) :: &
       dp,      & ! Current diameter
       dmy_B,   & ! Reynolds number, dummy for thresold friction velocity
-      dmy_K      ! Reynolds number, dummy for thresold friction velocity
+      dmy_K,   &   ! Reynolds number, dummy for thresold friction velocity
+      dM,      &   ! mass size distribution
+      stot        ! total basal surface
 
 
 
     IF (yaction == 'init') THEN
+
+
+      ! +-+-+- Sec xx define particle diameter -+-+-+
 
       ! define particle diameter
       dp_meter(1) = Dmin
@@ -803,6 +817,18 @@ MODULE src_dust
       END DO
 
 
+      ALLOCATE(median_dp(nmode))
+
+      median_dp(nmode)   = median_dp_clay
+      median_dp(nmode-1) = median_dp_silt
+      median_dp(nmode-2) = median_dp_sand
+      IF (nmode == 4) median_dp(nmode-3) = median_dp_csand
+
+      ALLOCATE(srel_map(subdomain%nty,subdomain%ntx,nclass))
+
+
+
+      ! +-+-+- Sec xx  calculat thresold friction velocity -+-+-+
 
       ! particle size loop, calculation of Uth for every particle size
       DO n = 1, nclass
@@ -810,18 +836,60 @@ MODULE src_dust
 
         IF (threshold_scheme == 0) THEN
 
-          dmy_K = SQRT(rop * g * dp / roa) * SQRT(10000. + 0.006 /(rop * g * dp ** 2.5))   ! Marticorena 95 eq(4)
+          dmy_K = SQRT(rop * g * dp / roa) * SQRT(10000. + 0.006 /(rop * g * dp ** 2.5))   ! Marticorena 95 eq(4) but in [m]
           dmy_B = a_rnolds * (dp ** x_rnolds) + b_rnolds                                   ! Marticorena 95 eq(5)
           IF (dmy_B < 10) THEN
-            Uth(n) = 0.0013 * dmy_K / SQRT(1.928 * (dmy_B ** 0.092) - 1.)
+            Uth(n) = 0.0013 * dmy_K / SQRT(1.928 * (dmy_B ** 0.092) - 1.)                  ! Marticorena 95 eq(6) but in [m]
           ELSE
-            Uth(n) = 0.001207 * dmy_K * ( 1. -0.0858 * EXP(-0.0617 * (dmy_B - 10.)) )
+            Uth(n) = 0.001207 * dmy_K * ( 1. -0.0858 * EXP(-0.0617 * (dmy_B - 10.)) )      ! Marticorena 95 eq(7) but in [m]
           END IF
         ELSEIF (threshold_scheme == 1) THEN
           Uth(n) = SQRT(0.0123 * (rop/roa * g *dp + 3.e-4/(roa*dp)) )
         END IF
 
-      END DO
+      END DO ! n = 1, nclass
+
+      ! +-+-+- Sec xx srel calculation -+-+-+
+      ! start lon-lat-loop
+      DO i = 1,subdomain%ntx
+        DO j = 1,subdomain%nty
+
+          stot = 0.
+          DO n = 1, nclass
+            dp = dp_meter(n)
+
+            ! calc soil mass size distribution Marticorena 95 eq(29)
+            dM = 0.
+            DO m = 1, nmode
+              dM = dM + soilmap(j,i,m)/(SQRT(2. * pi) * LOG(sigma)) &
+                      * EXP((LOG(dp) - LOG(median_dp(m)))**2. / (-2. * LOG(sigma)**2.))
+            END DO
+
+            ! size distribution of basal surface Marticorena 95 eq(30)
+            srel_map(j,i,n) = dM / (2./3. * rop * dp) * Dstep
+
+            ! total basal surface Marticorena 95 eq(31)
+            stot = stot + srel_map(j,i,n)
+
+          END DO ! n = 1, nclass
+
+
+          DO n = 1, nclass
+            dp = dp_meter(n)
+
+            IF (stot > 0.) THEN
+              srel_map(j,i,n) = srel_map(j,i,n)/stot
+            ELSE
+              srel_map(j,i,n) = 0.
+            END IF
+
+          END DO
+
+
+        END DO ! j=1,subdomain%nty
+      END DO ! i=1,subdomain%ntx
+
+
       stop "end tegen02 init"
     END IF ! yaction == 'init'
 

@@ -126,7 +126,7 @@ MODULE tegen02_param
   INTEGER, PARAMETER ::      &
     combimax = 29,           &
     nbin = 24,               & !max number of bins
-    nmode = 4,               &
+    ! nmode = 4,               &
     nspe = 14,               & !Nmode*3+2
     ntrace = DustBins          !max number of bins
 
@@ -144,8 +144,57 @@ MODULE tegen02_param
     Dmax        = 1.55E-3,                & ! maximum particules diameter (cm)
     Dstep       = 4.6E-2,                 & ! diameter increment (-)
 
+    median_dp_csand = 707.0E-6,           & ! median diameter of coarse sand [m]
+    median_dp_sand  = 158.0E-6,           & ! median diameter of sand [m]
+    median_dp_silt  =  15.0E-6,           & ! median diameter of silt [m]
+    median_dp_clay  =   2.0E-6,           & ! median diameter of clay [m]
 
+    sigma = 2.0,                          & ! geometric standard deviation
+
+
+    pi         = 3.141592654E0
+
+
+  !   a_rnolds    = 1331.647E0,                 & !Reynolds constant
+  !   aeff        = 0.35E0,                     & !efficient fraction
+  !   aw          = 1.121E0,                    & !soil moisture parameter
+  !   abs_density = 2600.0E0,                   & !absolute density of the soil (2.6 kg/m3)
+  !   b_rnolds    = 0.38194E0,                  & !Reynolds constant
+  !   bw          = 0.68E0,                     & !soil moisture parameter
+  !   Cd          = 1.2507E-06,                 & !flux dimensioning parameter,1.00*roa/g !!BERND
+  !   d_thrsld    = 0.00000231E0,               & !thresold value
+  !   Dmin        = 0.00002E0,                  & !minimum particules diameter (cm)
+  !   Dmax        = 0.155E0,                    & !maximum particules diameter (cm)
+  !   Dstep       = 0.0460517018598807E0,       & !diameter increment (cm)
+  !   e           = 2.7182818285E0,             & !
+  !   g           = 9.81E0,                     & !gravitational constant (m s-2)
+  !   pi2         = 3.141592654E0,              & !pi=3.141592654
+  !   porosity    = 0.4E0,                      & !porosity of the soil (40%)
+  !   roa         = 0.001.227E0,                 & !air density (kg.m-3)
+  !
+  !   rop         = 2650.0E0,                     & !particules density (kg.m-3) Sahara; 1.5g/cm3 for Diatomite
+  !   rop_bod     = 2100.0E0,                     & !particules density (kg.cm-3) Bodele (Diatomite)
+  !
+  !   u1fac       = 0.89E0,                     & !0.66; 1.0
+  !
+  !   umin        = 13.75E0,                    & !minimum threshold friction windspeed (cm/s) 18.06/13.75/21.0
+  !   Ustar_min   = 5.E0,                       & !minimum friction windspeed (cm/s)
+  !   Ustar_max   = 150.E0,                     & !maximum friction windspeed (cm/s)
+  !   Ustar_step  = 2.2674-02,                  & !friction windspeed increment
+  !   VK          = 0.4E0,                      & !Von Karman constant: 0.4 (0.35 <--> 0.42 see Stull)
+  !   w0          = 99.E0,                      & !soil layer water content threshold
+  !   xnu         = 0.146E0,                    & !cinematic viscosity (cm2.s-1)
+  !   x_rnolds    = 1.561228E0,                 & !Reynolds constant
+  !   xeff        = 10.E0,                      & !efficient fraction
+  !   ZZ          = 1000.E0                       !wind measurment height (cm)
+  !
+  ! REAL(8), PARAMETER ::                       &
+  !   veg_lim     = 0.6E0,                      & !lai limit for deflation !orgi 0.25 MF
+  !   veg_lim2    = 0.5E0                         !lai limit to determine shrub or grass for tropical or temperate shrubland
+  !  ----------------------------------------------------------
 END MODULE tegen02_param
+
+
 
 
 
@@ -162,7 +211,7 @@ MODULE dust_tegen_param
   INTEGER, PARAMETER ::      &
     combimax = 29,           &
     nbin = 24,               & !max number of bins
-    nmode = 4,               &
+    ! nmode = 4,               &
     nspe = 14,               & !Nmode*3+2
     ntrace = DustBins          !max number of bins
 
