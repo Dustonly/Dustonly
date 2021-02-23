@@ -152,7 +152,8 @@ MODULE tegen02_param
     sigma = 2.0,                          & ! geometric standard deviation
 
 
-    pi         = 3.141592654E0
+    pi         = 3.141592654E0,&
+    VK          = 0.4E0  !Von Karman constant: 0.4 (0.35 <--> 0.42 see Stull)
 
 
   !   a_rnolds    = 1331.647E0,                 & !Reynolds constant

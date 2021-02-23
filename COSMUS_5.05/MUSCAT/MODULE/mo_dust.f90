@@ -57,6 +57,13 @@ MODULE mo_dust
   INTEGER, PARAMETER :: DustBins = 5  !8  ! number of dust particle fractions
   INTEGER :: DustInd(DustBins)            ! indices of dust particles
 
+  REAL :: dustbin_top(DustBins)
+  DATA dustbin_top(1) /1.E-6/,  &
+       dustbin_top(2) /3.E-6/,  &
+       dustbin_top(3) /9.E-6/,  &
+       dustbin_top(4) /26.E-6/, &
+       dustbin_top(5) /80.E-6/
+
   CHARACTER(20) :: DustName(DustBins)
   DATA  DustName(1) /'DP_01'/,     &
         DustName(2) /'DP_03'/,     &

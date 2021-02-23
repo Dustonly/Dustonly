@@ -587,10 +587,9 @@ MODULE src_dust
 #endif
 
 
-        CALL init_soilmap(decomp(ib1))
 
-        CALL init_alpha(decomp(ib1),1)
-
+CALL init_soilmap(decomp(ib1))
+CALL init_alpha(decomp(ib1),1)
         ! +-+-+- Sec 1.4.1 dust flux -+-+-+
 
         IF (dust_scheme == 1) THEN
@@ -601,6 +600,7 @@ MODULE src_dust
 
         IF (dust_scheme == 2) THEN
           ! init of the dust emission sheme by Tegen et al. 2002
+
           CALL tegen02('init',decomp(ib1))!ierr,yerr)
         END IF
 
@@ -640,7 +640,14 @@ MODULE src_dust
     ! ------------------------------------
     ELSEIF (yaction == "calc") THEN
 
-      CALL emission_tegen(subdomain,flux)
+      IF (dust_scheme == 1) THEN
+        CALL emission_tegen(subdomain,flux)
+      END IF
+
+      IF (dust_scheme == 2) THEN
+        ! init of the dust emission sheme by Tegen et al. 2002
+        CALL tegen02(yaction,decomp(ib1))!ierr,yerr)
+      END IF
       ! STOP 'TESTING'
 
     END IF ! (yaction == "***")
@@ -794,15 +801,37 @@ MODULE src_dust
     TYPE(rectangle), INTENT(IN) :: subdomain
 
     INTEGER :: &
-      i,j,n,m         ! loops
+      i,j,n,m, & ! loops
+      tnow
 
     REAL(8) :: &
       dp,      & ! Current diameter
       dmy_B,   & ! Reynolds number, dummy for thresold friction velocity
       dmy_K,   &   ! Reynolds number, dummy for thresold friction velocity
       dM,      &   ! mass size distribution
-      stot        ! total basal surface
+      stot,    &    ! total basal surface
+      uwind,   &
+      vwind,   &
+      ustar,   &
+      tot_wind,   &
+      time_start, &
+      time_now, &
+      uthp, &
+      dmy_R, &
+      s_rel,  &
+      dflux
 
+    REAL(8) :: &
+      fluxbin (ntrace)
+
+    REAL(8), POINTER :: feff(:,:,:)
+    REAL(8), POINTER :: z0(:,:)
+    REAL(8), POINTER :: alpha(:,:)
+
+
+    feff     => dust(subdomain%ib)%feff(:,:,:)
+    z0       => dust(subdomain%ib)%z0(:,:)
+    alpha    => dust(subdomain%ib)%alpha2(:,:)
 
 
     IF (yaction == 'init') THEN
@@ -814,6 +843,8 @@ MODULE src_dust
       dp_meter(1) = Dmin
       DO n = 2, nclass
         dp_meter(n) = dp_meter(n-1) * EXP(Dstep)
+        print*, 'd ln(Dp)', dp_meter(n) - dp_meter(n-1) , LOG(dp_meter(n) - dp_meter(n-1)), LOG(dp_meter(n)) - LOG(dp_meter(n-1)) &
+        ,Dstep
       END DO
 
 
@@ -883,15 +914,126 @@ MODULE src_dust
               srel_map(j,i,n) = 0.
             END IF
 
-          END DO
+          END DO ! n = 1, nclass
 
 
         END DO ! j=1,subdomain%nty
       END DO ! i=1,subdomain%ntx
 
 
-      stop "end tegen02 init"
-    END IF ! yaction == 'init'
+
+
+    ELSEIF (yaction == 'calc') THEN
+      ! +-+-+- Sec 1 Set the actually date -+-+-+
+
+      ! the drag partition (feff) has a dependency on time
+      IF (veg_scheme > 0) THEN
+        IF (lvegdaily) THEN
+          ! find the exact day and set "tnow" with the number of the actually day
+          READ(ydate_ini(9:10),*) time_start
+          time_start=time_start + hstart
+          time_now=time_start+ntstep*dt/3600.
+          tnow=time_now/24 + 1 ! convert to integer
+        ELSE ! if the drag partition has monthly values "tnow" is the number of the month
+          READ(StartDate,'(4x,i2)') tnow
+        END IF
+      ELSE
+        tnow = 1
+      END IF
+
+
+      DO i=1,subdomain%ntx
+        DO j=1,subdomain%nty
+          ! print*, 'dxK',dyK(j,i),'dyK',dyK(j,i),'dz',dz(1,j,i)
+
+          ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
+
+#ifndef OFFLINE
+          !---  flux initialisations
+          uwind = usur(j,i+1)/dyK(j,i+1)+usur(j,i)/dyK(j,i)
+          uwind = 0.5E0 * uwind / dz(1,j,i)
+          vwind = vsur(j+1,i)/dxK(j+1,i)+vsur(j,i)/dxK(j,i)
+          vwind = 0.5E0 * vwind / dz(1,j,i)
+
+          tot_wind = SQRT(uwind**2+vwind**2)/rhosur(j,i)
+#else
+          tot_wind = SQRT(u(j,i,ntstep)**2+v(j,i,ntstep)**2)
+#endif
+
+
+          IF(feff(j,i,tnow) <= 0.) THEN
+           ustar = 0.
+          ELSE
+            ustar = (VK * tot_wind )/(log( dz(1,j,i)/z0(j,i)/100)) !!m/s
+          END IF  !! IF(feff(j,i,tnow).LE.0.)
+
+          IF(feff(j,i,tnow) > 0. .AND. ustar > 0. ) THEN
+
+            m = 1 ! index of dust bin
+            dflux = 0.
+
+            DO n = 1, nclass
+              dp = dp_meter(n)
+              uthp = uth(n)/feff(j,i,tnow)
+              s_rel = srel_map(j,i,n)
+
+              dmy_R = uthp/ustar
+
+
+              IF (dmy_R >= 1 .AND. s_rel > 0) THEN
+                dust_flux = 0.
+              ELSE
+                ! Horizontal dust flux
+                dflux = dflux + roa/g * ustar**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
+              END IF
+
+              ! Vertical dust flux
+              dflux = dflux * alpha(j,i)
+
+              IF (dp < dustbin_top(m)) THEN
+                fluxbin(m) = fluxbin(m)+dflux
+              ELSE
+                m = m+1
+              END IF
+
+
+
+            END DO ! n = 1, nclass
+
+
+
+          ENDIF
+
+          DO n=1,ntrace
+            fluxtot(n) = fluxtot(n) + fluxbin(n)
+          END DO
+
+          DO n=1,ntrace
+            ! fluxtot: g/cm2/sec --> kg/m2/sec
+            ! MASK: Effective area determined by cultfac/snow
+            fdust(j,i,n) = fluxtot(n) *cultfac!*(1.-snow365(j,i))
+
+            ! Mask Effective area determined by preferential source fraction:
+            ! only for psrcType = 2
+            IF (psrcType == 2) THEN
+              fdust(j,i,n) = fdust(j,i,n) * source(j,i)
+            END IF
+
+            ! Mask Effective area determined by vegetation fraction:
+            ! only for veg_scheme = 2
+            IF (veg_scheme == 2) THEN
+              fdust(j,i,n) = fdust(j,i,n) * veff(j,i,tnow)
+            END IF
+          END DO
+        END DO ! j
+      END DO ! i
+
+      print*, ntrace,nbin
+      print*, Dustbin_top
+
+      stop "end tegen02 calc"
+
+    END IF ! yaction
 
 
   END SUBROUTINE tegen02
@@ -1556,7 +1698,7 @@ MODULE src_dust
                 IF (dbstart >= dp) THEN
                   fluxtyp(kk)=fluxtyp(kk)+flux_diam
                 ELSE
-
+                  ! print*, 'und auch hier' , dp, dbstart
                   ! loop over dislocated dust particle sizes
                   dpd=dmin
                   kkk=0
