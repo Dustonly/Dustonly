@@ -1004,11 +1004,18 @@ CALL init_alpha(decomp(ib1),1)
 
             m = 1 ! index of dust bin
             dflux = 0.
+            fluxbin = 0.
 
             DO n = 1, nclass
               dp = dp_meter(n)
               uthp = uth(n)/feff(j,i,tnow)
               s_rel = srel_map(j,i,n)
+
+              IF (m > DustBins) m = DustBins
+              IF (m <= DustBins) THEN
+                IF (dp > dustbin_top(m)) m = m+1
+              END IF
+
               !print*, s_rel
 
               IF (ustar > uthp) THEN
@@ -1018,20 +1025,17 @@ CALL init_alpha(decomp(ib1),1)
               END IF
 
 
-              ! IF (dmy_R >= 1 .AND. s_rel <= 0) THEN
-              !   dust_flux = 0.
-              ! ELSE
-              !   ! Horizontal dust flux
-                dflux = dflux + roa/g * ustar**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
+
+              ! Horizontal dust flux
+              dflux = roa/g * ustar**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
               ! END IF
 
               ! Vertical dust flux
               dflux = dflux * alpha(j,i)
 
-              IF (dp < dustbin_top(m)) THEN
+              ! bin-wise integration
+              IF (m <= DustBins) THEN
                 fluxbin(m) = fluxbin(m)+dflux
-              ELSE
-                m = m+1
               END IF
 
 
