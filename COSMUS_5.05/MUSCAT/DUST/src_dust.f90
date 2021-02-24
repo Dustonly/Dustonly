@@ -739,7 +739,13 @@ CALL init_alpha(decomp(ib1),1)
 
         !alpha_type == 1 : lookup table
         IF (alpha_type == 1) THEN
-          alpha(j,i) = solspe(soiltype(j,i),13)
+
+          ! if the soil type is in the lookup table
+          IF (soiltype(j,i) > 0 .AND. soiltype(j,i) < nats) THEN
+            alpha(j,i) = solspe(soiltype(j,i),13)
+          ELSE
+            alpha(j,i) = 0.
+          END IF
 
         ! alpha_type == 2 : calc from fraction
         ELSEIF (alpha_type == 2) THEN
