@@ -646,7 +646,7 @@ CALL init_alpha(decomp(ib1),1)
 
       IF (dust_scheme == 2) THEN
         ! init of the dust emission sheme by Tegen et al. 2002
-        CALL tegen02(yaction,decomp(ib1))!ierr,yerr)
+        CALL tegen02(yaction,subdomain)!ierr,yerr)
       END IF
       ! STOP 'TESTING'
 
@@ -800,6 +800,7 @@ CALL init_alpha(decomp(ib1),1)
 
     TYPE(rectangle), INTENT(IN) :: subdomain
 
+
     INTEGER :: &
       i,j,n,m, & ! loops
       tnow
@@ -822,20 +823,51 @@ CALL init_alpha(decomp(ib1),1)
       dflux
 
     REAL(8) :: &
+      fluxtot (ntrace), &
       fluxbin (ntrace)
 
+    real    ::  T1,T2
+
+    REAL(8), POINTER :: source(:,:)
     REAL(8), POINTER :: feff(:,:,:)
+    REAL(8), POINTER :: veff(:,:,:)
     REAL(8), POINTER :: z0(:,:)
     REAL(8), POINTER :: alpha(:,:)
+    REAL(8), POINTER :: DustEmis(:,:,:)
 
+#ifndef OFFLINE
+    REAL(8), POINTER :: dxK(:,:)
+    REAL(8), POINTER :: dyK(:,:)
+    REAL(8), POINTER :: dz(:,:,:)
+    REAL(8), POINTER :: usur(:,:)
+    REAL(8), POINTER :: vsur(:,:)
+    REAL(8), POINTER :: qrsur(:,:)
+    REAL(8), POINTER :: rhosur(:,:)
+    REAL(8), POINTER :: EmiRate(:,:,:,:)
+#endif
 
+    source   => dust(subdomain%ib)%source(:,:)
     feff     => dust(subdomain%ib)%feff(:,:,:)
+    veff     => dust(subdomain%ib)%veff(:,:,:)
     z0       => dust(subdomain%ib)%z0(:,:)
     alpha    => dust(subdomain%ib)%alpha2(:,:)
+    DustEmis => dust(subdomain%ib)%d_emis(:,:,:)
+
+
+#ifndef OFFLINE
+    dxK     => geo  (subdomain%ib)%dxK(:,:)
+    dyK     => geo  (subdomain%ib)%dyK(:,:)
+    dz      => geo  (subdomain%ib)%dz(:,:,:)
+    rhosur  => meteo(subdomain%ib)%rho(1,:,:,ScalCur)
+    qrsur   => meteo(subdomain%ib)%QRSur(:,:,ScalCur)
+    usur    => meteo(subdomain%ib)%u(1,:,:,WindCur)
+    vsur    => meteo(subdomain%ib)%v(1,:,:,WindCur)
+    EmiRate  => block(subdomain%ib)%EmiRate(:,:,:,:)
+#endif
 
 
     IF (yaction == 'init') THEN
-
+      call cpu_time(T1)
 
       ! +-+-+- Sec xx define particle diameter -+-+-+
 
@@ -843,8 +875,6 @@ CALL init_alpha(decomp(ib1),1)
       dp_meter(1) = Dmin
       DO n = 2, nclass
         dp_meter(n) = dp_meter(n-1) * EXP(Dstep)
-        print*, 'd ln(Dp)', dp_meter(n) - dp_meter(n-1) , LOG(dp_meter(n) - dp_meter(n-1)), LOG(dp_meter(n)) - LOG(dp_meter(n-1)) &
-        ,Dstep
       END DO
 
 
@@ -921,7 +951,9 @@ CALL init_alpha(decomp(ib1),1)
       END DO ! i=1,subdomain%ntx
 
 
+      call cpu_time(T2)
 
+      print*, 'init time:',T2-T1
 
     ELSEIF (yaction == 'calc') THEN
       ! +-+-+- Sec 1 Set the actually date -+-+-+
@@ -941,9 +973,10 @@ CALL init_alpha(decomp(ib1),1)
         tnow = 1
       END IF
 
-
       DO i=1,subdomain%ntx
         DO j=1,subdomain%nty
+          call cpu_time(T1)
+
           ! print*, 'dxK',dyK(j,i),'dyK',dyK(j,i),'dz',dz(1,j,i)
 
           ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
@@ -976,16 +1009,21 @@ CALL init_alpha(decomp(ib1),1)
               dp = dp_meter(n)
               uthp = uth(n)/feff(j,i,tnow)
               s_rel = srel_map(j,i,n)
+              !print*, s_rel
 
-              dmy_R = uthp/ustar
-
-
-              IF (dmy_R >= 1 .AND. s_rel > 0) THEN
-                dust_flux = 0.
+              IF (ustar > uthp) THEN
+                dmy_R = uthp/ustar
               ELSE
-                ! Horizontal dust flux
-                dflux = dflux + roa/g * ustar**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
+                dmy_R = 1
               END IF
+
+
+              ! IF (dmy_R >= 1 .AND. s_rel <= 0) THEN
+              !   dust_flux = 0.
+              ! ELSE
+              !   ! Horizontal dust flux
+                dflux = dflux + roa/g * ustar**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
+              ! END IF
 
               ! Vertical dust flux
               dflux = dflux * alpha(j,i)
@@ -1001,37 +1039,41 @@ CALL init_alpha(decomp(ib1),1)
             END DO ! n = 1, nclass
 
 
-
           ENDIF
 
-          DO n=1,ntrace
-            fluxtot(n) = fluxtot(n) + fluxbin(n)
-          END DO
+          ! DO n=1,ntrace
+          !   fluxtot(n) = fluxtot(n) + fluxbin(n)
+          ! END DO
 
           DO n=1,ntrace
             ! fluxtot: g/cm2/sec --> kg/m2/sec
-            ! MASK: Effective area determined by cultfac/snow
-            fdust(j,i,n) = fluxtot(n) *cultfac!*(1.-snow365(j,i))
+            !
 
             ! Mask Effective area determined by preferential source fraction:
             ! only for psrcType = 2
             IF (psrcType == 2) THEN
-              fdust(j,i,n) = fdust(j,i,n) * source(j,i)
+              fluxbin(n) = fluxbin(n) * source(j,i)
             END IF
 
             ! Mask Effective area determined by vegetation fraction:
             ! only for veg_scheme = 2
             IF (veg_scheme == 2) THEN
-              fdust(j,i,n) = fdust(j,i,n) * veff(j,i,tnow)
+              fluxbin(n) = fluxbin(n) * veff(j,i,tnow)
             END IF
+
+            DustEmis(j,i,n) = fluxbin(n)
           END DO
+
+          call cpu_time(T2)
+          !print*, 'calc time step:',T2-T1
         END DO ! j
       END DO ! i
 
-      print*, ntrace,nbin
-      print*, Dustbin_top
+      ! print*, ntrace,nbin
+      ! print*, Dustbin_top
 
-      stop "end tegen02 calc"
+
+      ! stop "end tegen02 calc"
 
     END IF ! yaction
 
@@ -1501,7 +1543,6 @@ CALL init_alpha(decomp(ib1),1)
     REAL(8), POINTER :: vsur(:,:)
     REAL(8), POINTER :: qrsur(:,:)
     REAL(8), POINTER :: rhosur(:,:)
-
 #endif
 
     REAL(8), POINTER :: soiltype(:,:)
@@ -1796,7 +1837,7 @@ CALL init_alpha(decomp(ib1),1)
 
         !---  transformation to chemistry units  (RW)
         FDust(j,i,:) = FDust(j,i,:) * 1.E3         ! kg/m2/s ==> g/m2/s
-        FDust(j,i,:) = FDust(j,i,:) * ConvPart     ! chemistry units (nradm=1): g/m2/s ==> g/m2/s * mol2part
+        ! FDust(j,i,:) = FDust(j,i,:) * ConvPart     ! chemistry units (nradm=1): g/m2/s ==> g/m2/s * mol2part
 
         ! IF (FDust(j,i,1) /= FDust(j,i,1) ) print*,'Fdust', i,j,FDust(j,i,1)
 
