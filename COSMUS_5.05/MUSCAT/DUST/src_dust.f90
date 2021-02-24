@@ -749,13 +749,13 @@ CALL init_alpha(decomp(ib1),1)
 
         ! alpha_type == 2 : calc from fraction
         ELSEIF (alpha_type == 2) THEN
-          IF (soilmaptype == 1) THEN
-            alpha = soilmap(j,i,1) * 1.E-7 &
+          IF (soilmaptype == 0) THEN
+            alpha(j,i) = soilmap(j,i,1) * 1.E-7 &
                   + soilmap(j,i,2) * 1.E-6 &
                   + soilmap(j,i,3) * 1.E-5 &
                   + soilmap(j,i,4) * 1.E-6
             IF (soilmap(j,i,4) > 0.45) THEN
-              alpha = soilmap(j,i,1) * 1.E-7 &
+              alpha(j,i) = soilmap(j,i,1) * 1.E-7 &
                     + soilmap(j,i,2) * 1.E-6 &
                     + soilmap(j,i,3) * 1.E-5 &
                     + soilmap(j,i,4) * 1.E-7
