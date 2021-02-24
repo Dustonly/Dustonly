@@ -997,7 +997,7 @@ CALL init_alpha(decomp(ib1),1)
           IF(feff(j,i,tnow) <= 0.) THEN
            ustar = 0.
           ELSE
-            ustar = (VK * tot_wind )/(log( dz(1,j,i)/z0(j,i)/100)) !!m/s
+            ustar = (VK * tot_wind )/(log( dz(1,j,i)/(z0(j,i)/100.))) !!m/s
           END IF  !! IF(feff(j,i,tnow).LE.0.)
 
           IF(feff(j,i,tnow) > 0. .AND. ustar > 0. ) THEN
