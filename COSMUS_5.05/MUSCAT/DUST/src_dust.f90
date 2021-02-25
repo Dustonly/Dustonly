@@ -771,6 +771,12 @@ CALL init_alpha(decomp(ib1),1)
     END DO
     ! end lon-lat-loop
 
+    ! all alpha values are in [cm-1] but for for dust_scheme == 2 we need alpha in [m-1]
+    IF (dust_scheme == 2)  THEN
+      alpha = alpha*100. !  [cm-1] = 100 [m-1]
+    END IF
+
+
   END SUBROUTINE init_alpha
 
 
@@ -1071,7 +1077,8 @@ CALL init_alpha(decomp(ib1),1)
               fluxbin(n) = fluxbin(n) * veff(j,i,tnow)
             END IF
 
-            DustEmis(j,i,n) = fluxbin(n)
+            ! write output in [g m-2 s-1]
+            DustEmis(j,i,n) = fluxbin(n) * 1.E3
           END DO
 
           call cpu_time(T2)
