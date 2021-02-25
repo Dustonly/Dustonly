@@ -588,8 +588,10 @@ MODULE src_dust
 
 
 
-CALL init_soilmap(decomp(ib1))
-CALL init_alpha(decomp(ib1),1)
+        CALL init_soilmap(decomp(ib1))
+        CALL init_alpha(decomp(ib1),2)
+
+
         ! +-+-+- Sec 1.4.1 dust flux -+-+-+
 
         IF (dust_scheme == 1) THEN
@@ -989,8 +991,6 @@ CALL init_alpha(decomp(ib1),1)
         DO j=1,subdomain%nty
           call cpu_time(T1)
 
-          ! print*, 'dxK',dyK(j,i),'dyK',dyK(j,i),'dz',dz(1,j,i)
-
           ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
 #ifndef OFFLINE
@@ -1028,14 +1028,12 @@ CALL init_alpha(decomp(ib1),1)
                 IF (dp > dustbin_top(m)) m = m+1
               END IF
 
-              !print*, s_rel
 
               IF (ustar > uthp) THEN
                 dmy_R = uthp/ustar
               ELSE
                 dmy_R = 1
               END IF
-
 
 
               ! Horizontal dust flux
@@ -1049,7 +1047,6 @@ CALL init_alpha(decomp(ib1),1)
               IF (m <= DustBins) THEN
                 fluxbin(m) = fluxbin(m)+dflux
               END IF
-
 
 
             END DO ! n = 1, nclass
@@ -1085,12 +1082,6 @@ CALL init_alpha(decomp(ib1),1)
           !print*, 'calc time step:',T2-T1
         END DO ! j
       END DO ! i
-
-      ! print*, ntrace,nbin
-      ! print*, Dustbin_top
-
-
-      ! stop "end tegen02 calc"
 
     END IF ! yaction
 
@@ -1632,8 +1623,6 @@ CALL init_alpha(decomp(ib1),1)
 
     DO i=1,subdomain%ntx
       DO j=1,subdomain%nty
-        ! print*, 'dxK',dyK(j,i),'dyK',dyK(j,i),'dz',dz(1,j,i)
-
         ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
 #ifndef OFFLINE
@@ -1686,12 +1675,10 @@ CALL init_alpha(decomp(ib1),1)
         ELSE
           !ustar = (VK * van *100.)/(log(0.5E0 * 100 * dz(1,j,i)/z0(j,i))) !!cm/s
           ustar = (VK * van *100.)/(log(100 * dz(1,j,i)/z0(j,i))) !!cm/s
-         ! print*, i,j,ustar,dz(1,j,i)/z0(j,i),ustar_fv(i,j)
         END IF  !! IF(feff(j,i,tnow).LE.0.)
 
 
         ! +-+-+- Sec 3 Flux calculation -+-+-+
-        ! print*,tnow,shape(feff)
         IF (feff(j,i,tnow) > 0.) THEN
           IF (Ustar > 0 .AND. Ustar > umin2/feff(j,i,tnow) ) THEN
             kk = 0
@@ -1756,7 +1743,6 @@ CALL init_alpha(decomp(ib1),1)
                 IF (dbstart >= dp) THEN
                   fluxtyp(kk)=fluxtyp(kk)+flux_diam
                 ELSE
-                  ! print*, 'und auch hier' , dp, dbstart
                   ! loop over dislocated dust particle sizes
                   dpd=dmin
                   kkk=0
@@ -1773,17 +1759,10 @@ CALL init_alpha(decomp(ib1),1)
                         fluxtyp(kkk) = fluxtyp(kkk) +flux_diam               &
                                       *srelV(i_s11,kkk)/((su_srelV(i_s11,kk) &
                                       -su_srelV(i_s11,kkmin)))
-
-                        ! if (fluxtyp(kkk) /= fluxtyp(kkk) .or. fluxtyp(kkk) > 10.) THEN
-                        !   print*, 'su_srelV',i_s11,kk,kkmin,srelV(i_s11,kkk),su_srelV(i_s11,kk),-su_srelV(i_s11,kkmin)
-                        !   STOP
-                        ! end if
-                        ! if (fluxtyp(kkk) == 0. .and. i_s1 >0 .and. i_s1 /= 8 .and. i_s1 /= 9)print*,'ftyp', i_s1,i_s11,srelV(i_s11,kkk),su_srelV(i_s11,kk),su_srelV(i_s11,kkmin)
-
                       END IF ! (kk > kkmin)
                     END IF ! (dpd >= dbstart)
                     dpd=dpd*exp(dstep)
-                  END DO !dpd
+                  END DO ! dpd
                   ! end of saltation loop
                 END IF ! (dbstart >= dp)
               END IF ! (fdp1 <= 0 .OR. fdp2 <= 0)
@@ -1815,7 +1794,6 @@ CALL init_alpha(decomp(ib1),1)
 
             DO nn=1,ntrace
               fluxtot(nn) = fluxtot(nn) + fluxbin(nn)
-              ! if (fluxtot(nn) == 0. .and. i_s1 >0 .and. i_s1 /= 8 .and. i_s1 /= 9)print*,'ftot', i_s1,fluxtot(nn),fluxbin(nn)
             END DO
 
           END IF   ! (Ustar > 0 .AND. Ustar > umin2/feff(j,i,tnow) )
@@ -1856,7 +1834,7 @@ CALL init_alpha(decomp(ib1),1)
         FDust(j,i,:) = FDust(j,i,:) * 1.E3         ! kg/m2/s ==> g/m2/s
         ! FDust(j,i,:) = FDust(j,i,:) * ConvPart     ! chemistry units (nradm=1): g/m2/s ==> g/m2/s * mol2part
 
-        ! IF (FDust(j,i,1) /= FDust(j,i,1) ) print*,'Fdust', i,j,FDust(j,i,1)
+
 
         !---  add fluxes to right hand side
         DO nn=1,DustBins
@@ -2751,9 +2729,6 @@ CALL init_alpha(decomp(ib1),1)
       END DO
     END DO
 
-    ! print*,'vegfile inside',outvar(30,30,1)
-
-
     DEALLOCATE (var_read)
     IF (ndays > 0) DEALLOCATE (times)
     ! DEALLOCATE (outvar)
@@ -2926,7 +2901,6 @@ CALL init_alpha(decomp(ib1),1)
       end do
     end if
 
-    ! print*,var
 
   END SUBROUTINE quick_nc
 
