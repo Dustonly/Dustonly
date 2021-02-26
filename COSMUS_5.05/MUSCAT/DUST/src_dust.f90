@@ -143,9 +143,14 @@ MODULE src_dust
     CHARACTER(20)  :: &
       string
     CHARACTER(120) :: &
-      SoilFile
+      ifile(10)
     CHARACTER(120) :: &
       filename
+
+    INTEGER ::    &
+      ifile_num,  &
+      ifile_dim(10)
+
 
     INTEGER  ::  &
     dimveg,      & ! time dimension of vegetation  = 12 if monthly, = nSimuDays if daily
@@ -177,6 +182,8 @@ MODULE src_dust
     ! ------------------------------------
     IF (yaction == "init") THEN
 
+      ifile_num = 0
+
       ! +-+-+- Sec 1.1 Check -+-+-+
       ! Check consistency of namelist settings
 
@@ -199,11 +206,17 @@ MODULE src_dust
         PRINT*,'         #',ierr
         PRINT*,'         ',yerr
         STOP
+      ELSE
+        ifile_num = ifile_num + 1
+        ifile(ifile_num) = 'soil'
+        IF (soilmaptype == 1) ifile_dim(ifile_num) = 1
+        IF (soilmaptype == 2) ifile_dim(ifile_num) = 3
       END IF
 
-      IF (soilmaptype == 0) THEN
+
+      IF (soilmaptype == 1) THEN
         nmode = 4
-      ELSEIF (soilmaptype == 1) THEN
+      ELSEIF (soilmaptype == 2) THEN
         nmode = 3
       ELSE
         ierr = 1000023
@@ -233,6 +246,10 @@ MODULE src_dust
         PRINT*,'         #',ierr
         PRINT*,'         ',yerr
         STOP
+      ELSE
+        ifile_num = ifile_num + 1
+        ifile(ifile_num) = 'source'
+        ifile_dim(ifile_num) = 1
       END IF
 
       ! z0File maybe necessary
@@ -244,6 +261,10 @@ MODULE src_dust
           PRINT*,'         #',ierr
           PRINT*,'         ',yerr
           STOP
+        ELSE
+          ifile_num = ifile_num + 1
+          ifile(ifile_num) = 'z0'
+          ifile_dim(ifile_num) = 1
         END IF
       ELSE
         z0File = 'without'
@@ -270,6 +291,10 @@ MODULE src_dust
           PRINT*,'         #',ierr
           PRINT*,'         ',yerr
           STOP
+        ELSE
+          ifile_num = ifile_num + 1
+          ifile(ifile_num) = 'biom'
+          ifile_dim(ifile_num) = 1
         END IF
       ELSE
         biomeFile = 'without'
@@ -296,7 +321,9 @@ MODULE src_dust
           STOP
         END IF
         ! if vegmonFile and vegdayFile are specified then vegdayFile is prefered
-        IF (TRIM(vegmonFile) /= 'without' .AND. TRIM(vegdayFile) /= 'without') vegmonFile = 'without'
+        IF (TRIM(vegmonFile) /= 'without' .AND. TRIM(vegdayFile) /= 'without') THEN
+          vegmonFile = 'without'
+        ENDIF
         ! set flag for daily vegetation
         lvegdaily = .FALSE.
         IF (TRIM(vegdayFile) /= 'without') lvegdaily = .TRUE.
@@ -305,9 +332,37 @@ MODULE src_dust
         vegdayFile = 'without'
       ENDIF
 
+      ! Init of vegitation time dimension
+      !   climatological or daily data
+      IF (veg_scheme > 0 ) THEN
+        ! If there is no daily data monthly data will be used
+        dimveg = 12
+        ! when daily data is available calc max number of days in the simulation
+        IF (lvegdaily) dimveg = CEILING(hstop/24) + 1 ! hardcoding at this point my be helpfull for some tests 366 370!1096!1858!366!
+      ELSE
+        ! if no vegetation scheme is used then dimveg = 1
+        dimveg = 1
+      END IF
+
+      IF (lvegdaily) THEN
+        ifile_num = ifile_num + 1
+        ifile(ifile_num) = 'vegday'
+        ifile_dim(ifile_num) = dimveg
+      ELSEIF( .NOT. lvegdaily .AND. TRIM(vegmonFile) /= 'without') THEN
+        ifile_num = ifile_num + 1
+        ifile(ifile_num) = 'vegmon'
+        ifile_dim(ifile_num) = dimveg
+      END IF
+
+
       ! set flag for minimum vegetation file
       lvegmin = .FALSE.
       IF (TRIM(vegminFile) /= 'without') lvegmin = .TRUE.
+      IF (lvegmin) THEN
+        ifile_num = ifile_num + 1
+        ifile(ifile_num) = 'vegmin'
+        ifile_dim(ifile_num) = 1
+      END IF
 
       ! soil moisture need input stream
       ! at the moment soil moisture only for the offline version
@@ -320,6 +375,10 @@ MODULE src_dust
           PRINT*,'         #',ierr
           PRINT*,'         ',yerr
           STOP
+        ELSE
+          ifile_num = ifile_num + 1
+          ifile = 'moist'
+          ifile_dim(ifile_num) = 1
         END IF
       ELSE
         moistFile = 'without'
@@ -368,17 +427,6 @@ MODULE src_dust
       END IF
 
 
-      ! Init of vegitation time dimension
-      !   climatological or daily data
-      IF (veg_scheme > 0 ) THEN
-        ! If there is no daily data monthly data will be used
-        dimveg = 12
-        ! when daily data is available calc max number of days in the simulation
-        IF (lvegdaily) dimveg = CEILING(hstop/24) + 1 ! hardcoding at this point my be helpfull for some tests 366 370!1096!1858!366!
-      ELSE
-        ! if no vegetation scheme is used then dimveg = 1
-        dimveg = 1
-      END IF
 
 
       ! - Init of 'dust' type 'dust_subdomain', see data_dust
@@ -447,7 +495,7 @@ MODULE src_dust
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
 
 
-        ALLOCATE(soilmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
+        ALLOCATE(dust(ib1)%soilmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,nmode))
 
 
@@ -465,113 +513,170 @@ MODULE src_dust
         dust(ib1)%mfac(:,:,:)=1.
         dust(ib1)%d_emis(:,:,:)=0.
 
-        soilmap = 0.
+        dust(ib1)%soilmap = 0.
 
       END DO
 
 
       ! +-+-+- Sec 1.3 Input -+-+-+
+      DO i = 1, ifile_num
+        print*,ifile(i)
+        AllOCATE (read_input(igy0+1:igy1,igx0+1:igx1,ifile_dim(i)))
+
+        ! only prozess #0 open files
+        IF (my_cart_id == 0) THEN
+          CALL read_infile(ifile(i),read_input,ierr,yerr)
+          ! print *, shape(read_input)
+          ! stop
+
+          IF (ierr /= 0) THEN
+          print*, ierr
+            ierr = 100009
+            PRINT*,'ERROR    src_dust "init" '
+            PRINT*,'         #',ierr
+            PRINT*,'         ERROR reading',TRIM(ifile(i))
+            PRINT*,'         ',yerr
+            STOP
+          END IF
+
+        END IF !(my_cart_id == 0)
+
+#ifndef OFFLINE
+        ! distribut input to all px if necessary
+        IF (num_compute > 1) THEN
+          CALL MPI_BCAST(read_input,size(read_input),imp_reals,0,icomm_cart,ierr)
+        END IF
+#endif
+        ! copy to muscat block structur
+        DO ibLoc=1,nbLoc
+#ifndef OFFLINE
+          ib1 = LocGlob(ibLoc)
+#else
+          ib1 = 1
+#endif
+          IF (TRIM(ifile(i)) == 'soil' .AND. soilmaptype == 1) copy2d => dust(ib1)%soiltype
+          IF (TRIM(ifile(i)) == 'soil' .AND. soilmaptype == 2) copy3d => dust(ib1)%soilmap
+          IF (TRIM(ifile(i)) == 'source' ) copy2d => dust(ib1)%source
+          ! IF (filenum == 1) copy2d => dust(ib1)%soiltype
+          ! IF (filenum == 2) copy2d => dust(ib1)%source
+          ! IF (filenum == 3) copy2d => dust(ib1)%z0
+          ! IF (filenum == 4) copy2d => dust(ib1)%biome
+          ! IF (filenum == 5) copy3d => dust(ib1)%veg
+          ! IF (filenum == 6) copy3d => dust(ib1)%veg
+          ! IF (filenum == 7) copy2d => dust(ib1)%vegmin2
+          ! IF (filenum == 8) copy3d => dust(ib1)%vmoist
+          !
+          IF (ifile_dim(i) == 1) CALL copy2block(decomp(ib1),2,read_input,too2d=copy2d)
+          IF (ifile_dim(i)  > 1) CALL copy2block(decomp(ib1),3,read_input,too3d=copy3d)
+
+
+
+        END DO
+
+        DEALLOCATE(read_input)
+      END DO ! i = 1, ifile_num
+
 
       ! - Loop over all possible input files
-      DO filenum = 1,8
-
-        ! dim = 2 mostly
-        dim = 2
-
-        ! specify filename,
-        ! soiltype (2d)
-        IF (filenum == 1) filename = soiltypeFile
-
-        ! source (2d)
-        IF (filenum == 2) filename = psrcFile
-
-        ! z0 (2d)
-        IF (filenum == 3) filename = z0File
-
-        ! biome (2d)
-        IF (filenum == 4) filename = biomeFile
-
-        ! vegmon (3d)
-        IF (filenum == 5) filename = vegmonFile
-        IF (filenum == 5) dim = 3
-
-        ! vegday (3d)
-        IF (filenum == 6) filename = vegdayFile
-        IF (filenum == 6) dim = 3
-
-        ! vegmin (2d)
-        IF (filenum == 7) filename = vegminFile
-
-        ! vegday (3d)
-        IF (filenum == 8) filename = moistFile
-        IF (filenum == 8) dim = 3
-
-        ! if (filename == without) nothing happen
-        IF (TRIM(filename) /= 'without') THEN
-
-          ! allocate var to store the input
-          IF (dim == 2) AllOCATE (read_input(igy0+1:igy1,igx0+1:igx1,1))
-          IF (dim == 3) AllOCATE (read_input(igy0+1:igy1,igx0+1:igx1,dimveg))
-
-          ! only prozess #0 open files
-          IF (my_cart_id == 0) THEN
-            ! decide ascii or netcdf
-            IF (filename(LEN(TRIM(filename))-2:) == '.nc') THEN
-              IF (filenum == 1) STOP 'nc input not supported yet for soiltype yet' ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
-              IF (filenum == 2) CALL read_nc(TRIM(filename),'acfrac' ,read_input,0,.FALSE.,ierr,yerr)     ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
-              IF (filenum == 3) STOP 'nc input not supported yet for z0 yet'       ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
-              IF (filenum == 4) STOP 'nc input not supported yet for biome'    ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
-              IF (filenum == 5) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,dimveg,.FALSE.,ierr,yerr)
-              IF (filenum == 6) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,dimveg,.TRUE. ,ierr,yerr)
-              IF (filenum == 7) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,1     ,.FALSE.,ierr,yerr)
-              IF (filenum == 8) CALL read_nc(TRIM(filename),'swvl1' ,read_input,dimveg     ,.FALSE.,ierr,yerr)
-
-              IF (ierr /= 0) THEN
-                print*, ierr
-                ierr = 100009
-                PRINT*,'ERROR    src_dust "init" '
-                PRINT*,'         #',ierr
-                PRINT*,'         ERROR reading',TRIM(filename)
-                PRINT*,'         ',yerr
-                STOP
-              END IF
-            ELSE
-              CALL read_ascii(TRIM(filename),read_input)
-            END IF
-          END IF ! (my_cart_id == 0)
-
-#ifndef OFFLINE
-          ! distribut input to all px if necessary
-          IF (num_compute > 1) THEN
-            CALL MPI_BCAST(read_input,size(read_input),imp_reals,0,icomm_cart,ierr)
-          END IF
-#endif
-          ! copy to muscat block structur
-          DO ibLoc=1,nbLoc
-#ifndef OFFLINE
-            ib1 = LocGlob(ibLoc)
-#else
-            ib1 = 1
-#endif
-            IF (filenum == 1) copy2d => dust(ib1)%soiltype
-            IF (filenum == 2) copy2d => dust(ib1)%source
-            IF (filenum == 3) copy2d => dust(ib1)%z0
-            IF (filenum == 4) copy2d => dust(ib1)%biome
-            IF (filenum == 5) copy3d => dust(ib1)%veg
-            IF (filenum == 6) copy3d => dust(ib1)%veg
-            IF (filenum == 7) copy2d => dust(ib1)%vegmin2
-            IF (filenum == 8) copy3d => dust(ib1)%vmoist
-
-            IF (dim == 2) CALL copy2block(decomp(ib1),dim,read_input,too2d=copy2d)
-            IF (dim == 3) CALL copy2block(decomp(ib1),dim,read_input,too3d=copy3d)
-
-
-          END DO
-
-          DEALLOCATE(read_input)
-        END IF ! (TRIM(filename) /= 'without')
-
-      END DO ! (filenum = 1,7)
+!       DO filenum = 1,8
+!
+!         ! dim = 2 mostly
+!         dim = 2
+!
+!         ! specify filename,
+!         ! soiltype (2d)
+!         IF (filenum == 1) filename = soiltypeFile
+!
+!         ! source (2d)
+!         IF (filenum == 2) filename = psrcFile
+!
+!         ! z0 (2d)
+!         IF (filenum == 3) filename = z0File
+!
+!         ! biome (2d)
+!         IF (filenum == 4) filename = biomeFile
+!
+!         ! vegmon (3d)
+!         IF (filenum == 5) filename = vegmonFile
+!         IF (filenum == 5) dim = 3
+!
+!         ! vegday (3d)
+!         IF (filenum == 6) filename = vegdayFile
+!         IF (filenum == 6) dim = 3
+!
+!         ! vegmin (2d)
+!         IF (filenum == 7) filename = vegminFile
+!
+!         ! vegday (3d)
+!         IF (filenum == 8) filename = moistFile
+!         IF (filenum == 8) dim = 3
+!
+!         ! if (filename == without) nothing happen
+!         IF (TRIM(filename) /= 'without') THEN
+!
+!           ! allocate var to store the input
+!           IF (dim == 2) AllOCATE (read_input(igy0+1:igy1,igx0+1:igx1,1))
+!           IF (dim == 3) AllOCATE (read_input(igy0+1:igy1,igx0+1:igx1,dimveg))
+!
+!           ! only prozess #0 open files
+!           IF (my_cart_id == 0) THEN
+!             ! decide ascii or netcdf
+!             IF (filename(LEN(TRIM(filename))-2:) == '.nc') THEN
+!               IF (filenum == 1) CALL read_nc(TRIM(filename),'clay' ,read_input,0,.FALSE.,ierr,yerr)
+!               IF (filenum == 2) CALL read_nc(TRIM(filename),'acfrac' ,read_input,0,.FALSE.,ierr,yerr)     ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
+!               IF (filenum == 3) STOP 'nc input not supported yet for z0 yet'       ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
+!               IF (filenum == 4) STOP 'nc input not supported yet for biome'    ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
+!               IF (filenum == 5) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,dimveg,.FALSE.,ierr,yerr)
+!               IF (filenum == 6) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,dimveg,.TRUE. ,ierr,yerr)
+!               IF (filenum == 7) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,1     ,.FALSE.,ierr,yerr)
+!               IF (filenum == 8) CALL read_nc(TRIM(filename),'swvl1' ,read_input,dimveg     ,.FALSE.,ierr,yerr)
+!
+!               IF (ierr /= 0) THEN
+!                 print*, ierr
+!                 ierr = 100009
+!                 PRINT*,'ERROR    src_dust "init" '
+!                 PRINT*,'         #',ierr
+!                 PRINT*,'         ERROR reading',TRIM(filename)
+!                 PRINT*,'         ',yerr
+!                 STOP
+!               END IF
+!             ELSE
+!               CALL read_ascii(TRIM(filename),read_input)
+!             END IF
+!           END IF ! (my_cart_id == 0)
+!
+! #ifndef OFFLINE
+!           ! distribut input to all px if necessary
+!           IF (num_compute > 1) THEN
+!             CALL MPI_BCAST(read_input,size(read_input),imp_reals,0,icomm_cart,ierr)
+!           END IF
+! #endif
+!           ! copy to muscat block structur
+!           DO ibLoc=1,nbLoc
+! #ifndef OFFLINE
+!             ib1 = LocGlob(ibLoc)
+! #else
+!             ib1 = 1
+! #endif
+!             IF (filenum == 1) copy2d => dust(ib1)%soiltype
+!             IF (filenum == 2) copy2d => dust(ib1)%source
+!             IF (filenum == 3) copy2d => dust(ib1)%z0
+!             IF (filenum == 4) copy2d => dust(ib1)%biome
+!             IF (filenum == 5) copy3d => dust(ib1)%veg
+!             IF (filenum == 6) copy3d => dust(ib1)%veg
+!             IF (filenum == 7) copy2d => dust(ib1)%vegmin2
+!             IF (filenum == 8) copy3d => dust(ib1)%vmoist
+!
+!             IF (dim == 2) CALL copy2block(decomp(ib1),dim,read_input,too2d=copy2d)
+!             IF (dim == 3) CALL copy2block(decomp(ib1),dim,read_input,too3d=copy3d)
+!
+!
+!           END DO
+!
+!           DEALLOCATE(read_input)
+!         END IF ! (TRIM(filename) /= 'without')
+!
+!       END DO ! (filenum = 1,7)
 
 
       ! +-+-+- Sec 1.4 physical init -+-+-+
@@ -587,8 +692,7 @@ MODULE src_dust
 #endif
 
 
-
-        CALL init_soilmap(decomp(ib1))
+        IF (soilmaptype ==  1) CALL init_soilmap(decomp(ib1))
         CALL init_alpha(decomp(ib1),2)
 
 
@@ -680,9 +784,11 @@ MODULE src_dust
       i,j
 
     REAL(8), POINTER ::  &
-      soiltype(:,:)
+      soiltype(:,:),     &
+      soilmap(:,:,:)
 
     soiltype => dust(subdomain%ib)%soiltype(:,:)
+    soilmap => dust(subdomain%ib)%soilmap(:,:,:)
 
     ! start lon-lat-loop
     DO i=1,subdomain%ntx
@@ -728,12 +834,14 @@ MODULE src_dust
 
     REAL(8), POINTER ::  &
       alpha(:,:), &
-      soiltype(:,:)
+      soiltype(:,:), &
+      soilmap(:,:,:)
 
 
 
-    alpha => dust(subdomain%ib)%alpha2(:,:)
+    alpha    => dust(subdomain%ib)%alpha2(:,:)
     soiltype => dust(subdomain%ib)%soiltype(:,:)
+    soilmap  => dust(subdomain%ib)%soilmap(:,:,:)
 
     ! start lon-lat-loop
     DO i=1,subdomain%ntx
@@ -751,7 +859,7 @@ MODULE src_dust
 
         ! alpha_type == 2 : calc from fraction
         ELSEIF (alpha_type == 2) THEN
-          IF (soilmaptype == 0) THEN
+          IF (soilmaptype == 1) THEN
             alpha(j,i) = soilmap(j,i,1) * 1.E-7 &
                   + soilmap(j,i,2) * 1.E-6 &
                   + soilmap(j,i,3) * 1.E-5 &
@@ -761,6 +869,15 @@ MODULE src_dust
                     + soilmap(j,i,2) * 1.E-6 &
                     + soilmap(j,i,3) * 1.E-5 &
                     + soilmap(j,i,4) * 1.E-7
+            END IF
+          ELSEIF (soilmaptype == 2) THEN
+            alpha(j,i) = soilmap(j,i,1) * 1.E-6 &
+                  + soilmap(j,i,2) * 1.E-5 &
+                  + soilmap(j,i,3) * 1.E-6
+            IF (soilmap(j,i,3) > 0.45) THEN
+              alpha(j,i) = soilmap(j,i,1) * 1.E-6 &
+                    + soilmap(j,i,2) * 1.E-5 &
+                    + soilmap(j,i,3) * 1.E-7
             END IF
           ENDIF
 
@@ -843,6 +960,7 @@ MODULE src_dust
     real    ::  T1,T2
 
     REAL(8), POINTER :: source(:,:)
+    REAL(8), POINTER :: soilmap(:,:,:)
     REAL(8), POINTER :: feff(:,:,:)
     REAL(8), POINTER :: veff(:,:,:)
     REAL(8), POINTER :: z0(:,:)
@@ -861,6 +979,7 @@ MODULE src_dust
 #endif
 
     source   => dust(subdomain%ib)%source(:,:)
+    soilmap  => dust(subdomain%ib)%soilmap(:,:,:)
     feff     => dust(subdomain%ib)%feff(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
     z0       => dust(subdomain%ib)%z0(:,:)

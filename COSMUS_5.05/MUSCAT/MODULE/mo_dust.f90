@@ -89,6 +89,7 @@ MODULE mo_dust
   TYPE dust_subdomain
   REAL(8), POINTER ::     &
     soilprop (:,:,:,:),   & !soil properties
+    soilmap(:,:,:),       & ! sand, silt, clay map
     lai (:,:,:,:),        & !leafe area index
     vegmin (:,:,:),       & !minimum of vegetation
     alpha (:,:,:),        & !ratio horiz/vertical flux
@@ -138,7 +139,6 @@ MODULE mo_dust
     read_input(:,:,:)       ! (j,i,time)
 
   REAL(8), ALLOCATABLE ::  &
-    soilmap(:,:,:),    &   ! (j,i,3)
     srel_map(:,:,:)          ! (j,i,nclass)
 
   REAL (8)   :: &
