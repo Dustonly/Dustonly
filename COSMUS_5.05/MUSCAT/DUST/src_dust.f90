@@ -2735,6 +2735,290 @@ MODULE src_dust
     RETURN
   END SUBROUTINE read_nc
 
+  SUBROUTINE read_infile(infile,outvar,ierror,yerrmsg)
+
+    ! Modules
+    USE netcdf
+    USE mo_dust
+#ifndef OFFLINE
+    USE data_io,  ONLY : ydate_ini    ! start of the forecast
+#endif
+    ! USE data_modelconfig,   ONLY :   &
+    !   ie_tot,                  & ! number of grid points in zonal direction
+    !   je_tot                     ! number of grid points in meridional direction
+
+
+    IMPLICIT NONE
+
+    ! Parameter
+    CHARACTER(*), INTENT(IN)    :: &
+      infile        ! filename
+
+
+    REAL(8),        INTENT(INOUT) :: &
+      outvar(:,:,:)        ! Output var
+
+    INTEGER,        INTENT(OUT)   :: &
+      ierror
+
+    CHARACTER(*),   INTENT(OUT)   :: &
+      yerrmsg       ! error message
+
+
+    ! local Vars
+
+    CHARACTER(15)     :: &
+      varname(3)       ! name of variable that shoud be read
+
+    CHARACTER(120)     :: &
+      filename       ! name of variable that shoud be read
+
+    INTEGER            :: &
+      ndays         ! number of possible days in the model run
+    LOGICAL           :: &
+      timecheck     ! check if time fits model run
+
+
+    INTEGER  :: &
+      i,j,t,v,  &  ! loop
+      ary_size, &  ! array size
+      varnum,   &  !
+      istart,   &  ! index of the start date in the var file
+      idate,    &  ! ydate read into integer
+      istat,    &  ! local error code
+      ncID,     &  ! id of nc files
+      varID,    &  ! id of the  var
+      timeID,   &  ! id of time var
+      dimID,    &  ! id of a dimension
+      dimlen       ! length of the above dimension
+
+    REAL  :: &
+      var_scale, &    ! index of the start date in the var file
+      var_offset    ! index of the start date in the var file
+
+    INTEGER, ALLOCATABLE :: &
+      times(:)
+
+    REAL, ALLOCATABLE :: &
+      var_read(:,:,:)
+
+
+
+    ! start subroutine
+    ! ---------------------------------------------------------
+
+
+
+
+    ! Definitions
+    varnum = 1
+
+    IF (infile == 'soil') THEN
+      filename = TRIM(soiltypeFile)
+      IF (soilmaptype == 1) THEN
+        varname = 'soiltype'
+      ELSEIF (soilmaptype == 2) THEN
+        varnum = 3
+        varname(1)='sand'
+        varname(2)='silt'
+        varname(3)='clay'
+      END IF
+    ELSEIF (infile == 'source') THEN
+      filename = TRIM(psrcFile)
+    END IF
+
+    IF (filename(LEN(TRIM(filename))-2:) /= '.nc') THEN
+      CALL read_ascii(TRIM(filename),outvar)
+      RETURN
+    ENDIF
+
+    ! Print short status
+    PRINT*,'read_nc ', TRIM(filename)
+
+    ! open the file
+    istat = nf90_open(filename, nf90_nowrite, ncid)
+    IF (istat /= nf90_noerr) THEN
+      ierror  = 10001
+      yerrmsg = TRIM(nf90_strerror(istat))
+      RETURN
+    ENDIF
+
+    ! get id of lat dimension
+    istat = nf90_inq_dimid(ncID, 'y', dimID)
+    IF (istat /= nf90_noerr) THEN
+      ierror  = 10002
+      yerrmsg = TRIM(nf90_strerror(istat))
+      RETURN
+    ENDIF
+
+    ! read the length of lat dimension
+    istat = nf90_inquire_dimension(ncID, dimID, len = dimlen)
+    IF (istat /= nf90_noerr) THEN
+      ierror  = 10003
+      yerrmsg = TRIM(nf90_strerror(istat))
+      RETURN
+    ENDIF
+
+    ! Check the Size
+    IF (dimlen /= je_tot) THEN
+      ierror = 10004
+      yerrmsg = 'Error reading '//TRIM(infile)//' file: wrong lat dimension'
+      RETURN
+    END IF
+
+     ! get id of lon dimension
+     istat = nf90_inq_dimid(ncID, 'x', dimID)
+     IF (istat /= nf90_noerr) THEN
+       ierror  = 10005
+       yerrmsg = TRIM(nf90_strerror(istat))
+       RETURN
+     ENDIF
+
+     ! read the length of lon dimension
+     istat = nf90_inquire_dimension(ncID, dimID, len = dimlen)
+     IF (istat /= nf90_noerr) THEN
+       ierror  = 10006
+       yerrmsg = TRIM(nf90_strerror(istat))
+       RETURN
+     ENDIF
+
+     ! Check the Size
+     IF (dimlen /= ie_tot) THEN
+       ierror = 10007
+       yerrmsg = 'Error reading '//TRIM(infile)//' file: wrong lon dimension'
+       RETURN
+     END IF
+
+    IF (ndays > 0) THEN
+      ! get id of time dimension
+      istat = nf90_inq_dimid(ncID, 'time', dimID)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10008
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
+
+      ! read the length of the time dimension
+      istat = nf90_inquire_dimension(ncID, dimID, len = dimlen)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10009
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
+
+      ! allocate the var ( times ) that hold the available dates in the nc file
+      istat = 0
+      ALLOCATE (times(dimlen), STAT=istat)
+      IF (istat /= 0) THEN
+        ierror = 10010
+        yerrmsg = 'allocation of times failed'
+        RETURN
+      ENDIF
+
+      ! get the id of the time var
+      istat = nf90_inq_varid(ncID, 'time', timeID)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10005
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
+
+      ! get the dates in the nc file
+      istat = nf90_get_var(ncid, timeID, times)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10011
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
+
+      ! transform date string to an integer
+      READ(ydate_ini(1:8),*) idate
+
+      ! istart -> fist read time step
+      istart = 1
+
+      ! match the dates of the model run and the var
+      IF (timecheck) THEN
+        IF (ANY(times(:) == idate)) THEN
+          ! find index of istat
+          DO WHILE(times(istart) /= idate)
+            istart = istart + 1
+          END DO
+          IF (istart + ndays - 1 > size(times)) THEN
+            ierror  = 10012
+            yerrmsg = 'Error reading '//TRIM(infile)//' file: not enough dates in the file'
+            RETURN
+          END IF
+        ELSE
+          ierror  = 10013
+          yerrmsg = 'Error reading '//TRIM(infile)//' file: model start date is not in the file'
+          RETURN
+        END IF
+      END IF
+    END IF
+    ! Allocate var to read
+    istat = 0
+
+    ary_size = ndays
+    IF ( ndays == 0 ) ary_size = 1
+    IF ( varnum  > 0 ) ary_size = varnum
+    ALLOCATE (var_read(ie_tot,je_tot,ary_size), STAT=istat)
+    IF (istat /= 0) THEN
+      ierror = 10014
+      yerrmsg = 'allocation of var_read failed'
+      RETURN
+    ENDIF
+
+    ! loop for all vars
+    DO i = 1, varnum
+      ! get the id of the var
+      istat = nf90_inq_varid(ncID, varname(i) , varID)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10015
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
+
+      ! get value of the scaling factor
+      istat = nf90_get_att(ncID, varID, 'scale_factor',var_scale)
+      IF (istat /= nf90_noerr) THEN
+        ! ierror  = 10016
+        var_scale = 1
+        ! yerrmsg = TRIM(nf90_strerror(istat))
+        !RETURN
+      ENDIF
+
+      ! get value of the offset
+      istat = nf90_get_att(ncID, varID, 'add_offset',var_offset)
+      IF (istat /= nf90_noerr) THEN
+        ! ierror  = 10016
+        var_offset = 0
+        ! yerrmsg = TRIM(nf90_strerror(istat))
+        !RETURN
+      ENDIF
+
+      ! get the var
+      istat = nf90_get_var(ncid, varID, var_read(:,:,i),start= (/1,1,istart/),count=(/ie_tot,je_tot,ndays/))
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10017
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
+
+      ! wirte the var into outvar
+      IF (varnum == 1) THEN
+        outvar(:,:,:)=var_read(:,:,:)*var_scale+var_offset
+      ELSEIF (varnum > 1) THEN
+        outvar(:,:,i)=var_read(:,:,i)*var_scale+var_offset
+      END IF
+
+    END DO
+
+    DEALLOCATE (var_read)
+    IF (ndays > 0) DEALLOCATE (times)
+    ! DEALLOCATE (outvar)
+    RETURN
+  END SUBROUTINE read_infile
 
 
   !+ copy2block
