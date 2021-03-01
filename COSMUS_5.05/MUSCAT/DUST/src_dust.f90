@@ -377,8 +377,8 @@ MODULE src_dust
           STOP
         ELSE
           ifile_num = ifile_num + 1
-          ifile = 'moist'
-          ifile_dim(ifile_num) = 1
+          ifile(ifile_num) = 'moist'
+          ifile_dim(ifile_num) = lasttstep
         END IF
       ELSE
         moistFile = 'without'
@@ -526,8 +526,7 @@ MODULE src_dust
         ! only prozess #0 open files
         IF (my_cart_id == 0) THEN
           CALL read_infile(ifile(i),read_input,ierr,yerr)
-          ! print *, shape(read_input)
-          ! stop
+
 
           IF (ierr /= 0) THEN
           print*, ierr
@@ -2869,10 +2868,8 @@ MODULE src_dust
 
     IMPLICIT NONE
 
-    ! Parameter
     CHARACTER(*), INTENT(IN)    :: &
-      infile        ! filename
-
+      infile        ! name of field
 
     REAL(8),        INTENT(INOUT) :: &
       outvar(:,:,:)        ! Output var
@@ -2893,7 +2890,7 @@ MODULE src_dust
       filename       ! name of variable that shoud be read
 
     INTEGER            :: &
-      ndays         ! number of possible days in the model run
+      ntimes         ! number of possible days in the model run
     LOGICAL           :: &
       timecheck     ! check if time fits model run
 
@@ -2931,6 +2928,7 @@ MODULE src_dust
 
     ! Definitions
     varnum = 1
+    ntimes = 0
 
     IF (infile == 'soil') THEN
       filename = TRIM(soiltypeFile)
@@ -2944,6 +2942,11 @@ MODULE src_dust
       END IF
     ELSEIF (infile == 'source') THEN
       filename = TRIM(psrcFile)
+    ELSEIF (infile == 'moist') THEN
+      filename = TRIM(moistFile)
+      varname='swvl1'
+      ntimes = SIZE(outvar(1,1,:))
+      timecheck = .FALSE.
     END IF
 
     IF (filename(LEN(TRIM(filename))-2:) /= '.nc') THEN
@@ -3008,7 +3011,7 @@ MODULE src_dust
        RETURN
      END IF
 
-    IF (ndays > 0) THEN
+    IF (ntimes > 0) THEN
       ! get id of time dimension
       istat = nf90_inq_dimid(ncID, 'time', dimID)
       IF (istat /= nf90_noerr) THEN
@@ -3063,7 +3066,7 @@ MODULE src_dust
           DO WHILE(times(istart) /= idate)
             istart = istart + 1
           END DO
-          IF (istart + ndays - 1 > size(times)) THEN
+          IF (istart + ntimes - 1 > size(times)) THEN
             ierror  = 10012
             yerrmsg = 'Error reading '//TRIM(infile)//' file: not enough dates in the file'
             RETURN
@@ -3078,9 +3081,11 @@ MODULE src_dust
     ! Allocate var to read
     istat = 0
 
-    ary_size = ndays
-    IF ( ndays == 0 ) ary_size = 1
+    ary_size = ntimes
+    IF ( ntimes == 0 ) ary_size = 1
     IF ( varnum  > 0 ) ary_size = varnum
+    IF ( ntimes  > 0 ) ary_size = ntimes
+
     ALLOCATE (var_read(ie_tot,je_tot,ary_size), STAT=istat)
     IF (istat /= 0) THEN
       ierror = 10014
@@ -3117,8 +3122,9 @@ MODULE src_dust
       ENDIF
 
       ! get the var
-      istat = nf90_get_var(ncid, varID, var_read(:,:,i),start= (/1,1,istart/),count=(/ie_tot,je_tot,ndays/))
+      istat = nf90_get_var(ncid, varID, var_read(:,:,i),start= (/1,1,istart/),count=(/ie_tot,je_tot,ntimes/))
       IF (istat /= nf90_noerr) THEN
+        print*, 'hier'
         ierror  = 10017
         yerrmsg = TRIM(nf90_strerror(istat))
         RETURN
@@ -3134,7 +3140,7 @@ MODULE src_dust
     END DO
 
     DEALLOCATE (var_read)
-    IF (ndays > 0) DEALLOCATE (times)
+    IF (ntimes > 0) DEALLOCATE (times)
     ! DEALLOCATE (outvar)
     RETURN
   END SUBROUTINE read_infile
