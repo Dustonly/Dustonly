@@ -378,7 +378,7 @@ MODULE src_dust
         ELSE
           ifile_num = ifile_num + 1
           ifile(ifile_num) = 'moist'
-          ifile_dim(ifile_num) = lasttstep
+          ifile_dim(ifile_num) = nt!lasttstep
         END IF
       ELSE
         moistFile = 'without'
@@ -460,7 +460,7 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%lai_eff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac,1:dimveg))
         ALLOCATE(dust(ib1)%w_str(decomp(ib1)%iy0+1:decomp(ib1)%iy1,         &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac))
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
         ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,        &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
 
@@ -472,7 +472,7 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%veg(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
         ALLOCATE(dust(ib1)%vmoist(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
-                decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
         ALLOCATE(dust(ib1)%vegmin2(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
 
@@ -490,7 +490,7 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%veff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
         ALLOCATE(dust(ib1)%mfac(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
-                decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1))
         ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
 
@@ -510,7 +510,7 @@ MODULE src_dust
         dust(ib1)%alpha2(:,:)=0.
         dust(ib1)%feff(:,:,:)=1.
         dust(ib1)%veff(:,:,:)=1.
-        dust(ib1)%mfac(:,:,:)=1.
+        dust(ib1)%mfac(:,:)=1.
         dust(ib1)%d_emis(:,:,:)=0.
 
         dust(ib1)%soilmap = 0.
@@ -563,7 +563,7 @@ MODULE src_dust
           ! IF (filenum == 5) copy3d => dust(ib1)%veg
           ! IF (filenum == 6) copy3d => dust(ib1)%veg
           ! IF (filenum == 7) copy2d => dust(ib1)%vegmin2
-          ! IF (filenum == 8) copy3d => dust(ib1)%vmoist
+          IF (TRIM(ifile(i)) == 'source') copy3d => dust(ib1)%vmoist
           !
           IF (ifile_dim(i) == 1) CALL copy2block(decomp(ib1),2,read_input,too2d=copy2d)
           IF (ifile_dim(i)  > 1) CALL copy2block(decomp(ib1),3,read_input,too3d=copy3d)
@@ -730,7 +730,7 @@ MODULE src_dust
         ! +-+-+- Sec 1.4.3 moisture -+-+-+
         IF (moist_scheme == 1) THEN
           print*, 'call fecan'
-          CALL fecan(decomp(ib1),dimveg,'init')
+          CALL fecan(decomp(ib1),ntstep,'init')
         END IF
 
       END DO
@@ -744,6 +744,10 @@ MODULE src_dust
     ! +-+-+- Section 2 Dust flux calculation -+-+-+
     ! ------------------------------------
     ELSEIF (yaction == "calc") THEN
+
+      IF (moist_scheme == 1) THEN
+        CALL fecan(decomp(ib1),ntstep,'calc')
+      END IF
 
       IF (dust_scheme == 1) THEN
         CALL emission_tegen(subdomain,flux)
@@ -962,6 +966,7 @@ MODULE src_dust
     REAL(8), POINTER :: soilmap(:,:,:)
     REAL(8), POINTER :: feff(:,:,:)
     REAL(8), POINTER :: veff(:,:,:)
+    REAL(8), POINTER :: mfac(:,:)
     REAL(8), POINTER :: z0(:,:)
     REAL(8), POINTER :: alpha(:,:)
     REAL(8), POINTER :: DustEmis(:,:,:)
@@ -981,6 +986,7 @@ MODULE src_dust
     soilmap  => dust(subdomain%ib)%soilmap(:,:,:)
     feff     => dust(subdomain%ib)%feff(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
+    mfac     => dust(subdomain%ib)%mfac(:,:)
     z0       => dust(subdomain%ib)%z0(:,:)
     alpha    => dust(subdomain%ib)%alpha2(:,:)
     DustEmis => dust(subdomain%ib)%d_emis(:,:,:)
@@ -1138,7 +1144,13 @@ MODULE src_dust
 
             DO n = 1, nclass
               dp = dp_meter(n)
-              uthp = uth(n)/feff(j,i,tnow)
+
+              ! calculate the recent threshold friction velocity
+              ! from the particle thr. fric. velo.,
+              ! the drag partition from soil roughness and vegetation
+              ! and the moisture factor
+              uthp = uth(n)/feff(j,i,tnow) * mfac(j,i)
+
               s_rel = srel_map(j,i,n)
 
               IF (m > DustBins) m = DustBins
@@ -1676,7 +1688,7 @@ MODULE src_dust
     REAL(8), POINTER :: alpha(:,:)
     REAL(8), POINTER :: feff(:,:,:)
     REAL(8), POINTER :: veff(:,:,:)
-    REAL(8), POINTER :: mfac(:,:,:)
+    REAL(8), POINTER :: mfac(:,:)
     REAL(8), POINTER :: z0(:,:)
     ! REAL(8), POINTER :: umin2(:,:)
     REAL(8), PARAMETER :: umin2=umin
@@ -1705,7 +1717,7 @@ MODULE src_dust
     alpha    => dust(subdomain%ib)%alpha2(:,:)
     feff     => dust(subdomain%ib)%feff(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
-    mfac     => dust(subdomain%ib)%mfac(:,:,:)
+    mfac     => dust(subdomain%ib)%mfac(:,:)
     z0       => dust(subdomain%ib)%z0(:,:)
     ! lai_eff => dust(subdomain%ib)%lai_eff(:,:,:,:)
     ! umin2    => dust(subdomain%ib)%umin2(:,:,1)
@@ -2295,7 +2307,7 @@ MODULE src_dust
 
   !+ roughness
   !---------------------------------------------------------------------
-  SUBROUTINE fecan(subdomain,dimsimu,yaction)
+  SUBROUTINE fecan(subdomain,time_now,yaction)
   !---------------------------------------------------------------------
   ! Description:
   !
@@ -2313,68 +2325,71 @@ MODULE src_dust
 
     TYPE(rectangle), INTENT(IN) :: subdomain
 
-    INTEGER, INTENT(IN) :: dimsimu
+    INTEGER, INTENT(IN) :: &
+      time_now
 
     CHARACTER(LEN=*), INTENT(IN)            :: &
       yaction ! action to be performed
 
     INTEGER :: &
-      dnow,    &  ! time loop
-      i,j,t,     &  ! loops
-      isoiltype
+      i,j      ! loops
 
-
-    REAL(8) ::  &
-      w_str,        &  ! feff inside the loop
-      z0s,               &  ! small scale roughness length
-      AAA,               &
-      BB,                &
-      CCC,               &  ! dummys
-      DDD,               &
-      EE,                &
-      FF
+    REAL(8) :: &
+      clay ,   &  ! soil clay contant [%]
+      moist       ! gravimeric soil moisture [%]
 
 
     REAL(8), POINTER ::  &
       vmoist(:,:,:),           &
-      mfac(:,:,:),       &
-        soiltype(:,:)!,     &
+      mfac(:,:),       &
+      w_str(:,:),       &
+      soilmap(:,:,:)!,     &
 
     vmoist   => dust(subdomain%ib)%vmoist(:,:,:)
-    mfac => dust(subdomain%ib)%mfac(:,:,:)
-    soiltype => dust(subdomain%ib)%soiltype(:,:)
+    mfac => dust(subdomain%ib)%mfac(:,:)
+    w_str => dust(subdomain%ib)%w_str(:,:)
+    soilmap => dust(subdomain%ib)%soilmap(:,:,:)
 
-
+    IF (yaction == 'init') THEN
 
     ! start lon-lat-loop
-    DO i=1,subdomain%ntx
-      DO j=1,subdomain%nty
-        isoiltype = int(soiltype(j,i))
-        w_str = 0.0014*(solspe(isoiltype,nmode*3)*100)**2 + 0.17*(solspe(isoiltype,nmode*3)*100)
-        DO dnow=1,dimsimu
-            !---------------------------------------------------------------------------------------
-            !       Calculation of the threshold soil moisture (w')  [Fecan, F. et al., 1999]
-            !---------------------------------------------------------------------------------------
-
-        !       !          W0   = 0.99! solspe(isoiltype,nmode*3+2)
-        !    feff = 0.
-        !
-        ! ! calculation of mfac: ratio between threshold friction velocities wet/dry
-        ! ! [Fecan, F. et al., 1999]
-
-          IF ((vmoist(j,i,dnow)*100 - w_str) > 0.0) THEN
-            mfac(j,i,dnow) = (1 + 1.21 * ( vmoist(j,i,dnow)*100 - w_str)**0.68 )**0.5
-          ELSE
-            mfac(j,i,dnow) = 1000.
+      DO i=1,subdomain%ntx
+        DO j=1,subdomain%nty
+          IF (soilmaptype == 1) THEN
+            clay = soilmap(j,i,4) * 100.
+          ELSE IF (soilmaptype == 2) THEN
+            clay = soilmap(j,i,3) * 100.
           END IF
-            ! mfac(j,i,dnow)=mfac(j,i,dnow)/2
-            ! mfac=1.
-          ! print*, 'mf',mfac(j,i,dnow),vmoist(j,i,dnow)*100,w_str
+
+          ! Calculation of the threshold soil moisture (w')
+          w_str(j,i) = 0.0014*clay**2 + 0.17*clay
+
         END DO
       END DO
-    END DO
 
-    ! end lon-lat-loop
+      ! end lon-lat-loop
+
+    ELSEIF (yaction == 'calc') THEN ! yaction == 'init'
+
+    ! start lon-lat-loop
+      DO i=1,subdomain%ntx
+        DO j=1,subdomain%nty
+
+          ! calculate gravimeric soil moisture from the volumeric soil moisture
+          ! moist_g = moist_v * rho_water / rho_soil * 100%   -> [kg_water/m3_soil / kg_soil/m3_soil] = [%]
+          moist = vmoist(j,i,time_now) * 1000/2650 * 100
+
+
+          IF (moist <= w_str(j,i)) THEN
+            mfac(j,i) = 1
+          ELSE
+            mfac(j,i) = (1 + 1.21 * ( moist - w_str(j,i))**0.68 )**0.5
+          END IF
+
+        END DO
+      END DO
+
+    END IF ! yaction == 'init'
 
   END SUBROUTINE fecan
 

@@ -95,7 +95,7 @@ MODULE mo_dust
     alpha (:,:,:),        & !ratio horiz/vertical flux
     c_eff (:,:,:),        & !fraction efficace
     lai_eff (:,:,:,:),    & !effective surface for dust deflation from LAI condition
-    w_str (:,:,:),        & !threshold soil moisture w' (Fecan, F. et al., 1999)
+    w_str (:,:),        & !threshold soil moisture w' (Fecan, F. et al., 1999)
     umin2(:,:,:),         &
     d_emis(:,:,:),         & !dust emission
     biome(:,:),         &
@@ -109,7 +109,7 @@ MODULE mo_dust
     alpha2   (:,:),      & ! ratio horiz/vertical flux
     feff    (:,:,:),    & ! drag partition
     veff    (:,:,:),    &   ! effective vegetation
-    mfac    (:,:,:)
+    mfac    (:,:)          ! moisture factore
   END TYPE dust_subdomain
   TYPE (dust_subdomain), ALLOCATABLE, TARGET :: dust(:)
 
