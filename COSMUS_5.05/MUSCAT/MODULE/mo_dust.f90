@@ -37,6 +37,7 @@ MODULE mo_dust
     moist_scheme, &
     psrcType,     & ! Flag for type of potential dust source
                     ! 0 : psrc, 1 : msgsrc, 2 : acDust
+    soilmaptype,      & ! 0 : solspe table, 1 : soilgrids
     threshold_scheme   ! 0 : Marticorena, 1 : Shao  !
 
   !-- Files with soil data
@@ -55,6 +56,13 @@ MODULE mo_dust
   ! description of dust particles for external use
   INTEGER, PARAMETER :: DustBins = 5  !8  ! number of dust particle fractions
   INTEGER :: DustInd(DustBins)            ! indices of dust particles
+
+  REAL :: dustbin_top(DustBins)
+  DATA dustbin_top(1) /1.E-6/,  &
+       dustbin_top(2) /3.E-6/,  &
+       dustbin_top(3) /9.E-6/,  &
+       dustbin_top(4) /26.E-6/, &
+       dustbin_top(5) /80.E-6/
 
   CHARACTER(20) :: DustName(DustBins)
   DATA  DustName(1) /'DP_01'/,     &
@@ -81,12 +89,13 @@ MODULE mo_dust
   TYPE dust_subdomain
   REAL(8), POINTER ::     &
     soilprop (:,:,:,:),   & !soil properties
+    soilmap(:,:,:),       & ! sand, silt, clay map
     lai (:,:,:,:),        & !leafe area index
     vegmin (:,:,:),       & !minimum of vegetation
     alpha (:,:,:),        & !ratio horiz/vertical flux
     c_eff (:,:,:),        & !fraction efficace
     lai_eff (:,:,:,:),    & !effective surface for dust deflation from LAI condition
-    w_str (:,:,:),        & !threshold soil moisture w' (Fecan, F. et al., 1999)
+    w_str (:,:),        & !threshold soil moisture w' (Fecan, F. et al., 1999)
     umin2(:,:,:),         &
     d_emis(:,:,:),         & !dust emission
     biome(:,:),         &
@@ -100,7 +109,7 @@ MODULE mo_dust
     alpha2   (:,:),      & ! ratio horiz/vertical flux
     feff    (:,:,:),    & ! drag partition
     veff    (:,:,:),    &   ! effective vegetation
-    mfac    (:,:,:)
+    mfac    (:,:)          ! moisture factore
   END TYPE dust_subdomain
   TYPE (dust_subdomain), ALLOCATABLE, TARGET :: dust(:)
 
@@ -115,9 +124,27 @@ MODULE mo_dust
     nats   = 45,        & ! amount of soil types
     nclass = 196          ! amount of particule classes
 
+  INTEGER :: &
+    nmode          ! number of soil modes, depending on the soil data set
+                   ! nmode = 3 for soilgrids data
+                   ! nmode = 4 for the lookup table
+
+  REAL, ALLOCATABLE :: &
+    median_dp(:)   ! median particle diameter of mode
+                   ! IF (nmode = 3) median_dp = (707.0E-6,158.0E-6,15.0E-6,2.0E-6)
+                   ! IF (nmode = 4) median_dp = (158.0E-6,15.0E-6,2.0E-6)
+
   ! dummy variable for input, allocate new when switch from 2d to 3d
   REAL(8), ALLOCATABLE ::  &
     read_input(:,:,:)       ! (j,i,time)
+
+  REAL(8), ALLOCATABLE ::  &
+    srel_map(:,:,:)          ! (j,i,nclass)
+
+  REAL (8)   :: &
+    dp_meter(nclass) ! particle diameter [m]
+
+
 
   REAL (8)   :: &
     Uth(Nclass)!,              & ! threshold friction velocity

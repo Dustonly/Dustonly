@@ -143,9 +143,14 @@ MODULE src_dust
     CHARACTER(20)  :: &
       string
     CHARACTER(120) :: &
-      SoilFile
+      ifile(10)
     CHARACTER(120) :: &
       filename
+
+    INTEGER ::    &
+      ifile_num,  &
+      ifile_dim(10)
+
 
     INTEGER  ::  &
     dimveg,      & ! time dimension of vegetation  = 12 if monthly, = nSimuDays if daily
@@ -177,12 +182,14 @@ MODULE src_dust
     ! ------------------------------------
     IF (yaction == "init") THEN
 
+      ifile_num = 0
+
       ! +-+-+- Sec 1.1 Check -+-+-+
       ! Check consistency of namelist settings
 
 
       ! dust_scheme need right values
-      IF (dust_scheme < 0 .OR. dust_scheme > 1) THEN
+      IF (dust_scheme < 0 .OR. dust_scheme > 2) THEN
         ierr = 100001
         yerr = 'wrong value for dust_scheme'
         PRINT*,'ERROR    src_dust "init" '
@@ -195,6 +202,25 @@ MODULE src_dust
       IF (TRIM(soiltypeFile) == 'without') THEN
         ierr = 100002
         yerr = 'SoilTypeFile is missing'
+        PRINT*,'ERROR    src_dust "init" '
+        PRINT*,'         #',ierr
+        PRINT*,'         ',yerr
+        STOP
+      ELSE
+        ifile_num = ifile_num + 1
+        ifile(ifile_num) = 'soil'
+        IF (soilmaptype == 1) ifile_dim(ifile_num) = 1
+        IF (soilmaptype == 2) ifile_dim(ifile_num) = 3
+      END IF
+
+
+      IF (soilmaptype == 1) THEN
+        nmode = 4
+      ELSEIF (soilmaptype == 2) THEN
+        nmode = 3
+      ELSE
+        ierr = 1000023
+        yerr = 'wrong value for soilmaptype'
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
         PRINT*,'         ',yerr
@@ -220,6 +246,10 @@ MODULE src_dust
         PRINT*,'         #',ierr
         PRINT*,'         ',yerr
         STOP
+      ELSE
+        ifile_num = ifile_num + 1
+        ifile(ifile_num) = 'source'
+        ifile_dim(ifile_num) = 1
       END IF
 
       ! z0File maybe necessary
@@ -231,6 +261,10 @@ MODULE src_dust
           PRINT*,'         #',ierr
           PRINT*,'         ',yerr
           STOP
+        ELSE
+          ifile_num = ifile_num + 1
+          ifile(ifile_num) = 'z0'
+          ifile_dim(ifile_num) = 1
         END IF
       ELSE
         z0File = 'without'
@@ -257,6 +291,10 @@ MODULE src_dust
           PRINT*,'         #',ierr
           PRINT*,'         ',yerr
           STOP
+        ELSE
+          ifile_num = ifile_num + 1
+          ifile(ifile_num) = 'biom'
+          ifile_dim(ifile_num) = 1
         END IF
       ELSE
         biomeFile = 'without'
@@ -283,7 +321,9 @@ MODULE src_dust
           STOP
         END IF
         ! if vegmonFile and vegdayFile are specified then vegdayFile is prefered
-        IF (TRIM(vegmonFile) /= 'without' .AND. TRIM(vegdayFile) /= 'without') vegmonFile = 'without'
+        IF (TRIM(vegmonFile) /= 'without' .AND. TRIM(vegdayFile) /= 'without') THEN
+          vegmonFile = 'without'
+        ENDIF
         ! set flag for daily vegetation
         lvegdaily = .FALSE.
         IF (TRIM(vegdayFile) /= 'without') lvegdaily = .TRUE.
@@ -292,9 +332,37 @@ MODULE src_dust
         vegdayFile = 'without'
       ENDIF
 
+      ! Init of vegitation time dimension
+      !   climatological or daily data
+      IF (veg_scheme > 0 ) THEN
+        ! If there is no daily data monthly data will be used
+        dimveg = 12
+        ! when daily data is available calc max number of days in the simulation
+        IF (lvegdaily) dimveg = CEILING(hstop/24) + 1 ! hardcoding at this point my be helpfull for some tests 366 370!1096!1858!366!
+      ELSE
+        ! if no vegetation scheme is used then dimveg = 1
+        dimveg = 1
+      END IF
+
+      IF (lvegdaily) THEN
+        ifile_num = ifile_num + 1
+        ifile(ifile_num) = 'vegday'
+        ifile_dim(ifile_num) = dimveg
+      ELSEIF( .NOT. lvegdaily .AND. TRIM(vegmonFile) /= 'without') THEN
+        ifile_num = ifile_num + 1
+        ifile(ifile_num) = 'vegmon'
+        ifile_dim(ifile_num) = dimveg
+      END IF
+
+
       ! set flag for minimum vegetation file
       lvegmin = .FALSE.
       IF (TRIM(vegminFile) /= 'without') lvegmin = .TRUE.
+      IF (lvegmin) THEN
+        ifile_num = ifile_num + 1
+        ifile(ifile_num) = 'vegmin'
+        ifile_dim(ifile_num) = 1
+      END IF
 
       ! soil moisture need input stream
       ! at the moment soil moisture only for the offline version
@@ -307,11 +375,18 @@ MODULE src_dust
           PRINT*,'         #',ierr
           PRINT*,'         ',yerr
           STOP
+        ELSE
+          ifile_num = ifile_num + 1
+          ifile(ifile_num) = 'moist'
+          ifile_dim(ifile_num) = nt!lasttstep
         END IF
+      ELSE
+        moistFile = 'without'
       END IF
 #else
       moist_scheme=0
 #endif
+
 
 
       ! +-+-+- Sec 1.2 Init -+-+-+
@@ -352,17 +427,6 @@ MODULE src_dust
       END IF
 
 
-      ! Init of vegitation time dimension
-      !   climatological or daily data
-      IF (veg_scheme > 0 ) THEN
-        ! If there is no daily data monthly data will be used
-        dimveg = 12
-        ! when daily data is available calc max number of days in the simulation
-        IF (lvegdaily) dimveg = CEILING(hstop/24) + 1 ! hardcoding at this point my be helpfull for some tests 366 370!1096!1858!366!
-      ELSE
-        ! if no vegetation scheme is used then dimveg = 1
-        dimveg = 1
-      END IF
 
 
       ! - Init of 'dust' type 'dust_subdomain', see data_dust
@@ -396,7 +460,7 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%lai_eff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac,1:dimveg))
         ALLOCATE(dust(ib1)%w_str(decomp(ib1)%iy0+1:decomp(ib1)%iy1,         &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac))
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
         ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,        &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
 
@@ -408,7 +472,7 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%veg(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
         ALLOCATE(dust(ib1)%vmoist(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
-                decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
         ALLOCATE(dust(ib1)%vegmin2(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
 
@@ -426,9 +490,14 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%veff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
         ALLOCATE(dust(ib1)%mfac(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
-                decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1))
         ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
+
+
+        ALLOCATE(dust(ib1)%soilmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,nmode))
+
 
         dust(ib1)%biome(:,:)=0.
         dust(ib1)%cult(:,:)=0.
@@ -441,115 +510,172 @@ MODULE src_dust
         dust(ib1)%alpha2(:,:)=0.
         dust(ib1)%feff(:,:,:)=1.
         dust(ib1)%veff(:,:,:)=1.
-        dust(ib1)%mfac(:,:,:)=1.
+        dust(ib1)%mfac(:,:)=1.
         dust(ib1)%d_emis(:,:,:)=0.
+
+        dust(ib1)%soilmap = 0.
 
       END DO
 
 
-
       ! +-+-+- Sec 1.3 Input -+-+-+
+      DO i = 1, ifile_num
+        print*,ifile(i)
+        AllOCATE (read_input(igy0+1:igy1,igx0+1:igx1,ifile_dim(i)))
+
+        ! only prozess #0 open files
+        IF (my_cart_id == 0) THEN
+          CALL read_infile(ifile(i),read_input,ierr,yerr)
+
+
+          IF (ierr /= 0) THEN
+          print*, ierr
+            ierr = 100009
+            PRINT*,'ERROR    src_dust "init" '
+            PRINT*,'         #',ierr
+            PRINT*,'         ERROR reading',TRIM(ifile(i))
+            PRINT*,'         ',yerr
+            STOP
+          END IF
+
+        END IF !(my_cart_id == 0)
+
+#ifndef OFFLINE
+        ! distribut input to all px if necessary
+        IF (num_compute > 1) THEN
+          CALL MPI_BCAST(read_input,size(read_input),imp_reals,0,icomm_cart,ierr)
+        END IF
+#endif
+        ! copy to muscat block structur
+        DO ibLoc=1,nbLoc
+#ifndef OFFLINE
+          ib1 = LocGlob(ibLoc)
+#else
+          ib1 = 1
+#endif
+          IF (TRIM(ifile(i)) == 'soil' .AND. soilmaptype == 1) copy2d => dust(ib1)%soiltype
+          IF (TRIM(ifile(i)) == 'soil' .AND. soilmaptype == 2) copy3d => dust(ib1)%soilmap
+          IF (TRIM(ifile(i)) == 'source' ) copy2d => dust(ib1)%source
+          ! IF (filenum == 1) copy2d => dust(ib1)%soiltype
+          ! IF (filenum == 2) copy2d => dust(ib1)%source
+          ! IF (filenum == 3) copy2d => dust(ib1)%z0
+          ! IF (filenum == 4) copy2d => dust(ib1)%biome
+          ! IF (filenum == 5) copy3d => dust(ib1)%veg
+          ! IF (filenum == 6) copy3d => dust(ib1)%veg
+          ! IF (filenum == 7) copy2d => dust(ib1)%vegmin2
+          IF (TRIM(ifile(i)) == 'source') copy3d => dust(ib1)%vmoist
+          !
+          IF (ifile_dim(i) == 1) CALL copy2block(decomp(ib1),2,read_input,too2d=copy2d)
+          IF (ifile_dim(i)  > 1) CALL copy2block(decomp(ib1),3,read_input,too3d=copy3d)
+
+
+
+        END DO
+
+        DEALLOCATE(read_input)
+      END DO ! i = 1, ifile_num
+
 
       ! - Loop over all possible input files
-      DO filenum = 1,8
-
-        ! dim = 2 mostly
-        dim = 2
-
-        ! specify filename,
-        ! soiltype (2d)
-        IF (filenum == 1) filename = soiltypeFile
-
-        ! source (2d)
-        IF (filenum == 2) filename = psrcFile
-
-        ! z0 (2d)
-        IF (filenum == 3) filename = z0File
-
-        ! biome (2d)
-        IF (filenum == 4) filename = biomeFile
-
-        ! vegmon (3d)
-        IF (filenum == 5) filename = vegmonFile
-        IF (filenum == 5) dim = 3
-
-        ! vegday (3d)
-        IF (filenum == 6) filename = vegdayFile
-        IF (filenum == 6) dim = 3
-
-        ! vegmin (2d)
-        IF (filenum == 7) filename = vegminFile
-
-        ! vegday (3d)
-        IF (filenum == 8) filename = moistFile
-        IF (filenum == 8) dim = 3
-
-        ! if (filename == without) nothing happen
-        IF (TRIM(filename) /= 'without') THEN
-
-          ! allocate var to store the input
-          IF (dim == 2) AllOCATE (read_input(igy0+1:igy1,igx0+1:igx1,1))
-          IF (dim == 3) AllOCATE (read_input(igy0+1:igy1,igx0+1:igx1,dimveg))
-
-          ! only prozess #0 open files
-          IF (my_cart_id == 0) THEN
-            ! decide ascii or netcdf
-            IF (filename(LEN(TRIM(filename))-2:) == '.nc') THEN
-              IF (filenum == 1) STOP 'nc input not supported yet for soiltype yet' ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
-              IF (filenum == 2) CALL read_nc(TRIM(filename),'acfrac' ,read_input,0,.FALSE.,ierr,yerr)     ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
-              IF (filenum == 3) STOP 'nc input not supported yet for z0 yet'       ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
-              IF (filenum == 4) STOP 'nc input not supported yet for biome'    ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
-              IF (filenum == 5) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,dimveg,.FALSE.,ierr,yerr)
-              IF (filenum == 6) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,dimveg,.TRUE. ,ierr,yerr)
-              IF (filenum == 7) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,1     ,.FALSE.,ierr,yerr)
-              IF (filenum == 8) CALL read_nc(TRIM(filename),'swvl1' ,read_input,dimveg     ,.FALSE.,ierr,yerr)
-
-              IF (ierr /= 0) THEN
-                print*, ierr
-                ierr = 100009
-                PRINT*,'ERROR    src_dust "init" '
-                PRINT*,'         #',ierr
-                PRINT*,'         ERROR reading',TRIM(filename)
-                PRINT*,'         ',yerr
-                STOP
-              END IF
-            ELSE
-              CALL read_ascii(TRIM(filename),read_input)
-            END IF
-          END IF ! (my_cart_id == 0)
-
-#ifndef OFFLINE
-          ! distribut input to all px if necessary
-          IF (num_compute > 1) THEN
-            CALL MPI_BCAST(read_input,size(read_input),imp_reals,0,icomm_cart,ierr)
-          END IF
-#endif
-          ! copy to muscat block structur
-          DO ibLoc=1,nbLoc
-#ifndef OFFLINE
-            ib1 = LocGlob(ibLoc)
-#else
-            ib1 = 1
-#endif
-            IF (filenum == 1) copy2d => dust(ib1)%soiltype
-            IF (filenum == 2) copy2d => dust(ib1)%source
-            IF (filenum == 3) copy2d => dust(ib1)%z0
-            IF (filenum == 4) copy2d => dust(ib1)%biome
-            IF (filenum == 5) copy3d => dust(ib1)%veg
-            IF (filenum == 6) copy3d => dust(ib1)%veg
-            IF (filenum == 7) copy2d => dust(ib1)%vegmin2
-            IF (filenum == 8) copy3d => dust(ib1)%vmoist
-
-            IF (dim == 2) CALL copy2block(decomp(ib1),dim,read_input,too2d=copy2d)
-            IF (dim == 3) CALL copy2block(decomp(ib1),dim,read_input,too3d=copy3d)
-
-
-          END DO
-
-          DEALLOCATE(read_input)
-        END IF ! (TRIM(filename) /= 'without')
-
-      END DO ! (filenum = 1,7)
+!       DO filenum = 1,8
+!
+!         ! dim = 2 mostly
+!         dim = 2
+!
+!         ! specify filename,
+!         ! soiltype (2d)
+!         IF (filenum == 1) filename = soiltypeFile
+!
+!         ! source (2d)
+!         IF (filenum == 2) filename = psrcFile
+!
+!         ! z0 (2d)
+!         IF (filenum == 3) filename = z0File
+!
+!         ! biome (2d)
+!         IF (filenum == 4) filename = biomeFile
+!
+!         ! vegmon (3d)
+!         IF (filenum == 5) filename = vegmonFile
+!         IF (filenum == 5) dim = 3
+!
+!         ! vegday (3d)
+!         IF (filenum == 6) filename = vegdayFile
+!         IF (filenum == 6) dim = 3
+!
+!         ! vegmin (2d)
+!         IF (filenum == 7) filename = vegminFile
+!
+!         ! vegday (3d)
+!         IF (filenum == 8) filename = moistFile
+!         IF (filenum == 8) dim = 3
+!
+!         ! if (filename == without) nothing happen
+!         IF (TRIM(filename) /= 'without') THEN
+!
+!           ! allocate var to store the input
+!           IF (dim == 2) AllOCATE (read_input(igy0+1:igy1,igx0+1:igx1,1))
+!           IF (dim == 3) AllOCATE (read_input(igy0+1:igy1,igx0+1:igx1,dimveg))
+!
+!           ! only prozess #0 open files
+!           IF (my_cart_id == 0) THEN
+!             ! decide ascii or netcdf
+!             IF (filename(LEN(TRIM(filename))-2:) == '.nc') THEN
+!               IF (filenum == 1) CALL read_nc(TRIM(filename),'clay' ,read_input,0,.FALSE.,ierr,yerr)
+!               IF (filenum == 2) CALL read_nc(TRIM(filename),'acfrac' ,read_input,0,.FALSE.,ierr,yerr)     ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
+!               IF (filenum == 3) STOP 'nc input not supported yet for z0 yet'       ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
+!               IF (filenum == 4) STOP 'nc input not supported yet for biome'    ! CALL read_nc(TRIM(filename),'varname',read_input,1     ,.FALSE.,ierr,yerr)
+!               IF (filenum == 5) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,dimveg,.FALSE.,ierr,yerr)
+!               IF (filenum == 6) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,dimveg,.TRUE. ,ierr,yerr)
+!               IF (filenum == 7) CALL read_nc(TRIM(filename),'FCOVER' ,read_input,1     ,.FALSE.,ierr,yerr)
+!               IF (filenum == 8) CALL read_nc(TRIM(filename),'swvl1' ,read_input,dimveg     ,.FALSE.,ierr,yerr)
+!
+!               IF (ierr /= 0) THEN
+!                 print*, ierr
+!                 ierr = 100009
+!                 PRINT*,'ERROR    src_dust "init" '
+!                 PRINT*,'         #',ierr
+!                 PRINT*,'         ERROR reading',TRIM(filename)
+!                 PRINT*,'         ',yerr
+!                 STOP
+!               END IF
+!             ELSE
+!               CALL read_ascii(TRIM(filename),read_input)
+!             END IF
+!           END IF ! (my_cart_id == 0)
+!
+! #ifndef OFFLINE
+!           ! distribut input to all px if necessary
+!           IF (num_compute > 1) THEN
+!             CALL MPI_BCAST(read_input,size(read_input),imp_reals,0,icomm_cart,ierr)
+!           END IF
+! #endif
+!           ! copy to muscat block structur
+!           DO ibLoc=1,nbLoc
+! #ifndef OFFLINE
+!             ib1 = LocGlob(ibLoc)
+! #else
+!             ib1 = 1
+! #endif
+!             IF (filenum == 1) copy2d => dust(ib1)%soiltype
+!             IF (filenum == 2) copy2d => dust(ib1)%source
+!             IF (filenum == 3) copy2d => dust(ib1)%z0
+!             IF (filenum == 4) copy2d => dust(ib1)%biome
+!             IF (filenum == 5) copy3d => dust(ib1)%veg
+!             IF (filenum == 6) copy3d => dust(ib1)%veg
+!             IF (filenum == 7) copy2d => dust(ib1)%vegmin2
+!             IF (filenum == 8) copy3d => dust(ib1)%vmoist
+!
+!             IF (dim == 2) CALL copy2block(decomp(ib1),dim,read_input,too2d=copy2d)
+!             IF (dim == 3) CALL copy2block(decomp(ib1),dim,read_input,too3d=copy3d)
+!
+!
+!           END DO
+!
+!           DEALLOCATE(read_input)
+!         END IF ! (TRIM(filename) /= 'without')
+!
+!       END DO ! (filenum = 1,7)
 
 
       ! +-+-+- Sec 1.4 physical init -+-+-+
@@ -565,12 +691,22 @@ MODULE src_dust
 #endif
 
 
+        IF (soilmaptype ==  1) CALL init_soilmap(decomp(ib1))
+        CALL init_alpha(decomp(ib1),2)
+
+
         ! +-+-+- Sec 1.4.1 dust flux -+-+-+
 
         IF (dust_scheme == 1) THEN
           ! init of the dust emission sheme by Tegen et al. 2002
           ! CALL init_tegen(decomp(ib1))!ierr,yerr)
           CALL init_tegen(decomp(ib1),ndays=dimveg)!ierr,yerr)
+        END IF
+
+        IF (dust_scheme == 2) THEN
+          ! init of the dust emission sheme by Tegen et al. 2002
+
+          CALL tegen02('init',decomp(ib1))!ierr,yerr)
         END IF
 
 
@@ -594,7 +730,7 @@ MODULE src_dust
         ! +-+-+- Sec 1.4.3 moisture -+-+-+
         IF (moist_scheme == 1) THEN
           print*, 'call fecan'
-          CALL fecan(decomp(ib1),dimveg)
+          CALL fecan(decomp(ib1),ntstep,'init')
         END IF
 
       END DO
@@ -609,7 +745,18 @@ MODULE src_dust
     ! ------------------------------------
     ELSEIF (yaction == "calc") THEN
 
-      CALL emission_tegen(subdomain,flux)
+      IF (moist_scheme == 1) THEN
+        CALL fecan(decomp(ib1),ntstep,'calc')
+      END IF
+
+      IF (dust_scheme == 1) THEN
+        CALL emission_tegen(subdomain,flux)
+      END IF
+
+      IF (dust_scheme == 2) THEN
+        ! init of the dust emission sheme by Tegen et al. 2002
+        CALL tegen02(yaction,subdomain)!ierr,yerr)
+      END IF
       ! STOP 'TESTING'
 
     END IF ! (yaction == "***")
@@ -617,6 +764,459 @@ MODULE src_dust
 
     ! STOP 'TESTING'
   END SUBROUTINE organize_dust
+
+  !+ init_soilmap
+  !---------------------------------------------------------------------
+  SUBROUTINE init_soilmap(subdomain)
+  !---------------------------------------------------------------------
+  ! Description:
+
+  !--------------------------------------------------------------------
+
+    USE mo_dust
+    USE dust_tegen_data
+#ifdef OFFLINE
+    USE offline_org
+#endif
+
+    IMPLICIT NONE
+
+    TYPE(rectangle), INTENT(IN) :: subdomain
+
+    INTEGER :: &
+      i,j
+
+    REAL(8), POINTER ::  &
+      soiltype(:,:),     &
+      soilmap(:,:,:)
+
+    soiltype => dust(subdomain%ib)%soiltype(:,:)
+    soilmap => dust(subdomain%ib)%soilmap(:,:,:)
+
+    ! start lon-lat-loop
+    DO i=1,subdomain%ntx
+      DO j=1,subdomain%nty
+
+        IF (soiltype(j,i) > 0.0) THEN
+          soilmap(j,i,1) = solspe(soiltype(j,i),3)
+          soilmap(j,i,2) = solspe(soiltype(j,i),6)
+          soilmap(j,i,3) = solspe(soiltype(j,i),9)
+          soilmap(j,i,4) = solspe(soiltype(j,i),12)
+        ELSE
+          soilmap(j,i,:) = 0.0
+        END IF
+
+      END DO
+    END DO
+    ! end lon-lat-loop
+
+  END SUBROUTINE init_soilmap
+
+  !+ init_alpha
+  !---------------------------------------------------------------------
+  SUBROUTINE init_alpha(subdomain,alpha_type)
+  !---------------------------------------------------------------------
+  ! Description:
+
+  !--------------------------------------------------------------------
+
+    USE mo_dust
+    USE dust_tegen_data
+#ifdef OFFLINE
+    USE offline_org
+#endif
+
+    IMPLICIT NONE
+
+    TYPE(rectangle), INTENT(IN) :: subdomain
+
+    INTEGER, INTENT(IN) :: alpha_type
+
+    INTEGER :: &
+      i,j
+
+    REAL(8), POINTER ::  &
+      alpha(:,:), &
+      soiltype(:,:), &
+      soilmap(:,:,:)
+
+
+
+    alpha    => dust(subdomain%ib)%alpha2(:,:)
+    soiltype => dust(subdomain%ib)%soiltype(:,:)
+    soilmap  => dust(subdomain%ib)%soilmap(:,:,:)
+
+    ! start lon-lat-loop
+    DO i=1,subdomain%ntx
+      DO j=1,subdomain%nty
+
+        !alpha_type == 1 : lookup table
+        IF (alpha_type == 1) THEN
+
+          ! if the soil type is in the lookup table
+          IF (soiltype(j,i) > 0 .AND. soiltype(j,i) < nats) THEN
+            alpha(j,i) = solspe(soiltype(j,i),13)
+          ELSE
+            alpha(j,i) = 0.
+          END IF
+
+        ! alpha_type == 2 : calc from fraction
+        ELSEIF (alpha_type == 2) THEN
+          IF (soilmaptype == 1) THEN
+            alpha(j,i) = soilmap(j,i,1) * 1.E-7 &
+                  + soilmap(j,i,2) * 1.E-6 &
+                  + soilmap(j,i,3) * 1.E-5 &
+                  + soilmap(j,i,4) * 1.E-6
+            IF (soilmap(j,i,4) > 0.45) THEN
+              alpha(j,i) = soilmap(j,i,1) * 1.E-7 &
+                    + soilmap(j,i,2) * 1.E-6 &
+                    + soilmap(j,i,3) * 1.E-5 &
+                    + soilmap(j,i,4) * 1.E-7
+            END IF
+          ELSEIF (soilmaptype == 2) THEN
+            alpha(j,i) = soilmap(j,i,1) * 1.E-6 &
+                  + soilmap(j,i,2) * 1.E-5 &
+                  + soilmap(j,i,3) * 1.E-6
+            IF (soilmap(j,i,3) > 0.45) THEN
+              alpha(j,i) = soilmap(j,i,1) * 1.E-6 &
+                    + soilmap(j,i,2) * 1.E-5 &
+                    + soilmap(j,i,3) * 1.E-7
+            END IF
+          ENDIF
+
+        ! alpha_type == 3 : clay fraction eq from Marticorena
+        !ELSEIF (alpha_type == 3) THEN
+
+        END IF
+
+      END DO
+    END DO
+    ! end lon-lat-loop
+
+    ! all alpha values are in [cm-1] but for for dust_scheme == 2 we need alpha in [m-1]
+    IF (dust_scheme == 2)  THEN
+      alpha = alpha*100. !  [cm-1] = 100 [m-1]
+    END IF
+
+
+  END SUBROUTINE init_alpha
+
+
+  !+ init_tegen
+  !---------------------------------------------------------------------
+  SUBROUTINE tegen02(yaction,subdomain)
+  !---------------------------------------------------------------------
+  ! Description:
+  !   This subroutine performes the initialization for
+  !   the dust emisson scheme by Tegen et al. 2002
+  !   https://doi.org/10.1029/2001JD000963
+  !
+  !   The Physics used by Tegen based on the paper of
+  !   Marticorena and Bergametti 1995
+  !   https://doi.org/10.1029/95JD00690
+  !
+  ! The code based on Tegen et al. 2002
+  !--------------------------------------------------------------------
+
+    ! Modules
+    USE mo_dust
+    USE tegen02_param
+    USE dust_tegen_data
+#ifdef OFFLINE
+    USE offline_org
+#endif
+
+
+    IMPLICIT NONE
+
+    CHARACTER(LEN=*), INTENT(IN)            :: &
+      yaction ! action to be performed
+
+    TYPE(rectangle), INTENT(IN) :: subdomain
+
+
+    INTEGER :: &
+      i,j,n,m, & ! loops
+      tnow
+
+    REAL(8) :: &
+      dp,      & ! Current diameter
+      dmy_B,   & ! Reynolds number, dummy for thresold friction velocity
+      dmy_K,   &   ! Reynolds number, dummy for thresold friction velocity
+      dM,      &   ! mass size distribution
+      stot,    &    ! total basal surface
+      uwind,   &
+      vwind,   &
+      ustar,   &
+      tot_wind,   &
+      time_start, &
+      time_now, &
+      uthp, &
+      dmy_R, &
+      s_rel,  &
+      dflux
+
+    REAL(8) :: &
+      fluxtot (ntrace), &
+      fluxbin (ntrace)
+
+    real    ::  T1,T2
+
+    REAL(8), POINTER :: source(:,:)
+    REAL(8), POINTER :: soilmap(:,:,:)
+    REAL(8), POINTER :: feff(:,:,:)
+    REAL(8), POINTER :: veff(:,:,:)
+    REAL(8), POINTER :: mfac(:,:)
+    REAL(8), POINTER :: z0(:,:)
+    REAL(8), POINTER :: alpha(:,:)
+    REAL(8), POINTER :: DustEmis(:,:,:)
+
+#ifndef OFFLINE
+    REAL(8), POINTER :: dxK(:,:)
+    REAL(8), POINTER :: dyK(:,:)
+    REAL(8), POINTER :: dz(:,:,:)
+    REAL(8), POINTER :: usur(:,:)
+    REAL(8), POINTER :: vsur(:,:)
+    REAL(8), POINTER :: qrsur(:,:)
+    REAL(8), POINTER :: rhosur(:,:)
+    REAL(8), POINTER :: EmiRate(:,:,:,:)
+#endif
+
+    source   => dust(subdomain%ib)%source(:,:)
+    soilmap  => dust(subdomain%ib)%soilmap(:,:,:)
+    feff     => dust(subdomain%ib)%feff(:,:,:)
+    veff     => dust(subdomain%ib)%veff(:,:,:)
+    mfac     => dust(subdomain%ib)%mfac(:,:)
+    z0       => dust(subdomain%ib)%z0(:,:)
+    alpha    => dust(subdomain%ib)%alpha2(:,:)
+    DustEmis => dust(subdomain%ib)%d_emis(:,:,:)
+
+
+#ifndef OFFLINE
+    dxK     => geo  (subdomain%ib)%dxK(:,:)
+    dyK     => geo  (subdomain%ib)%dyK(:,:)
+    dz      => geo  (subdomain%ib)%dz(:,:,:)
+    rhosur  => meteo(subdomain%ib)%rho(1,:,:,ScalCur)
+    qrsur   => meteo(subdomain%ib)%QRSur(:,:,ScalCur)
+    usur    => meteo(subdomain%ib)%u(1,:,:,WindCur)
+    vsur    => meteo(subdomain%ib)%v(1,:,:,WindCur)
+    EmiRate  => block(subdomain%ib)%EmiRate(:,:,:,:)
+#endif
+
+
+    IF (yaction == 'init') THEN
+      call cpu_time(T1)
+
+      ! +-+-+- Sec xx define particle diameter -+-+-+
+
+      ! define particle diameter
+      dp_meter(1) = Dmin
+      DO n = 2, nclass
+        dp_meter(n) = dp_meter(n-1) * EXP(Dstep)
+      END DO
+
+
+      ALLOCATE(median_dp(nmode))
+
+      median_dp(nmode)   = median_dp_clay
+      median_dp(nmode-1) = median_dp_silt
+      median_dp(nmode-2) = median_dp_sand
+      IF (nmode == 4) median_dp(nmode-3) = median_dp_csand
+
+      ALLOCATE(srel_map(subdomain%nty,subdomain%ntx,nclass))
+
+
+
+      ! +-+-+- Sec xx  calculat thresold friction velocity -+-+-+
+
+      ! particle size loop, calculation of Uth for every particle size
+      DO n = 1, nclass
+        dp = dp_meter(n)
+
+        IF (threshold_scheme == 0) THEN
+
+          dmy_K = SQRT(rop * g * dp / roa) * SQRT(10000. + 0.006 /(rop * g * dp ** 2.5))   ! Marticorena 95 eq(4) but in [m]
+          dmy_B = a_rnolds * (dp ** x_rnolds) + b_rnolds                                   ! Marticorena 95 eq(5)
+          IF (dmy_B < 10) THEN
+            Uth(n) = 0.0013 * dmy_K / SQRT(1.928 * (dmy_B ** 0.092) - 1.)                  ! Marticorena 95 eq(6) but in [m]
+          ELSE
+            Uth(n) = 0.001207 * dmy_K * ( 1. -0.0858 * EXP(-0.0617 * (dmy_B - 10.)) )      ! Marticorena 95 eq(7) but in [m]
+          END IF
+        ELSEIF (threshold_scheme == 1) THEN
+          Uth(n) = SQRT(0.0123 * (rop/roa * g *dp + 3.e-4/(roa*dp)) )
+        END IF
+
+      END DO ! n = 1, nclass
+
+      ! +-+-+- Sec xx srel calculation -+-+-+
+      ! start lon-lat-loop
+      DO i = 1,subdomain%ntx
+        DO j = 1,subdomain%nty
+
+          stot = 0.
+          DO n = 1, nclass
+            dp = dp_meter(n)
+
+            ! calc soil mass size distribution Marticorena 95 eq(29)
+            dM = 0.
+            DO m = 1, nmode
+              dM = dM + soilmap(j,i,m)/(SQRT(2. * pi) * LOG(sigma)) &
+                      * EXP((LOG(dp) - LOG(median_dp(m)))**2. / (-2. * LOG(sigma)**2.))
+            END DO
+
+            ! size distribution of basal surface Marticorena 95 eq(30)
+            srel_map(j,i,n) = dM / (2./3. * rop * dp) * Dstep
+
+            ! total basal surface Marticorena 95 eq(31)
+            stot = stot + srel_map(j,i,n)
+
+          END DO ! n = 1, nclass
+
+
+          DO n = 1, nclass
+            dp = dp_meter(n)
+
+            IF (stot > 0.) THEN
+              srel_map(j,i,n) = srel_map(j,i,n)/stot
+            ELSE
+              srel_map(j,i,n) = 0.
+            END IF
+
+          END DO ! n = 1, nclass
+
+
+        END DO ! j=1,subdomain%nty
+      END DO ! i=1,subdomain%ntx
+
+
+      call cpu_time(T2)
+
+      print*, 'init time:',T2-T1
+
+    ELSEIF (yaction == 'calc') THEN
+      ! +-+-+- Sec 1 Set the actually date -+-+-+
+
+      ! the drag partition (feff) has a dependency on time
+      IF (veg_scheme > 0) THEN
+        IF (lvegdaily) THEN
+          ! find the exact day and set "tnow" with the number of the actually day
+          READ(ydate_ini(9:10),*) time_start
+          time_start=time_start + hstart
+          time_now=time_start+ntstep*dt/3600.
+          tnow=time_now/24 + 1 ! convert to integer
+        ELSE ! if the drag partition has monthly values "tnow" is the number of the month
+          READ(StartDate,'(4x,i2)') tnow
+        END IF
+      ELSE
+        tnow = 1
+      END IF
+
+      DO i=1,subdomain%ntx
+        DO j=1,subdomain%nty
+          call cpu_time(T1)
+
+          ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
+
+#ifndef OFFLINE
+          !---  flux initialisations
+          uwind = usur(j,i+1)/dyK(j,i+1)+usur(j,i)/dyK(j,i)
+          uwind = 0.5E0 * uwind / dz(1,j,i)
+          vwind = vsur(j+1,i)/dxK(j+1,i)+vsur(j,i)/dxK(j,i)
+          vwind = 0.5E0 * vwind / dz(1,j,i)
+
+          tot_wind = SQRT(uwind**2+vwind**2)/rhosur(j,i)
+#else
+          tot_wind = SQRT(u(j,i,ntstep)**2+v(j,i,ntstep)**2)
+#endif
+
+
+          IF(feff(j,i,tnow) <= 0.) THEN
+           ustar = 0.
+          ELSE
+            ustar = (VK * tot_wind )/(log( dz(1,j,i)/(z0(j,i)/100.))) !!m/s
+          END IF  !! IF(feff(j,i,tnow).LE.0.)
+
+          IF(feff(j,i,tnow) > 0. .AND. ustar > 0. ) THEN
+
+            m = 1 ! index of dust bin
+            dflux = 0.
+            fluxbin = 0.
+
+            DO n = 1, nclass
+              dp = dp_meter(n)
+
+              ! calculate the recent threshold friction velocity
+              ! from the particle thr. fric. velo.,
+              ! the drag partition from soil roughness and vegetation
+              ! and the moisture factor
+              uthp = uth(n)/feff(j,i,tnow) * mfac(j,i)
+
+              s_rel = srel_map(j,i,n)
+
+              IF (m > DustBins) m = DustBins
+              IF (m <= DustBins) THEN
+                IF (dp > dustbin_top(m)) m = m+1
+              END IF
+
+
+              IF (ustar > uthp) THEN
+                dmy_R = uthp/ustar
+              ELSE
+                dmy_R = 1
+              END IF
+
+
+              ! Horizontal dust flux
+              dflux = roa/g * ustar**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
+              ! END IF
+
+              ! Vertical dust flux
+              dflux = dflux * alpha(j,i)
+
+              ! bin-wise integration
+              IF (m <= DustBins) THEN
+                fluxbin(m) = fluxbin(m)+dflux
+              END IF
+
+
+            END DO ! n = 1, nclass
+
+
+          ENDIF
+
+          ! DO n=1,ntrace
+          !   fluxtot(n) = fluxtot(n) + fluxbin(n)
+          ! END DO
+
+          DO n=1,ntrace
+            ! fluxtot: g/cm2/sec --> kg/m2/sec
+            !
+
+            ! Mask Effective area determined by preferential source fraction:
+            ! only for psrcType = 2
+            IF (psrcType == 2) THEN
+              fluxbin(n) = fluxbin(n) * source(j,i)
+            END IF
+
+            ! Mask Effective area determined by vegetation fraction:
+            ! only for veg_scheme = 2
+            IF (veg_scheme == 2) THEN
+              fluxbin(n) = fluxbin(n) * veff(j,i,tnow)
+            END IF
+
+            ! write output in [g m-2 s-1]
+            DustEmis(j,i,n) = fluxbin(n) * 1.E3
+          END DO
+
+          call cpu_time(T2)
+          !print*, 'calc time step:',T2-T1
+        END DO ! j
+      END DO ! i
+
+    END IF ! yaction
+
+
+  END SUBROUTINE tegen02
 
   !+ init_tegen
   !---------------------------------------------------------------------
@@ -856,7 +1456,7 @@ MODULE src_dust
         IF(isoiltype < 1 .or. isoiltype > nats) isoiltype=9
 
         ! init alpha from lookup table
-        alpha(j,i) = solspe(isoiltype,nmode*3+1)
+        !alpha(j,i) = solspe(isoiltype,nmode*3+1)
 
         ! avoid z0 = 0. at any place
         IF (z0(j,i) == 0.0) z0(j,i)=1.E-9
@@ -1081,7 +1681,6 @@ MODULE src_dust
     REAL(8), POINTER :: vsur(:,:)
     REAL(8), POINTER :: qrsur(:,:)
     REAL(8), POINTER :: rhosur(:,:)
-
 #endif
 
     REAL(8), POINTER :: soiltype(:,:)
@@ -1089,7 +1688,7 @@ MODULE src_dust
     REAL(8), POINTER :: alpha(:,:)
     REAL(8), POINTER :: feff(:,:,:)
     REAL(8), POINTER :: veff(:,:,:)
-    REAL(8), POINTER :: mfac(:,:,:)
+    REAL(8), POINTER :: mfac(:,:)
     REAL(8), POINTER :: z0(:,:)
     ! REAL(8), POINTER :: umin2(:,:)
     REAL(8), PARAMETER :: umin2=umin
@@ -1118,7 +1717,7 @@ MODULE src_dust
     alpha    => dust(subdomain%ib)%alpha2(:,:)
     feff     => dust(subdomain%ib)%feff(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
-    mfac     => dust(subdomain%ib)%mfac(:,:,:)
+    mfac     => dust(subdomain%ib)%mfac(:,:)
     z0       => dust(subdomain%ib)%z0(:,:)
     ! lai_eff => dust(subdomain%ib)%lai_eff(:,:,:,:)
     ! umin2    => dust(subdomain%ib)%umin2(:,:,1)
@@ -1154,8 +1753,6 @@ MODULE src_dust
 
     DO i=1,subdomain%ntx
       DO j=1,subdomain%nty
-        ! print*, 'dxK',dyK(j,i),'dyK',dyK(j,i),'dz',dz(1,j,i)
-
         ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
 #ifndef OFFLINE
@@ -1208,12 +1805,10 @@ MODULE src_dust
         ELSE
           !ustar = (VK * van *100.)/(log(0.5E0 * 100 * dz(1,j,i)/z0(j,i))) !!cm/s
           ustar = (VK * van *100.)/(log(100 * dz(1,j,i)/z0(j,i))) !!cm/s
-         ! print*, i,j,ustar,dz(1,j,i)/z0(j,i),ustar_fv(i,j)
         END IF  !! IF(feff(j,i,tnow).LE.0.)
 
 
         ! +-+-+- Sec 3 Flux calculation -+-+-+
-        ! print*,tnow,shape(feff)
         IF (feff(j,i,tnow) > 0.) THEN
           IF (Ustar > 0 .AND. Ustar > umin2/feff(j,i,tnow) ) THEN
             kk = 0
@@ -1225,12 +1820,12 @@ MODULE src_dust
               ! ! Is this reduction necessary (MF)?
               Uthp=uth(kk)*umin2/umin*u1fac !reduce threshold for cultivated soils
               ! drag coeff
-              ! Uthp=Uthp/feff(j,i,tnow)
+              Uthp=Uthp/feff(j,i,tnow)
               ! ! moist
               ! Uthp=Uthp*mfac(j,i,tnow)
               ! Marticorena:
-              fdp1 = (1.-(Uthp/(feff(j,i,tnow) * Ustar)))
-              fdp2 = (1.+(Uthp/(feff(j,i,tnow) * Ustar)))**2.
+              fdp1 = 1.+(Uthp/Ustar)
+              fdp2 = 1.-(Uthp/Ustar)**2.
               ! fdp1 = (1.-(Uthp * Ustar))
               ! fdp2 = (1.+(Uthp * Ustar))**2.
 
@@ -1278,7 +1873,6 @@ MODULE src_dust
                 IF (dbstart >= dp) THEN
                   fluxtyp(kk)=fluxtyp(kk)+flux_diam
                 ELSE
-
                   ! loop over dislocated dust particle sizes
                   dpd=dmin
                   kkk=0
@@ -1295,17 +1889,10 @@ MODULE src_dust
                         fluxtyp(kkk) = fluxtyp(kkk) +flux_diam               &
                                       *srelV(i_s11,kkk)/((su_srelV(i_s11,kk) &
                                       -su_srelV(i_s11,kkmin)))
-
-                        ! if (fluxtyp(kkk) /= fluxtyp(kkk) .or. fluxtyp(kkk) > 10.) THEN
-                        !   print*, 'su_srelV',i_s11,kk,kkmin,srelV(i_s11,kkk),su_srelV(i_s11,kk),-su_srelV(i_s11,kkmin)
-                        !   STOP
-                        ! end if
-                        ! if (fluxtyp(kkk) == 0. .and. i_s1 >0 .and. i_s1 /= 8 .and. i_s1 /= 9)print*,'ftyp', i_s1,i_s11,srelV(i_s11,kkk),su_srelV(i_s11,kk),su_srelV(i_s11,kkmin)
-
                       END IF ! (kk > kkmin)
                     END IF ! (dpd >= dbstart)
                     dpd=dpd*exp(dstep)
-                  END DO !dpd
+                  END DO ! dpd
                   ! end of saltation loop
                 END IF ! (dbstart >= dp)
               END IF ! (fdp1 <= 0 .OR. fdp2 <= 0)
@@ -1337,7 +1924,6 @@ MODULE src_dust
 
             DO nn=1,ntrace
               fluxtot(nn) = fluxtot(nn) + fluxbin(nn)
-              ! if (fluxtot(nn) == 0. .and. i_s1 >0 .and. i_s1 /= 8 .and. i_s1 /= 9)print*,'ftot', i_s1,fluxtot(nn),fluxbin(nn)
             END DO
 
           END IF   ! (Ustar > 0 .AND. Ustar > umin2/feff(j,i,tnow) )
@@ -1376,9 +1962,9 @@ MODULE src_dust
 
         !---  transformation to chemistry units  (RW)
         FDust(j,i,:) = FDust(j,i,:) * 1.E3         ! kg/m2/s ==> g/m2/s
-        FDust(j,i,:) = FDust(j,i,:) * ConvPart     ! chemistry units (nradm=1): g/m2/s ==> g/m2/s * mol2part
+        ! FDust(j,i,:) = FDust(j,i,:) * ConvPart     ! chemistry units (nradm=1): g/m2/s ==> g/m2/s * mol2part
 
-        ! IF (FDust(j,i,1) /= FDust(j,i,1) ) print*,'Fdust', i,j,FDust(j,i,1)
+
 
         !---  add fluxes to right hand side
         DO nn=1,DustBins
@@ -1721,20 +2307,10 @@ MODULE src_dust
 
   !+ roughness
   !---------------------------------------------------------------------
-  SUBROUTINE fecan(subdomain,dimsimu)
+  SUBROUTINE fecan(subdomain,time_now,yaction)
   !---------------------------------------------------------------------
   ! Description:
   !
-  ! Reduction of dust emission caused by roughness elements.
-  ! A rough surface (dust%z0) decreases the drag partition
-  ! (dust%feff). A reduced drag partition leads to a decrease
-  ! in the horizontal dust flux.
-  !
-  ! The Physics based on the paper of Marticorena and Bergametti 1995
-  ! https://doi.org/10.1029/95JD00690
-  !
-  ! The code based on Tegen et al. 2002
-  ! https://doi.org/10.1029/2001JD000963
   !--------------------------------------------------------------------
 
     USE dust_tegen_param
@@ -1749,65 +2325,71 @@ MODULE src_dust
 
     TYPE(rectangle), INTENT(IN) :: subdomain
 
-    INTEGER, INTENT(IN) :: dimsimu
+    INTEGER, INTENT(IN) :: &
+      time_now
+
+    CHARACTER(LEN=*), INTENT(IN)            :: &
+      yaction ! action to be performed
 
     INTEGER :: &
-      dnow,    &  ! time loop
-      i,j,t,     &  ! loops
-      isoiltype
+      i,j      ! loops
 
-
-    REAL(8) ::  &
-      w_str,        &  ! feff inside the loop
-      z0s,               &  ! small scale roughness length
-      AAA,               &
-      BB,                &
-      CCC,               &  ! dummys
-      DDD,               &
-      EE,                &
-      FF
+    REAL(8) :: &
+      clay ,   &  ! soil clay contant [%]
+      moist       ! gravimeric soil moisture [%]
 
 
     REAL(8), POINTER ::  &
       vmoist(:,:,:),           &
-      mfac(:,:,:),       &
-        soiltype(:,:)!,     &
+      mfac(:,:),       &
+      w_str(:,:),       &
+      soilmap(:,:,:)!,     &
 
     vmoist   => dust(subdomain%ib)%vmoist(:,:,:)
-    mfac => dust(subdomain%ib)%mfac(:,:,:)
-    soiltype => dust(subdomain%ib)%soiltype(:,:)
+    mfac => dust(subdomain%ib)%mfac(:,:)
+    w_str => dust(subdomain%ib)%w_str(:,:)
+    soilmap => dust(subdomain%ib)%soilmap(:,:,:)
 
-
+    IF (yaction == 'init') THEN
 
     ! start lon-lat-loop
-    DO i=1,subdomain%ntx
-      DO j=1,subdomain%nty
-        isoiltype = int(soiltype(j,i))
-        w_str = 0.0014*(solspe(isoiltype,nmode*3)*100)**2 + 0.17*(solspe(isoiltype,nmode*3)*100)
-        DO dnow=1,dimsimu
-            !---------------------------------------------------------------------------------------
-            !       Calculation of the threshold soil moisture (w')  [Fecan, F. et al., 1999]
-            !---------------------------------------------------------------------------------------
-
-        !       !          W0   = 0.99! solspe(isoiltype,nmode*3+2)
-        !    feff = 0.
-        !
-        ! ! calculation of mfac: ratio between threshold friction velocities wet/dry
-        ! ! [Fecan, F. et al., 1999]
-
-          IF ((vmoist(j,i,dnow)*100 - w_str) > 0.0) THEN
-            mfac(j,i,dnow) = (1 + 1.21 * ( vmoist(j,i,dnow)*100 - w_str)**0.68 )**0.5
-          ELSE
-            mfac(j,i,dnow) = 1000.
+      DO i=1,subdomain%ntx
+        DO j=1,subdomain%nty
+          IF (soilmaptype == 1) THEN
+            clay = soilmap(j,i,4) * 100.
+          ELSE IF (soilmaptype == 2) THEN
+            clay = soilmap(j,i,3) * 100.
           END IF
-            ! mfac(j,i,dnow)=mfac(j,i,dnow)/2
-            ! mfac=1.
-          ! print*, 'mf',mfac(j,i,dnow),vmoist(j,i,dnow)*100,w_str
+
+          ! Calculation of the threshold soil moisture (w')
+          w_str(j,i) = 0.0014*clay**2 + 0.17*clay
+
         END DO
       END DO
-    END DO
 
-    ! end lon-lat-loop
+      ! end lon-lat-loop
+
+    ELSEIF (yaction == 'calc') THEN ! yaction == 'init'
+
+    ! start lon-lat-loop
+      DO i=1,subdomain%ntx
+        DO j=1,subdomain%nty
+
+          ! calculate gravimeric soil moisture from the volumeric soil moisture
+          ! moist_g = moist_v * rho_water / rho_soil * 100%   -> [kg_water/m3_soil / kg_soil/m3_soil] = [%]
+          moist = vmoist(j,i,time_now) * 1000/2650 * 100
+
+
+          IF (moist <= w_str(j,i)) THEN
+            mfac(j,i) = 1
+          ELSE
+            mfac(j,i) = (1 + 1.21 * ( moist - w_str(j,i))**0.68 )**0.5
+          END IF
+
+        END DO
+      END DO
+
+    END IF ! yaction == 'init'
 
   END SUBROUTINE fecan
 
@@ -2280,15 +2862,303 @@ MODULE src_dust
       END DO
     END DO
 
-    ! print*,'vegfile inside',outvar(30,30,1)
-
-
     DEALLOCATE (var_read)
     IF (ndays > 0) DEALLOCATE (times)
     ! DEALLOCATE (outvar)
     RETURN
   END SUBROUTINE read_nc
 
+  SUBROUTINE read_infile(infile,outvar,ierror,yerrmsg)
+
+    ! Modules
+    USE netcdf
+    USE mo_dust
+#ifndef OFFLINE
+    USE data_io,  ONLY : ydate_ini    ! start of the forecast
+#endif
+    ! USE data_modelconfig,   ONLY :   &
+    !   ie_tot,                  & ! number of grid points in zonal direction
+    !   je_tot                     ! number of grid points in meridional direction
+
+
+    IMPLICIT NONE
+
+    CHARACTER(*), INTENT(IN)    :: &
+      infile        ! name of field
+
+    REAL(8),        INTENT(INOUT) :: &
+      outvar(:,:,:)        ! Output var
+
+    INTEGER,        INTENT(OUT)   :: &
+      ierror
+
+    CHARACTER(*),   INTENT(OUT)   :: &
+      yerrmsg       ! error message
+
+
+    ! local Vars
+
+    CHARACTER(15)     :: &
+      varname(3)       ! name of variable that shoud be read
+
+    CHARACTER(120)     :: &
+      filename       ! name of variable that shoud be read
+
+    INTEGER            :: &
+      ntimes         ! number of possible days in the model run
+    LOGICAL           :: &
+      timecheck     ! check if time fits model run
+
+
+    INTEGER  :: &
+      i,j,t,v,  &  ! loop
+      ary_size, &  ! array size
+      varnum,   &  !
+      istart,   &  ! index of the start date in the var file
+      idate,    &  ! ydate read into integer
+      istat,    &  ! local error code
+      ncID,     &  ! id of nc files
+      varID,    &  ! id of the  var
+      timeID,   &  ! id of time var
+      dimID,    &  ! id of a dimension
+      dimlen       ! length of the above dimension
+
+    REAL  :: &
+      var_scale, &    ! index of the start date in the var file
+      var_offset    ! index of the start date in the var file
+
+    INTEGER, ALLOCATABLE :: &
+      times(:)
+
+    REAL, ALLOCATABLE :: &
+      var_read(:,:,:)
+
+
+
+    ! start subroutine
+    ! ---------------------------------------------------------
+
+
+
+
+    ! Definitions
+    varnum = 1
+    ntimes = 0
+
+    IF (infile == 'soil') THEN
+      filename = TRIM(soiltypeFile)
+      IF (soilmaptype == 1) THEN
+        varname = 'soiltype'
+      ELSEIF (soilmaptype == 2) THEN
+        varnum = 3
+        varname(1)='sand'
+        varname(2)='silt'
+        varname(3)='clay'
+      END IF
+    ELSEIF (infile == 'source') THEN
+      filename = TRIM(psrcFile)
+    ELSEIF (infile == 'moist') THEN
+      filename = TRIM(moistFile)
+      varname='swvl1'
+      ntimes = SIZE(outvar(1,1,:))
+      timecheck = .FALSE.
+    END IF
+
+    IF (filename(LEN(TRIM(filename))-2:) /= '.nc') THEN
+      CALL read_ascii(TRIM(filename),outvar)
+      RETURN
+    ENDIF
+
+    ! Print short status
+    PRINT*,'read_nc ', TRIM(filename)
+
+    ! open the file
+    istat = nf90_open(filename, nf90_nowrite, ncid)
+    IF (istat /= nf90_noerr) THEN
+      ierror  = 10001
+      yerrmsg = TRIM(nf90_strerror(istat))
+      RETURN
+    ENDIF
+
+    ! get id of lat dimension
+    istat = nf90_inq_dimid(ncID, 'y', dimID)
+    IF (istat /= nf90_noerr) THEN
+      ierror  = 10002
+      yerrmsg = TRIM(nf90_strerror(istat))
+      RETURN
+    ENDIF
+
+    ! read the length of lat dimension
+    istat = nf90_inquire_dimension(ncID, dimID, len = dimlen)
+    IF (istat /= nf90_noerr) THEN
+      ierror  = 10003
+      yerrmsg = TRIM(nf90_strerror(istat))
+      RETURN
+    ENDIF
+
+    ! Check the Size
+    IF (dimlen /= je_tot) THEN
+      ierror = 10004
+      yerrmsg = 'Error reading '//TRIM(infile)//' file: wrong lat dimension'
+      RETURN
+    END IF
+
+     ! get id of lon dimension
+     istat = nf90_inq_dimid(ncID, 'x', dimID)
+     IF (istat /= nf90_noerr) THEN
+       ierror  = 10005
+       yerrmsg = TRIM(nf90_strerror(istat))
+       RETURN
+     ENDIF
+
+     ! read the length of lon dimension
+     istat = nf90_inquire_dimension(ncID, dimID, len = dimlen)
+     IF (istat /= nf90_noerr) THEN
+       ierror  = 10006
+       yerrmsg = TRIM(nf90_strerror(istat))
+       RETURN
+     ENDIF
+
+     ! Check the Size
+     IF (dimlen /= ie_tot) THEN
+       ierror = 10007
+       yerrmsg = 'Error reading '//TRIM(infile)//' file: wrong lon dimension'
+       RETURN
+     END IF
+
+    IF (ntimes > 0) THEN
+      ! get id of time dimension
+      istat = nf90_inq_dimid(ncID, 'time', dimID)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10008
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
+
+      ! read the length of the time dimension
+      istat = nf90_inquire_dimension(ncID, dimID, len = dimlen)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10009
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
+
+      ! allocate the var ( times ) that hold the available dates in the nc file
+      istat = 0
+      ALLOCATE (times(dimlen), STAT=istat)
+      IF (istat /= 0) THEN
+        ierror = 10010
+        yerrmsg = 'allocation of times failed'
+        RETURN
+      ENDIF
+
+      ! get the id of the time var
+      istat = nf90_inq_varid(ncID, 'time', timeID)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10005
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
+
+      ! get the dates in the nc file
+      istat = nf90_get_var(ncid, timeID, times)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10011
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
+
+      ! transform date string to an integer
+      READ(ydate_ini(1:8),*) idate
+
+      ! istart -> fist read time step
+      istart = 1
+
+      ! match the dates of the model run and the var
+      IF (timecheck) THEN
+        IF (ANY(times(:) == idate)) THEN
+          ! find index of istat
+          DO WHILE(times(istart) /= idate)
+            istart = istart + 1
+          END DO
+          IF (istart + ntimes - 1 > size(times)) THEN
+            ierror  = 10012
+            yerrmsg = 'Error reading '//TRIM(infile)//' file: not enough dates in the file'
+            RETURN
+          END IF
+        ELSE
+          ierror  = 10013
+          yerrmsg = 'Error reading '//TRIM(infile)//' file: model start date is not in the file'
+          RETURN
+        END IF
+      END IF
+    END IF
+    ! Allocate var to read
+    istat = 0
+
+    ary_size = ntimes
+    IF ( ntimes == 0 ) ary_size = 1
+    IF ( varnum  > 0 ) ary_size = varnum
+    IF ( ntimes  > 0 ) ary_size = ntimes
+
+    ALLOCATE (var_read(ie_tot,je_tot,ary_size), STAT=istat)
+    IF (istat /= 0) THEN
+      ierror = 10014
+      yerrmsg = 'allocation of var_read failed'
+      RETURN
+    ENDIF
+
+    ! loop for all vars
+    DO i = 1, varnum
+      ! get the id of the var
+      istat = nf90_inq_varid(ncID, varname(i) , varID)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10015
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
+
+      ! get value of the scaling factor
+      istat = nf90_get_att(ncID, varID, 'scale_factor',var_scale)
+      IF (istat /= nf90_noerr) THEN
+        ! ierror  = 10016
+        var_scale = 1
+        ! yerrmsg = TRIM(nf90_strerror(istat))
+        !RETURN
+      ENDIF
+
+      ! get value of the offset
+      istat = nf90_get_att(ncID, varID, 'add_offset',var_offset)
+      IF (istat /= nf90_noerr) THEN
+        ! ierror  = 10016
+        var_offset = 0
+        ! yerrmsg = TRIM(nf90_strerror(istat))
+        !RETURN
+      ENDIF
+
+      ! get the var
+      istat = nf90_get_var(ncid, varID, var_read(:,:,i),start= (/1,1,istart/),count=(/ie_tot,je_tot,ntimes/))
+      IF (istat /= nf90_noerr) THEN
+        print*, 'hier'
+        ierror  = 10017
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
+
+      ! wirte the var into outvar
+      IF (varnum == 1) THEN
+        outvar(:,:,:)=var_read(:,:,:)*var_scale+var_offset
+      ELSEIF (varnum > 1) THEN
+        outvar(:,:,i)=var_read(:,:,i)*var_scale+var_offset
+      END IF
+
+    END DO
+
+    DEALLOCATE (var_read)
+    IF (ntimes > 0) DEALLOCATE (times)
+    ! DEALLOCATE (outvar)
+    RETURN
+  END SUBROUTINE read_infile
 
 
   !+ copy2block
@@ -2455,7 +3325,6 @@ MODULE src_dust
       end do
     end if
 
-    ! print*,var
 
   END SUBROUTINE quick_nc
 
