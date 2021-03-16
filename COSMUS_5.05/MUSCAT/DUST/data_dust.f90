@@ -639,8 +639,6 @@ MODULE dust_tegen_data
   !   Populations: Coarse sand, medium/fine sand, Silt, Clay
   !
   !
-  ! MF
-  ! change alpha values to more accurate ones
   ! Tegen Habil alpha
   ! Coarse Sand       -> 1.e-7
   ! Medium/Fine Sand  -> 1.e-6
@@ -658,7 +656,7 @@ MODULE dust_tegen_data
              0.0158E0, 2.E0, 0.4E0 ,           &
              0.0015E0, 2.E0, 0.17E0 ,          &
              0.0002E0, 2.E0, 0.E0 ,            &
-             2.143E-06,  0.2E0/                   !MF 2.1E-06
+             2.1E-06,  0.2E0/                
 
   !--     soil type 2 : Medium
             data (solspe(2,jspe),jspe=1,nspe)/ &
@@ -666,7 +664,7 @@ MODULE dust_tegen_data
              0.0158E0, 2.E0, 0.37E0 ,          &
              0.0015E0, 2.E0, 0.33E0 ,          &
              0.0002E0, 2.E0, 0.3E0 ,           &
-             3.97E-06,   0.25E0/                   !MF 4.0E-06
+             4.E-06,   0.25E0/
 
   !--     soil type 3 : Fine
             data (solspe(3,jspe),jspe=1,nspe)/ &
@@ -674,7 +672,7 @@ MODULE dust_tegen_data
              0.0158E0, 2.E0, 0.E0 ,            &
              0.0015E0, 2.E0, 0.33E0 ,          &
              0.0002E0, 2.E0, 0.67E0 ,          &
-             3.367E-06,   0.5E0/                   !MF 1.0E-07
+             1.E-07,   0.5E0/
 
   !--     soil type 4 : Coarse Medium
             data (solspe(4,jspe),jspe=1,nspe)/ &
@@ -682,7 +680,7 @@ MODULE dust_tegen_data
              0.0158E0, 2.E0, 0.5E0 ,           &
              0.0015E0, 2.E0, 0.2E0 ,           &
              0.0002E0, 2.E0, 0.2E0 ,           &
-             2.71E-06,  0.23E0/                   !MF 2.7E-06
+             2.1E-06,  0.23E0/
 
   !--     soil type 5 : Coarse Fine
             data (solspe(5,jspe),jspe=1,nspe)/ &
@@ -690,7 +688,7 @@ MODULE dust_tegen_data
              0.0158E0, 2.E0, 0.5E0 ,           &
              0.0015E0, 2.E0, 0.12E0 ,          &
              0.0002E0, 2.E0, 0.38E0 ,          &
-             2.08E-06,  0.25E0/                   !MF 2.8E-06
+             2.8E-06,  0.25E0/
 
   !--     soil type 6 : Medium Fine
             data (solspe(6,jspe),jspe=1,nspe)/ &
@@ -698,7 +696,7 @@ MODULE dust_tegen_data
              0.0158E0, 2.E0, 0.27E0 ,          &
              0.0015E0, 2.E0, 0.25E0 ,          &
              0.0002E0, 2.E0, 0.48E0 ,          &
-             2.818e-07,   0.36E0/                   !MF 1.0E-07
+             1.E-07,   0.36E0/
 
   !--     soil type 7 : Coarse, Medium, Fine
             data (solspe(7,jspe),jspe=1,nspe)/ &
@@ -706,7 +704,7 @@ MODULE dust_tegen_data
              0.0158E0, 2.E0, 0.23E0 ,          &
              0.0015E0, 2.E0, 0.19E0 ,          &
              0.0002E0, 2.E0, 0.35E0 ,          &
-             2.503E-06,  0.25E0/                   !MF 2.5E-06
+             2.5E-06,  0.25E0/
 
   !--     soil type 8 : Organic
             data (solspe(8,jspe),jspe=1,nspe)/ &
@@ -740,7 +738,7 @@ MODULE dust_tegen_data
              0.0158E0, 2.E0, 0.E0 ,             &
              0.0015E0, 2.E0, 0.E0 ,             &
              0.0002E0, 2.E0, 1.E0 ,             &
-             1.E-07,   0.25E0/                   !MF 1.0E-05
+             1.E-05,   0.25E0/
 
 
   !--     soil type 12 : Potential Lakes Australia
