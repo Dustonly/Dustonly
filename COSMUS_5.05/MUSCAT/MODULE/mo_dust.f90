@@ -37,7 +37,7 @@ MODULE mo_dust
     moist_scheme, &
     fricvelo_scheme, & ! 1 calc from wind and z0;  2 pre-calculated
     psrcType,     & ! Flag for type of potential dust source
-                    ! 0 : psrc, 1 : msgsrc, 2 : acDust
+                    ! 0 : off, 1 : psrc, 2 : msgsrc
     soilmaptype,      & ! 1 : solspe table, 2 : soilgrids
     threshold_scheme   ! 0 : Marticorena, 1 : Shao  !
 

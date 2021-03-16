@@ -699,6 +699,10 @@ MODULE src_dust
         IF (soilmaptype ==  1) CALL init_soilmap(decomp(ib1))
         CALL init_alpha(decomp(ib1),2)
 
+        IF (psrcType > 0) THEN
+          CAll init_psrc(decomp(ib1))
+        END IF
+
 
         ! +-+-+- Sec 1.4.1 dust flux -+-+-+
 
@@ -909,6 +913,62 @@ MODULE src_dust
 
   END SUBROUTINE init_alpha
 
+
+  !+ init_psrc
+  !---------------------------------------------------------------------
+  SUBROUTINE init_psrc(subdomain)
+  !---------------------------------------------------------------------
+  ! Description:
+
+  ! psrcType == 1
+  ! Preferential Sources = Potential lakes
+  !   If a grid box is identified as dust source then the soiltype switches to
+  !   best emission properties (100% silt).
+  !
+  !
+  !--------------------------------------------------------------------
+
+    USE mo_dust
+    USE dust_tegen_data
+#ifdef OFFLINE
+    USE offline_org
+#endif
+
+    IMPLICIT NONE
+
+    TYPE(rectangle), INTENT(IN) :: subdomain
+
+    INTEGER :: &
+      i,j
+
+    REAL(8), POINTER ::  &
+      psrc(:,:),     &
+      soilmap(:,:,:)
+
+    psrc => dust(subdomain%ib)%source(:,:)
+    soilmap => dust(subdomain%ib)%soilmap(:,:,:)
+
+    ! start lon-lat-loop
+    DO i=1,subdomain%ntx
+      DO j=1,subdomain%nty
+
+        IF (psrcType == 1) THEN ! preferential source scheme by Tegen02
+          IF (psrc(j,i) > 0.5) THEN
+            soilmap(j,i,:) = 0.0
+            soilmap(j,i,nmode-1) = 1.
+          END IF
+        ELSEIF (psrcType == 2) THEN ! MSG source scheme by schepanski08
+          soilmap(j,i,:) = 0.0
+          IF (psrc(j,i) >= 2) THEN
+            soilmap(j,i,nmode-1) = 1.
+          END IF
+        END IF
+
+      END DO
+    END DO
+    ! end lon-lat-loop
+
+  END SUBROUTINE init_psrc
 
   !+ init_tegen
   !---------------------------------------------------------------------
@@ -1393,7 +1453,7 @@ MODULE src_dust
       DO j=1,subdomain%nty
 
         ! +- Sec 3.1 Selection of potential dust sources areas
-        IF (psrcType == 0) THEN  ! IT02
+        IF (psrcType == 1) THEN  ! IT02
           ! Preferential Sources = Potential lakes
           !   If a grid box is identified as dust source then the soiltype switches to
           !   best emission properties (soiltype=10), to avoid an underestimation.
@@ -1402,7 +1462,7 @@ MODULE src_dust
             IF (z0(j,i) <= 0.) z0(j,i) = 0.001 ! [cm]
           ENDIF
 
-        ELSEIF (psrcType == 1) THEN ! MSG
+        ELSEIF (psrcType == 2) THEN ! MSG
           ! Preferential Sources = Potential lakes
           IF(soiltype(j,i) < 13) soiltype(j,i) = 9
           IF(source(j,i) >= 2) THEN
@@ -1410,16 +1470,6 @@ MODULE src_dust
             IF (z0(j,i) <= 0.) z0(j,i) = 0.001 ! [cm]
           ENDIF
 
-        ELSEIF (psrcType == 2) THEN ! AC Dust
-          ! For the agricultural dust, the source map provide the fraction of cropland
-          ! in the grid box. Every grid box with a cropland fraction > 0 is allowed to
-          ! emit dust. The total dust emission of the grid box is scaled late with the
-          ! cropland fraction.
-          IF(source(j,i) > 0.) THEN
-            IF (z0(j,i) <= 0.) z0(j,i) = 0.001 ! [cm]
-          ELSE
-            soiltype(j,i) = 0.
-          ENDIF
         ENDIF
 
 

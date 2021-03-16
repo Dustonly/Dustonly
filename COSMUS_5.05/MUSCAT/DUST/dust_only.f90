@@ -412,11 +412,11 @@ SUBROUTINE read_namelist(ierr)
 
   ! Defaults
   soiltypeFile    = 'without'   ! Soil Type Data
-  psrcType        = 1           ! 0 : psrc, 1 : msgsrc, 2 : acDust  MF
+  psrcType        = 0           ! 0 : psrc, 1 : msgsrc, 2 : acDust  MF
   fricvelo_scheme = 1
   dust_scheme     = 1           ! 1=Tegen02
   veg_scheme      = 0           ! 0=no vegetation, 1=okin scheme, 2=linear (Tegen02)
-  soilmaptype     = 0
+  soilmaptype     = 1
   psrcFile        = 'without'   ! Potential Sources Data
   cultFile        = 'without'   ! Landuse Data
   z0File          = 'without'   ! Z0 Data
