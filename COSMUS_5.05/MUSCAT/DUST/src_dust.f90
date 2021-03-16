@@ -2033,11 +2033,6 @@ MODULE src_dust
 #endif
 
 
-
-
-
-    print*, 'fricvelo_scheme: ',fricvelo_scheme
-
     IF (fricvelo_scheme == 1) THEN
       DO i = 1,subdomain%ntx
         DO j = 1,subdomain%nty
