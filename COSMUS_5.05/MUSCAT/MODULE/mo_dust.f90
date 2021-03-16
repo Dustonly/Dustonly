@@ -35,9 +35,10 @@ MODULE mo_dust
     dust_scheme,  & ! 1=Tegen02
     veg_scheme,   & ! =0 no vegitation; =1 Okin scheme; =2 linear Tegen
     moist_scheme, &
+    fricvelo_scheme, & ! 1 calc from wind and z0;  2 pre-calculated
     psrcType,     & ! Flag for type of potential dust source
                     ! 0 : psrc, 1 : msgsrc, 2 : acDust
-    soilmaptype,      & ! 0 : solspe table, 1 : soilgrids
+    soilmaptype,      & ! 1 : solspe table, 2 : soilgrids
     threshold_scheme   ! 0 : Marticorena, 1 : Shao  !
 
   !-- Files with soil data
@@ -144,7 +145,8 @@ MODULE mo_dust
   REAL (8)   :: &
     dp_meter(nclass) ! particle diameter [m]
 
-
+  REAL(8), ALLOCATABLE ::  &
+    ustar(:,:)          ! (j,i,nclass)
 
   REAL (8)   :: &
     Uth(Nclass)!,              & ! threshold friction velocity
@@ -190,13 +192,14 @@ MODULE mo_dust
   REAL(8) ::    &
     startlon_tot, & ! lon of low left corner
     startlat_tot, & ! lat of low left corner
-    timeinc, &    ! increment of time in hours
-    pollon,  &
-    pollat,  &
-    dlon,    &
-    dlat,    &
-    uconst,  &
-    vconst,  &
+    timeinc,   &    ! increment of time in hours
+    pollon,    &
+    pollat,    &
+    dlon,      &
+    dlat,      &
+    uconst,    &
+    vconst,    &
+    ustconst,  &
     dzconst
 
 
@@ -208,7 +211,8 @@ MODULE mo_dust
     windFile,       & ! wind input data
     youtdir,        & ! directory of the output file
     u_var_name,      &
-    v_var_name
+    v_var_name,     &
+    ust_var_name
 
   CHARACTER(3) :: &
     leveltype       ! 10m, or mlv

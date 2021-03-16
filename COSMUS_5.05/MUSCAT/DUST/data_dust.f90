@@ -1032,6 +1032,7 @@ MODULE offline_org
   REAL(8), ALLOCATABLE :: &
     u(:,:,:), &      ! meridional wind
     v(:,:,:), &      ! zonal wind
+    ust(:,:,:), &      ! friction velocity
     dz(:,:,:), &
     dust_flux(:,:,:,:), & !
     dust_em_accum(:,:,:)
