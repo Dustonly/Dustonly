@@ -62,30 +62,47 @@ PROGRAM dust_only
     STOP
   END IF
 
-
-  ! read in u wind
-  print*, 'Read wind data'
-  print*, TRIM(u_var_name)
-  IF (uconst == 999.0) THEN
-    CALL netcdf_in(TRIM(windFile),TRIM(u_var_name),u,lasttstep,.TRUE.,ierr,yerr)
-    IF (ierr /= 0) THEN
-      print*, 'ERROR netcdf in'
-      ierr =  300 + ierr
-      print*, ierr, yerr
-      STOP
+  IF (fricvelo_scheme == 1) THEN
+    ! read in u wind
+    print*, 'Read wind data'
+    print*, TRIM(u_var_name)
+    IF (uconst == 999.0) THEN
+      CALL netcdf_in(TRIM(windFile),TRIM(u_var_name),u,lasttstep,.TRUE.,ierr,yerr)
+      IF (ierr /= 0) THEN
+        print*, 'ERROR netcdf in'
+        ierr =  300 + ierr
+        print*, ierr, yerr
+        STOP
+      END IF
     END IF
-  ENDIF
 
-  ! read in v wind
-  IF (vconst == 999.0) THEN
-    CALL netcdf_in(TRIM(windFile),TRIM(u_var_name),v,lasttstep,.TRUE.,ierr,yerr)
-    IF (ierr /= 0) THEN
-      print*, 'ERROR netcdf in'
-      ierr =  300 + ierr
-      print*, ierr, yerr
-      STOP
+    ! read in v wind
+    IF (vconst == 999.0) THEN
+      CALL netcdf_in(TRIM(windFile),TRIM(u_var_name),v,lasttstep,.TRUE.,ierr,yerr)
+      IF (ierr /= 0) THEN
+        print*, 'ERROR netcdf in'
+        ierr =  300 + ierr
+        print*, ierr, yerr
+        STOP
+      END IF
     END IF
-  ENDIF
+  ELSEIF (fricvelo_scheme == 2) THEN
+    ! read in ustar
+    print*, 'Read wind data'
+    print*, TRIM(ust_var_name)
+    IF (uconst == 999.0) THEN
+      CALL netcdf_in(TRIM(windFile),TRIM(ust_var_name),ust,lasttstep,.TRUE.,ierr,yerr)
+      IF (ierr /= 0) THEN
+        print*, 'ERROR netcdf in'
+        ierr =  300 + ierr
+        print*, ierr, yerr
+        STOP
+      END IF
+    END IF
+  END IF
+
+
+
   ! CALL netcdf_in()
 
   ! ! simulation of muscat Species
@@ -200,23 +217,25 @@ SUBROUTINE def_grid(ierr)
   lasttstep  = INT((hstop-hstart)/timeinc)
 
 
-  ! ALLOCATE(geo(1))
-  ! ! ALLOCATE(geo(1)%dxK(je_tot,ie_tot))
-  ! ! ALLOCATE(geo(1)%dyK(je_tot,ie_tot))
-  ! ALLOCATE(geo(1)%dz(1,je_tot,ie_tot))
-  !
-  ! ALLOCATE(meteo(1))
-  ! ! ALLOCATE(meteo(1)%rho(1,je_tot,ie_tot,ScalCur))
-  ! ! ALLOCATE(meteo(1)%QRSur(je_tot,ie_tot,ScalCur))
-  ! ALLOCATE(meteo(1)%u(1,je_tot,ie_tot,lasttstep-firsttstep))
-  ! ALLOCATE(meteo(1)%v(1,je_tot,ie_tot,lasttstep-firsttstep))
 
-  ALLOCATE(u(je_tot,ie_tot,lasttstep-firsttstep))
-  u=0.
-  ALLOCATE(v(je_tot,ie_tot,lasttstep-firsttstep))
-  v=0.
-  ALLOCATE(dz(1,je_tot,ie_tot))
-  dz=0
+  IF (fricvelo_scheme == 1) THEN
+    ALLOCATE(u(je_tot,ie_tot,lasttstep-firsttstep))
+    u=0.
+    ALLOCATE(v(je_tot,ie_tot,lasttstep-firsttstep))
+    v=0.
+    ALLOCATE(dz(1,je_tot,ie_tot))
+    dz=0
+
+    IF (leveltype == '10m') dz=10
+
+    IF (uconst  /= 999.0) u  = uconst
+    IF (vconst  /= 999.0) v  = vconst
+    IF (dzconst /= 999.0) dz = dzconst
+
+  ELSEIF (fricvelo_scheme == 2) THEN
+    ALLOCATE(ust(je_tot,ie_tot,lasttstep-firsttstep))
+    ust=0.
+  END IF
 
 
   ALLOCATE(dust_flux(ntz,je_tot,ie_tot,nt))
@@ -226,15 +245,6 @@ SUBROUTINE def_grid(ierr)
   dust_em_accum=0
 
 
-  IF (leveltype == '10m') dz=10
-
-  ! IF (leveltype == 'mlv') THEN
-  !
-  ! ENDIF
-
-  IF (uconst  /= 999.0) u  = uconst
-  IF (vconst  /= 999.0) v  = vconst
-  IF (dzconst /= 999.0) dz = dzconst
 
 END SUBROUTINE def_grid
 
@@ -361,8 +371,8 @@ SUBROUTINE read_namelist(ierr)
   NAMELIST /SURFMODEL/ &
     ie_tot,            & ! number of lon points
     je_tot,            & ! number of lat points
-    startlon_tot,           & ! lon of low left corner
-    startlat_tot,           & ! lat of low left corner
+    startlon_tot,      & ! lon of low left corner
+    startlat_tot,      & ! lat of low left corner
     timeinc,           & ! increment of time in hours
     pollon,            &
     pollat,            &
@@ -375,6 +385,7 @@ SUBROUTINE read_namelist(ierr)
     youtdir,           & ! directory of the output file
     lwithz0,           & ! =false without z0, =true with z0
     lwithbiom,         & ! =false without biomes, =true with biomes
+    fricvelo_scheme,   & ! scheme to calc the friction velocity ustar
     dust_scheme,       & ! 1=Tegen02
     threshold_scheme,  &
     veg_scheme,        & ! =0 no vegitation; =1 Okin scheme; =2 linear Tegen
@@ -392,33 +403,38 @@ SUBROUTINE read_namelist(ierr)
     moistFile,         &
     uconst,            &
     vconst,            &
+    ustconst,          &
     dzconst,           &
     u_var_name,        & ! Name of u variable in Input file
     v_var_name,        & ! Name of v variable in Input file
+    ust_var_name,      & ! Name of ust variable in Input file
     laccumulation
 
   ! Defaults
-  soiltypeFile  = 'without'   ! Soil Type Data
-  psrcType      = 1           ! 0 : psrc, 1 : msgsrc, 2 : acDust  MF
-  dust_scheme   = 1           ! 1=Tegen02
-  veg_scheme    = 0           ! 0=no vegetation, 1=okin scheme, 2=linear (Tegen02)
-  soilmaptype   = 0
-  psrcFile      = 'without'   ! Potential Sources Data
-  cultFile      = 'without'   ! Landuse Data
-  z0File        = 'without'   ! Z0 Data
-  biomeFile     = 'without'   ! Vegetation Classes
-  moistFile     = 'without'
-  vegmonFile    = 'without'   ! Leafe Area Index Data
-  vegdayFile    = 'without'   ! Leafe Area Index Data   MF
-  vegminFile    = 'without'   ! Leafe Area Index Data   MF
-  lwithz0       = .FALSE.
-  lwithbiom     = .FALSE.
-  uconst        = 999.0
-  vconst        = 999.0
-  dzconst       = 999.0
-  u_var_name    = 'u10'
-  v_var_name    = 'v10'
-  laccumulation = .FALSE.
+  soiltypeFile    = 'without'   ! Soil Type Data
+  psrcType        = 0           ! 0 : psrc, 1 : msgsrc, 2 : acDust  MF
+  fricvelo_scheme = 1
+  dust_scheme     = 1           ! 1=Tegen02
+  veg_scheme      = 0           ! 0=no vegetation, 1=okin scheme, 2=linear (Tegen02)
+  soilmaptype     = 1
+  psrcFile        = 'without'   ! Potential Sources Data
+  cultFile        = 'without'   ! Landuse Data
+  z0File          = 'without'   ! Z0 Data
+  biomeFile       = 'without'   ! Vegetation Classes
+  moistFile       = 'without'
+  vegmonFile      = 'without'   ! Leafe Area Index Data
+  vegdayFile      = 'without'   ! Leafe Area Index Data   MF
+  vegminFile      = 'without'   ! Leafe Area Index Data   MF
+  lwithz0         = .FALSE.
+  lwithbiom       = .FALSE.
+  uconst          = 999.0
+  vconst          = 999.0
+  ustconst        = 999.0
+  dzconst         = 999.0
+  u_var_name      = 'u10'
+  v_var_name      = 'v10'
+  ust_var_name    = 'zust'
+  laccumulation   = .FALSE.
 
 
 

@@ -498,6 +498,9 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%soilmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,nmode))
 
+        ALLOCATE(ustar(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1))
+
 
         dust(ib1)%biome(:,:)=0.
         dust(ib1)%cult(:,:)=0.
@@ -505,7 +508,7 @@ MODULE src_dust
         dust(ib1)%vmoist(:,:,:)=0.
         dust(ib1)%vegmin2(:,:)=0.
         dust(ib1)%soiltype(:,:)=0.
-        dust(ib1)%z0(:,:)=0.01 !cm
+        dust(ib1)%z0(:,:)=0.001 !cm
         dust(ib1)%source(:,:)=0.
         dust(ib1)%alpha2(:,:)=0.
         dust(ib1)%feff(:,:,:)=1.
@@ -514,6 +517,8 @@ MODULE src_dust
         dust(ib1)%d_emis(:,:,:)=0.
 
         dust(ib1)%soilmap = 0.
+
+        ustar = 0
 
       END DO
 
@@ -694,6 +699,10 @@ MODULE src_dust
         IF (soilmaptype ==  1) CALL init_soilmap(decomp(ib1))
         CALL init_alpha(decomp(ib1),2)
 
+        IF (psrcType > 0) THEN
+          CAll init_psrc(decomp(ib1))
+        END IF
+
 
         ! +-+-+- Sec 1.4.1 dust flux -+-+-+
 
@@ -705,7 +714,6 @@ MODULE src_dust
 
         IF (dust_scheme == 2) THEN
           ! init of the dust emission sheme by Tegen et al. 2002
-
           CALL tegen02('init',decomp(ib1))!ierr,yerr)
         END IF
 
@@ -730,7 +738,7 @@ MODULE src_dust
         ! +-+-+- Sec 1.4.3 moisture -+-+-+
         IF (moist_scheme == 1) THEN
           print*, 'call fecan'
-          CALL fecan(decomp(ib1),ntstep,'init')
+          CALL fecan('init',decomp(ib1),ntstep)
         END IF
 
       END DO
@@ -745,9 +753,13 @@ MODULE src_dust
     ! ------------------------------------
     ELSEIF (yaction == "calc") THEN
 
+      CALL get_ustar(decomp(ib1))
+
       IF (moist_scheme == 1) THEN
-        CALL fecan(decomp(ib1),ntstep,'calc')
+        CALL fecan('calc',decomp(ib1),ntstep)
       END IF
+
+
 
       IF (dust_scheme == 1) THEN
         CALL emission_tegen(subdomain,flux)
@@ -902,6 +914,62 @@ MODULE src_dust
   END SUBROUTINE init_alpha
 
 
+  !+ init_psrc
+  !---------------------------------------------------------------------
+  SUBROUTINE init_psrc(subdomain)
+  !---------------------------------------------------------------------
+  ! Description:
+
+  ! psrcType == 1
+  ! Preferential Sources = Potential lakes
+  !   If a grid box is identified as dust source then the soiltype switches to
+  !   best emission properties (100% silt).
+  !
+  !
+  !--------------------------------------------------------------------
+
+    USE mo_dust
+    USE dust_tegen_data
+#ifdef OFFLINE
+    USE offline_org
+#endif
+
+    IMPLICIT NONE
+
+    TYPE(rectangle), INTENT(IN) :: subdomain
+
+    INTEGER :: &
+      i,j
+
+    REAL(8), POINTER ::  &
+      psrc(:,:),     &
+      soilmap(:,:,:)
+
+    psrc => dust(subdomain%ib)%source(:,:)
+    soilmap => dust(subdomain%ib)%soilmap(:,:,:)
+
+    ! start lon-lat-loop
+    DO i=1,subdomain%ntx
+      DO j=1,subdomain%nty
+
+        IF (psrcType == 1) THEN ! preferential source scheme by Tegen02
+          IF (psrc(j,i) > 0.5) THEN
+            soilmap(j,i,:) = 0.0
+            soilmap(j,i,nmode-1) = 1.
+          END IF
+        ELSEIF (psrcType == 2) THEN ! MSG source scheme by schepanski08
+          soilmap(j,i,:) = 0.0
+          IF (psrc(j,i) >= 2) THEN
+            soilmap(j,i,nmode-1) = 1.
+          END IF
+        END IF
+
+      END DO
+    END DO
+    ! end lon-lat-loop
+
+  END SUBROUTINE init_psrc
+
   !+ init_tegen
   !---------------------------------------------------------------------
   SUBROUTINE tegen02(yaction,subdomain)
@@ -947,7 +1015,6 @@ MODULE src_dust
       stot,    &    ! total basal surface
       uwind,   &
       vwind,   &
-      ustar,   &
       tot_wind,   &
       time_start, &
       time_now, &
@@ -972,13 +1039,6 @@ MODULE src_dust
     REAL(8), POINTER :: DustEmis(:,:,:)
 
 #ifndef OFFLINE
-    REAL(8), POINTER :: dxK(:,:)
-    REAL(8), POINTER :: dyK(:,:)
-    REAL(8), POINTER :: dz(:,:,:)
-    REAL(8), POINTER :: usur(:,:)
-    REAL(8), POINTER :: vsur(:,:)
-    REAL(8), POINTER :: qrsur(:,:)
-    REAL(8), POINTER :: rhosur(:,:)
     REAL(8), POINTER :: EmiRate(:,:,:,:)
 #endif
 
@@ -993,13 +1053,6 @@ MODULE src_dust
 
 
 #ifndef OFFLINE
-    dxK     => geo  (subdomain%ib)%dxK(:,:)
-    dyK     => geo  (subdomain%ib)%dyK(:,:)
-    dz      => geo  (subdomain%ib)%dz(:,:,:)
-    rhosur  => meteo(subdomain%ib)%rho(1,:,:,ScalCur)
-    qrsur   => meteo(subdomain%ib)%QRSur(:,:,ScalCur)
-    usur    => meteo(subdomain%ib)%u(1,:,:,WindCur)
-    vsur    => meteo(subdomain%ib)%v(1,:,:,WindCur)
     EmiRate  => block(subdomain%ib)%EmiRate(:,:,:,:)
 #endif
 
@@ -1117,26 +1170,7 @@ MODULE src_dust
 
           ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
-#ifndef OFFLINE
-          !---  flux initialisations
-          uwind = usur(j,i+1)/dyK(j,i+1)+usur(j,i)/dyK(j,i)
-          uwind = 0.5E0 * uwind / dz(1,j,i)
-          vwind = vsur(j+1,i)/dxK(j+1,i)+vsur(j,i)/dxK(j,i)
-          vwind = 0.5E0 * vwind / dz(1,j,i)
-
-          tot_wind = SQRT(uwind**2+vwind**2)/rhosur(j,i)
-#else
-          tot_wind = SQRT(u(j,i,ntstep)**2+v(j,i,ntstep)**2)
-#endif
-
-
-          IF(feff(j,i,tnow) <= 0.) THEN
-           ustar = 0.
-          ELSE
-            ustar = (VK * tot_wind )/(log( dz(1,j,i)/(z0(j,i)/100.))) !!m/s
-          END IF  !! IF(feff(j,i,tnow).LE.0.)
-
-          IF(feff(j,i,tnow) > 0. .AND. ustar > 0. ) THEN
+          IF(feff(j,i,tnow) > 0. .AND. ustar(j,i) > 0. ) THEN
 
             m = 1 ! index of dust bin
             dflux = 0.
@@ -1159,15 +1193,15 @@ MODULE src_dust
               END IF
 
 
-              IF (ustar > uthp) THEN
-                dmy_R = uthp/ustar
+              IF (ustar(j,i) > uthp) THEN
+                dmy_R = uthp/ustar(j,i)
               ELSE
                 dmy_R = 1
               END IF
 
 
               ! Horizontal dust flux
-              dflux = roa/g * ustar**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
+              dflux = roa/g * ustar(j,i)**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
               ! END IF
 
               ! Vertical dust flux
@@ -1419,7 +1453,7 @@ MODULE src_dust
       DO j=1,subdomain%nty
 
         ! +- Sec 3.1 Selection of potential dust sources areas
-        IF (psrcType == 0) THEN  ! IT02
+        IF (psrcType == 1) THEN  ! IT02
           ! Preferential Sources = Potential lakes
           !   If a grid box is identified as dust source then the soiltype switches to
           !   best emission properties (soiltype=10), to avoid an underestimation.
@@ -1428,7 +1462,7 @@ MODULE src_dust
             IF (z0(j,i) <= 0.) z0(j,i) = 0.001 ! [cm]
           ENDIF
 
-        ELSEIF (psrcType == 1) THEN ! MSG
+        ELSEIF (psrcType == 2) THEN ! MSG
           ! Preferential Sources = Potential lakes
           IF(soiltype(j,i) < 13) soiltype(j,i) = 9
           IF(source(j,i) >= 2) THEN
@@ -1436,16 +1470,6 @@ MODULE src_dust
             IF (z0(j,i) <= 0.) z0(j,i) = 0.001 ! [cm]
           ENDIF
 
-        ELSEIF (psrcType == 2) THEN ! AC Dust
-          ! For the agricultural dust, the source map provide the fraction of cropland
-          ! in the grid box. Every grid box with a cropland fraction > 0 is allowed to
-          ! emit dust. The total dust emission of the grid box is scaled late with the
-          ! cropland fraction.
-          IF(source(j,i) > 0.) THEN
-            IF (z0(j,i) <= 0.) z0(j,i) = 0.001 ! [cm]
-          ELSE
-            soiltype(j,i) = 0.
-          ENDIF
         ENDIF
 
 
@@ -1662,7 +1686,7 @@ MODULE src_dust
     REAL(8) :: time_start,time_now
 
     REAL(8) :: &
-      ustar
+      ustar_cm
     REAL(8) ::                                &
       dpk (ntrace),                           & !dpk
       dbmin (ntrace),                         & !bin size limit
@@ -1701,16 +1725,6 @@ MODULE src_dust
     IF (nDust == 0) RETURN
     IF (DustMod <= 0) RETURN
 
-
-#ifndef OFFLINE
-    dxK     => geo  (subdomain%ib)%dxK(:,:)
-    dyK     => geo  (subdomain%ib)%dyK(:,:)
-    dz      => geo  (subdomain%ib)%dz(:,:,:)
-    rhosur  => meteo(subdomain%ib)%rho(1,:,:,ScalCur)
-    qrsur   => meteo(subdomain%ib)%QRSur(:,:,ScalCur)
-    usur    => meteo(subdomain%ib)%u(1,:,:,WindCur)
-    vsur    => meteo(subdomain%ib)%v(1,:,:,WindCur)
-#endif
 
     soiltype => dust(subdomain%ib)%soiltype(:,:)
     source   => dust(subdomain%ib)%source(:,:)
@@ -1755,19 +1769,6 @@ MODULE src_dust
       DO j=1,subdomain%nty
         ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
-#ifndef OFFLINE
-        !---  flux initialisations
-        uwind = usur(j,i+1)/dyK(j,i+1)+usur(j,i)/dyK(j,i)
-        uwind = 0.5E0 * uwind / dz(1,j,i)
-        vwind = vsur(j+1,i)/dxK(j+1,i)+vsur(j,i)/dxK(j,i)
-        vwind = 0.5E0 * vwind / dz(1,j,i)
-
-        van = SQRT(uwind**2+vwind**2)/rhosur(j,i)
-#else
-        van = SQRT(u(j,i,ntstep)**2+v(j,i,ntstep)**2)
-#endif
-
-
         !---  zero setting
         dbmin(:)=0.E0
         dbmax(:)=0.E0
@@ -1799,18 +1800,13 @@ MODULE src_dust
 
 
         ! Friction velocity of the wind (ustar)
+        ustar_cm = ustar(j,i)*100.
 
-        IF(feff(j,i,tnow) <= 0.) THEN
-         ustar = 0.
-        ELSE
-          !ustar = (VK * van *100.)/(log(0.5E0 * 100 * dz(1,j,i)/z0(j,i))) !!cm/s
-          ustar = (VK * van *100.)/(log(100 * dz(1,j,i)/z0(j,i))) !!cm/s
-        END IF  !! IF(feff(j,i,tnow).LE.0.)
 
 
         ! +-+-+- Sec 3 Flux calculation -+-+-+
         IF (feff(j,i,tnow) > 0.) THEN
-          IF (Ustar > 0 .AND. Ustar > umin2/feff(j,i,tnow) ) THEN
+          IF (ustar_cm > 0 .AND. ustar_cm > umin2/feff(j,i,tnow) ) THEN
             kk = 0
             dp = Dmin
             DO WHILE (dp <= Dmax+1E-5)
@@ -1824,8 +1820,8 @@ MODULE src_dust
               ! ! moist
               ! Uthp=Uthp*mfac(j,i,tnow)
               ! Marticorena:
-              fdp1 = 1.+(Uthp/Ustar)
-              fdp2 = 1.-(Uthp/Ustar)**2.
+              fdp1 = 1.+(Uthp/ustar_cm)
+              fdp2 = 1.-(Uthp/ustar_cm)**2.
               ! fdp1 = (1.-(Uthp * Ustar))
               ! fdp2 = (1.+(Uthp * Ustar))**2.
 
@@ -1836,7 +1832,7 @@ MODULE src_dust
               IF (fdp1 <= 0 .OR. fdp2 <= 0) THEN
                 flux_umean = 0.
               ELSE
-                flux_umean = srel(i_s1,kk) * fdp1 * fdp2 * cd * Ustar**3 *alpha(j,i)
+                flux_umean = srel(i_s1,kk) * fdp1 * fdp2 * cd * ustar_cm**3 *alpha(j,i)
                 flux_diam = flux_umean
 
                 Ustar_var = Ustar_min
@@ -1965,13 +1961,12 @@ MODULE src_dust
         ! FDust(j,i,:) = FDust(j,i,:) * ConvPart     ! chemistry units (nradm=1): g/m2/s ==> g/m2/s * mol2part
 
 
-
         !---  add fluxes to right hand side
         DO nn=1,DustBins
-          Flux(1,j,i,DustInd(nn))   = Flux(1,j,i,DustInd(nn)) + FDust(j,i,nn)/dz(1,j,i)
-          DustEmis(j,i,DustInd(nn)) = FDust(j,i,nn)
 
+          DustEmis(j,i,DustInd(nn)) = FDust(j,i,nn)
 #ifndef OFFLINE
+          Flux(1,j,i,DustInd(nn))   = Flux(1,j,i,DustInd(nn)) + FDust(j,i,nn)/dz(1,j,i)
           !---  summarize biogenic and total emission rates
           EmiRate(EmiIndBio,j,i,DustInd(nn)) = EmiRate(EmiIndBio,j,i,DustInd(nn)) + FDust(j,i,nn)
           EmiRate(EmiIndSum,j,i,DustInd(nn)) = EmiRate(EmiIndSum,j,i,DustInd(nn)) + FDust(j,i,nn)
@@ -1980,6 +1975,90 @@ MODULE src_dust
       END DO
     END DO
   END SUBROUTINE emission_tegen
+
+  !+ get_ustar
+  !---------------------------------------------------------------------
+  SUBROUTINE get_ustar(subdomain)
+  !---------------------------------------------------------------------
+  ! Description:
+  ! This subroutine provides the current friction velocity (ustar).
+  !
+  ! Methode 1:
+  !   Calculate ustar with the wind profile method using the 10 m wind
+  !   or the wind of the lowes model layer and the roughness length.
+  !
+  ! Methode 2:
+  !   Use pre-calculated data of ustar.
+  !--------------------------------------------------------------------
+
+#ifdef OFFLINE
+    USE offline_org
+#endif
+
+    IMPLICIT NONE
+
+    TYPE(rectangle), INTENT(IN) :: subdomain
+
+    INTEGER :: &
+      i,j
+
+    REAL(8) :: &
+      uwind, &
+      vwind, &
+      tot_wind
+
+    REAL(8), POINTER :: z0(:,:)
+#ifndef OFFLINE
+    REAL(8), POINTER :: dxK(:,:)
+    REAL(8), POINTER :: dyK(:,:)
+    REAL(8), POINTER :: dz(:,:,:)
+    REAL(8), POINTER :: usur(:,:)
+    REAL(8), POINTER :: vsur(:,:)
+    REAL(8), POINTER :: qrsur(:,:)
+    REAL(8), POINTER :: rhosur(:,:)
+#endif
+
+    REAL(8), PARAMETER :: &
+      VK = 0.4
+
+    z0       => dust(subdomain%ib)%z0(:,:)
+#ifndef OFFLINE
+    dxK     => geo  (subdomain%ib)%dxK(:,:)
+    dyK     => geo  (subdomain%ib)%dyK(:,:)
+    dz      => geo  (subdomain%ib)%dz(:,:,:)
+    rhosur  => meteo(subdomain%ib)%rho(1,:,:,ScalCur)
+    qrsur   => meteo(subdomain%ib)%QRSur(:,:,ScalCur)
+    usur    => meteo(subdomain%ib)%u(1,:,:,WindCur)
+    vsur    => meteo(subdomain%ib)%v(1,:,:,WindCur)
+#endif
+
+
+    IF (fricvelo_scheme == 1) THEN
+      DO i = 1,subdomain%ntx
+        DO j = 1,subdomain%nty
+
+#ifndef OFFLINE
+          !---  flux initialisations
+          uwind = usur(j,i+1)/dyK(j,i+1)+usur(j,i)/dyK(j,i)
+          uwind = 0.5E0 * uwind / dz(1,j,i)
+          vwind = vsur(j+1,i)/dxK(j+1,i)+vsur(j,i)/dxK(j,i)
+          vwind = 0.5E0 * vwind / dz(1,j,i)
+          tot_wind = SQRT(uwind**2+vwind**2)/rhosur(j,i)
+#else
+          tot_wind = SQRT(u(j,i,ntstep)**2+v(j,i,ntstep)**2)
+#endif
+
+
+          ustar(j,i) = (VK * tot_wind )/(log( dz(1,j,i)/(z0(j,i)/100.))) ! [m/s]
+        END DO
+      END DO
+    ELSEIF (fricvelo_scheme == 2) THEN
+      ustar(:,:) = ust(:,:,ntstep)
+
+    END IF
+
+
+  END SUBROUTINE get_ustar
 
   !+ okin_vegetation
   !---------------------------------------------------------------------
@@ -2307,7 +2386,7 @@ MODULE src_dust
 
   !+ roughness
   !---------------------------------------------------------------------
-  SUBROUTINE fecan(subdomain,time_now,yaction)
+  SUBROUTINE fecan(yaction,subdomain,time_now)
   !---------------------------------------------------------------------
   ! Description:
   !
