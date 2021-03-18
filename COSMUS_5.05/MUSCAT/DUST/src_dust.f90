@@ -239,17 +239,19 @@ MODULE src_dust
       END IF
 
       ! psrcFile always necessary
-      IF (TRIM(psrcFile) == 'without') THEN
-        ierr = 100004
-        yerr = 'psrcFile is missing'
-        PRINT*,'ERROR    src_dust "init" '
-        PRINT*,'         #',ierr
-        PRINT*,'         ',yerr
-        STOP
-      ELSE
-        ifile_num = ifile_num + 1
-        ifile(ifile_num) = 'source'
-        ifile_dim(ifile_num) = 1
+      IF (psrcType > 0) THEN
+        IF (TRIM(psrcFile) == 'without') THEN
+          ierr = 100004
+          yerr = 'psrcFile is missing'
+          PRINT*,'ERROR    src_dust "init" '
+          PRINT*,'         #',ierr
+          PRINT*,'         ',yerr
+          STOP
+        ELSE
+          ifile_num = ifile_num + 1
+          ifile(ifile_num) = 'source'
+          ifile_dim(ifile_num) = 1
+        END IF
       END IF
 
       ! z0File maybe necessary
