@@ -561,14 +561,12 @@ MODULE src_dust
           IF (TRIM(ifile(i)) == 'soil' .AND. soilmaptype == 1) copy2d => dust(ib1)%soiltype
           IF (TRIM(ifile(i)) == 'soil' .AND. soilmaptype == 2) copy3d => dust(ib1)%soilmap
           IF (TRIM(ifile(i)) == 'source' ) copy2d => dust(ib1)%source
-          ! IF (filenum == 1) copy2d => dust(ib1)%soiltype
-          ! IF (filenum == 2) copy2d => dust(ib1)%source
-          ! IF (filenum == 3) copy2d => dust(ib1)%z0
+          IF (TRIM(ifile(i)) == 'z0') copy2d => dust(ib1)%z0
           ! IF (filenum == 4) copy2d => dust(ib1)%biome
           ! IF (filenum == 5) copy3d => dust(ib1)%veg
           ! IF (filenum == 6) copy3d => dust(ib1)%veg
           ! IF (filenum == 7) copy2d => dust(ib1)%vegmin2
-          IF (TRIM(ifile(i)) == 'source') copy3d => dust(ib1)%vmoist
+          IF (TRIM(ifile(i)) == 'moist') copy3d => dust(ib1)%vmoist
           !
           IF (ifile_dim(i) == 1) CALL copy2block(decomp(ib1),2,read_input,too2d=copy2d)
           IF (ifile_dim(i)  > 1) CALL copy2block(decomp(ib1),3,read_input,too3d=copy3d)
@@ -3037,7 +3035,10 @@ MODULE src_dust
       END IF
     ELSEIF (infile == 'source') THEN
       filename = TRIM(psrcFile)
-	varname = 'source'
+	    varname = 'source'
+    ELSEIF (infile == 'z0') THEN
+      filename = TRIM(psrcFile)
+      varname = 'z0'
     ELSEIF (infile == 'moist') THEN
       filename = TRIM(moistFile)
       varname='swvl1'
@@ -3183,7 +3184,6 @@ MODULE src_dust
     IF ( ntimes  > 0 ) ary_size = ntimes
 
     ALLOCATE (var_read(je_tot,ie_tot,ary_size), STAT=istat)
-    PRINT*, shape(var_read), 'allocating here'
     IF (istat /= 0) THEN
       ierror = 10014
       yerrmsg = 'allocation of var_read failed'
@@ -3221,23 +3221,18 @@ MODULE src_dust
       ! get the var
       IF (istart < 1) istart = 1
       istat = nf90_get_var(ncid, varID, var_read(:,:,i),start= (/1,1,istart/),count=(/ie_tot,je_tot,ntimes/))
-      PRINT*,i,istart,ntimes
       IF (istat /= nf90_noerr) THEN
-        print*, 'hier'
         ierror  = 10017
         yerrmsg = TRIM(nf90_strerror(istat))
         RETURN
       ENDIF
-      
-      PRINT*,'Here it fails'
+
       ! wirte the var into outvar
       IF (varnum == 1) THEN
         outvar(:,:,:)=var_read(:,:,:)*var_scale+var_offset
       ELSEIF (varnum > 1) THEN
-	PRINT*,shape(var_read),shape(outvar),ie_tot, je_tot
         outvar(:,:,i)=var_read(:,:,i)*var_scale+var_offset
       END IF
-      PRINT*,'Or it could be here'
 
     END DO
 
