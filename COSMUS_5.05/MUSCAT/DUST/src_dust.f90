@@ -2885,7 +2885,8 @@ MODULE src_dust
 
     ary_size = ndays
     IF ( ndays == 0 ) ary_size = 1
-    ALLOCATE (var_read(ie_tot,je_tot,ary_size), STAT=istat)
+    ALLOCATE (var_read(je_tot,ie_tot,ary_size), STAT=istat)
+    PRINT*,shape(var_read)
     IF (istat /= 0) THEN
       ierror = 10014
       yerrmsg = 'allocation of var_read failed'
@@ -3036,6 +3037,7 @@ MODULE src_dust
       END IF
     ELSEIF (infile == 'source') THEN
       filename = TRIM(psrcFile)
+	varname = 'source'
     ELSEIF (infile == 'moist') THEN
       filename = TRIM(moistFile)
       varname='swvl1'
@@ -3180,7 +3182,8 @@ MODULE src_dust
     IF ( varnum  > 0 ) ary_size = varnum
     IF ( ntimes  > 0 ) ary_size = ntimes
 
-    ALLOCATE (var_read(ie_tot,je_tot,ary_size), STAT=istat)
+    ALLOCATE (var_read(je_tot,ie_tot,ary_size), STAT=istat)
+    PRINT*, shape(var_read), 'allocating here'
     IF (istat /= 0) THEN
       ierror = 10014
       yerrmsg = 'allocation of var_read failed'
@@ -3216,20 +3219,25 @@ MODULE src_dust
       ENDIF
 
       ! get the var
+      IF (istart < 1) istart = 1
       istat = nf90_get_var(ncid, varID, var_read(:,:,i),start= (/1,1,istart/),count=(/ie_tot,je_tot,ntimes/))
+      PRINT*,i,istart,ntimes
       IF (istat /= nf90_noerr) THEN
         print*, 'hier'
         ierror  = 10017
         yerrmsg = TRIM(nf90_strerror(istat))
         RETURN
       ENDIF
-
+      
+      PRINT*,'Here it fails'
       ! wirte the var into outvar
       IF (varnum == 1) THEN
         outvar(:,:,:)=var_read(:,:,:)*var_scale+var_offset
       ELSEIF (varnum > 1) THEN
+	PRINT*,shape(var_read),shape(outvar),ie_tot, je_tot
         outvar(:,:,i)=var_read(:,:,i)*var_scale+var_offset
       END IF
+      PRINT*,'Or it could be here'
 
     END DO
 
