@@ -3334,83 +3334,134 @@ MODULE src_dust
   END SUBROUTINE copy2block
 
 
-  SUBROUTINE quick_nc(prep,name,vname,var,xe,ye,ze,te,xmin,xmax,ymin,ymax,isub,nblocs)
+#ifdef OFFLINE
+  SUBROUTINE quick_nc(name,var2d,var2dtime,var3d,var3dtime)
+  !---------------------------------------------------------------------
+  ! Description:
+  !   quick output of data fields in netcdf format.
+  !   Mainly for debugging.
+  !
+  ! Usage:
+  !   call quick_nc('name',vartype=printvar)
+  !   name definens the filename and the variable name in the nc file
+  !   possible variable types
+  !   var2d     : a two dimensional field                         -> printvar(:,:)
+  !   var2dtime : a two dimensional field with a time dimension   -> printvar(:,:,:)
+  !   var3d     : a three dimensional field                       -> printvar(:,:,:)
+  !   var3dtime : a three dimensional field with a time dimension -> printvar(:,:,:,:)
+  !
+  !----------------------------------------------------------------
 
     USE mo_dust
     USE netcdf
-
-#ifdef OFFLINE
     USE offline_org
-#endif
-    ! USE data_parallel, ONLY: my_cart_id
 
     IMPLICIT NONE
 
     CHARACTER(*), INTENT(IN) :: name
-    CHARACTER(*), INTENT(IN) :: vname
 
-    REAL(8),INTENT(IN) :: var(:,:,:,:)
+    REAL(8), OPTIONAL,  INTENT(IN) :: &
+      var2d    (:,:)  ,  &
+      var2dtime(:,:,:),  &
+      var3d    (:,:,:),  &
+      var3dtime(:,:,:,:)
 
-    INTEGER, INTENT(IN) :: prep, xe, ye, ze, te, xmin,xmax,ymin,ymax,isub,nblocs
+    CHARACTER(30) :: &
+      fname
 
-    LOGICAL :: firstbloc
+    INTEGER :: &
+      i, &
+      istat,&
+      ncID,&
+      xID,&
+      yID,&
+      zID,&
+      tID,&
+      varID
 
-    INTEGER :: i,istat,ncID,xID,yID,zID,tID,varID
+    INTEGER, ALLOCATABLE :: &
+      varshape(:)
+
+
 
     xID=0
     yID=0
     zID=0
     tID=0
 
+    ! Define filename
+    fname=name//'.nc'
 
-    if(prep == 0) then
-      print*,my_cart_id,isub,"create nc"
-      istat=nf90_create(name, NF90_SHARE, ncID)
-      if (xe >1) istat=nf90_def_dim(ncID, 'x', xe, xID)
-      if (ye >1) istat=nf90_def_dim(ncID, 'y', ye, yID)
-      if (ze >1) istat=nf90_def_dim(ncID, 'z', ze, zID)
-      if (te >1) istat=nf90_def_dim(ncID, 't', te, tID)
+    ! create file
+    IF (present(var2d) .OR. present(var3d) .OR. present(var2dtime) .OR. present(var3dtime) ) THEN
+     print*,"create file: ",fname
+     istat=nf90_create(TRIM(fname), NF90_SHARE, ncID)
 
-      IF (xID /=0 .and. yID/=0 .and. zID == 0 .and. tID==0) &
-        istat=nf90_def_var(ncID, vname, NF90_FLOAT, (/xID,yID/), varID)
-      IF (xID /=0 .and. yID/=0 .and. zID /= 0 .and. tID==0) &
-        istat=nf90_def_var(ncID, vname, NF90_FLOAT, (/xID,yID,zID/), varID)
-      IF (xID /=0 .and. yID/=0 .and. zID /= 0 .and. tID/=0) &
-        istat=nf90_def_var(ncID, vname, NF90_FLOAT, (/xID,yID,zID,tID/), varID)
-      IF (xID /=0 .and. yID/=0 .and. zID == 0 .and. tID/=0) &
-        istat=nf90_def_var(ncID, vname, NF90_FLOAT, (/xID,yID,tID/), varID)
-
-      istat=nf90_enddef(ncID)
-
-      istat=nf90_close(ncID)
-
-    else
-      do i=1,nblocs
-        if (i==isub) then
-          print*,my_cart_id,isub,'wirte data',xmin,ymin,xmax,ymax,xe,ye
-
-           istat=nf90_open(name, NF90_WRITE, ncID)
-           if(istat /= nf90_NoErr) print*,'fail 1',nf90_strerror(istat)
-           istat=nf90_inq_varid(ncID, vname, varID)
-           if(istat /= nf90_NoErr) print*,'fail 2',nf90_strerror(istat)
-           IF (xe /=1 .and. ye/=1 .and. ze == 1 .and. te==1) &
-             istat=nf90_put_var(ncID, varID,var(:,:,1,1),    &
-                           start = (/ xmin, ymin/), &
-                           count = (/ xmax-xmin, ymax-ymin/))
-             if(istat /= nf90_NoErr) print*,'fail 3',nf90_strerror(istat)
-           IF (xe /=1 .and. ye/=1 .and. ze == 1 .and. te/=1) &
-             istat=nf90_put_var(ncID, varID,var(:,:,1,:),    &
-                           start = (/ xmin, ymin,1/), &
-                           count = (/ xmax-xmin, ymax-ymin,te/))
-             if(istat /= nf90_NoErr) print*,'fail 4',nf90_strerror(istat)
-          istat=nf90_close(ncID)
-          if(istat /= nf90_NoErr) print*,'fail 5',nf90_strerror(istat)
-        end if
-      end do
+    ELSE
+     PRINT*, 'quick_nc data field is missing, return'
+     RETURN
     end if
 
+    ! get dimension of the print variable
+    IF (present(var2d)) THEN
+      ALLOCATE(varshape(2))
+      varshape = shape(var2d)
+    ELSEIF(present(var2dtime)) THEN
+      ALLOCATE(varshape(3))
+      varshape = shape(var2dtime)
+    ELSEIF (present(var3d)) THEN
+      ALLOCATE(varshape(3))
+      varshape = shape(var3d)
+    ELSEIF (present(var3dtime)) THEN
+      ALLOCATE(varshape(4))
+      varshape = shape(var3dtime)
+    END IF
+
+
+    ! Define dimensions
+
+    istat=nf90_def_dim(ncID, 'x', varshape(2), xID)
+    istat=nf90_def_dim(ncID, 'y', varshape(1), yID)
+
+    IF (present(var3d) .OR. present(var3dtime)) THEN
+      istat=nf90_def_dim(ncID, 'z', varshape(3), zID)
+    END IF
+
+    IF (present(var2dtime)) THEN
+      istat=nf90_def_dim(ncID, 'time', varshape(3), tID)
+    END IF
+
+    IF (present(var3dtime)) THEN
+      istat=nf90_def_dim(ncID, 'time', varshape(4), tID)
+    END IF
+
+    ! Define variables
+    IF (present(var2d)) THEN
+      istat=nf90_def_var(ncID, name, NF90_FLOAT, (/xID,yID/), varID)
+    ELSEIF (present(var2dtime)) THEN
+      istat=nf90_def_var(ncID, name, NF90_FLOAT, (/xID,yID,tID/), varID)
+    ELSEIF (present(var3d)) THEN
+      istat=nf90_def_var(ncID, name, NF90_FLOAT, (/xID,yID,zID/), varID)
+    ELSEIF (present(var3dtime)) THEN
+      istat=nf90_def_var(ncID, name, NF90_FLOAT, (/xID,yID,zID,tID/), varID)
+    END IF
+
+    istat=nf90_enddef(ncID)
+
+    ! wirte variable to file
+    IF (present(var2d)) THEN
+      istat=nf90_put_var(ncID, varID,var2d(:,:))
+    ELSEIF (present(var2dtime)) THEN
+      istat=nf90_put_var(ncID, varID,var2dtime(:,:,:))
+    ELSEIF (present(var3d)) THEN
+      istat=nf90_put_var(ncID, varID,var3d(:,:,:))
+    ELSEIF (present(var3dtime)) THEN
+      istat=nf90_put_var(ncID, varID,var3dtime(:,:,:,:))
+    END IF
+
+    istat=nf90_close(ncID)
 
   END SUBROUTINE quick_nc
-
+#endif
 
 END MODULE src_dust
