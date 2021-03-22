@@ -3462,6 +3462,218 @@ MODULE src_dust
     istat=nf90_close(ncID)
 
   END SUBROUTINE quick_nc
+
+  SUBROUTINE quick_ascii(name,var,pmin,pmax)
+  !---------------------------------------------------------------------
+  ! Description:
+  !   quick output of data fields with ascii symols in the terminal
+  !   Mainly for debugging.
+  !
+  ! Usage:
+  !   call quick_nc('name',var(:,:))
+  !   name definens variable name
+  !   var is a 2d variable(j,i)
+  !
+  !   Optional:
+  !     pmin min value of the plot
+  !     pmax max value of the plot
+  !
+  !----------------------------------------------------------------
+
+    USE mo_dust
+    USE netcdf
+    USE offline_org
+
+    IMPLICIT NONE
+
+    CHARACTER(*), INTENT(IN) :: name
+
+    REAL(8),  INTENT(IN) :: &
+      var    (:,:)
+
+    REAL(8), OPTIONAL, INTENT(IN) :: &
+      pmin, &
+      pmax
+
+    INTEGER :: &
+      i,j,b,    & ! loops
+      shift_x,  &
+      shift_y,  &
+      i_screen, & ! size of the terminal
+      j_screen, & ! size of the terminal
+      i_plot,   & ! size of the plot
+      j_plot,   & ! size of the plot
+      i_fact,   & ! grid boxes per plot cell
+      j_fact,   & ! grid boxes per plot cell
+      funit,    &
+      pos
+
+    REAL(8), ALLOCATABLE :: &
+      printvar(:,:)
+
+    REAL(8) ::     &
+      plotmax,     &
+      plotmin,     &
+      plotbins(12)
+
+    CHARACTER(1) :: &
+      symbols(12),  &
+      add_sym
+
+    CHARACTER(8) :: &
+      str_bin
+
+    CHARACTER(300), ALLOCATABLE :: &
+      plotstrings(:)
+
+
+    ! get screen size
+    CALL EXECUTE_COMMAND_LINE('tput cols > screen.tmp')
+    CALL EXECUTE_COMMAND_LINE('tput lines >> screen.tmp')
+    OPEN(newunit = funit, file = 'screen.tmp')
+    READ(funit,*) i_screen
+    READ(funit,*) j_screen
+    CLOSE(funit)
+    CALL EXECUTE_COMMAND_LINE('rm screen.tmp')
+
+    i_screen = i_screen/2 - 2
+    j_screen = j_screen - 3
+
+
+
+    i_fact = max(1,ceiling(float(ie_tot)/float(i_screen)))
+    j_fact = max(1,ceiling(float(je_tot)/float(j_screen)))
+
+
+    IF (i_fact > j_fact) j_fact = i_fact
+    IF (i_fact < j_fact) i_fact = j_fact
+
+
+    i_plot = ie_tot/i_fact
+    j_plot = je_tot/j_fact
+
+
+
+    AllOCATE(printvar(j_plot,i_plot))
+    printvar = 0.
+
+    DO i=1, i_plot
+      DO j=1, j_plot
+
+        DO shift_x=0,i_fact-1
+          DO shift_y=0, j_fact-1
+            printvar(j,i) = printvar(j,i) + var(j+shift_y,i+shift_x)
+          END DO
+        END DO
+
+        printvar(j,i) = printvar(j,i)/(i_fact*j_fact)
+
+      END DO
+    END DO
+
+    IF (present(pmax)) THEN
+      plotmax=pmax
+    ELSE
+      plotmax=maxval(printvar)
+    END IF
+
+    IF (present(pmin)) THEN
+      plotmin=pmin
+    ELSE
+      plotmin=minval(printvar)
+    END IF
+
+
+    symbols( 1)='.'
+    symbols( 2)=','
+    symbols( 3)='-'
+    symbols( 4)='~'
+    symbols( 5)=':'
+    symbols( 6)=';'
+    symbols( 7)='!'
+    symbols( 8)='='
+    symbols( 9)='*'
+    symbols(10)='#'
+    symbols(11)='$'
+    symbols(12)='@'
+
+
+    DO i=1, 12
+      plotbins(i) = plotmin + i*(plotmax-plotmin)/13
+    END DO
+
+    ALLOCATE(plotstrings(j_plot+3))
+    plotstrings=''
+    plotstrings(3:j_plot+2) = '|'
+
+
+
+
+
+    DO i=1,i_plot*2+1
+      plotstrings(2) = TRIM(plotstrings(2))//'-'
+      plotstrings(j_plot+3) = TRIM(plotstrings(j_plot+3))//'-'
+    END DO
+
+    DO j=1,j_plot
+      DO i=1,i_plot
+        DO b=1,12
+          IF (printvar(j,i) < plotbins(1)) THEN
+            add_sym = 'x'
+          ELSEIF (printvar(j,i) > plotbins(b)) THEN
+            add_sym = symbols(b)
+          END IF
+
+        END DO
+
+        plotstrings(j+2)=TRIM(plotstrings(j+2))//' '//add_sym
+      END DO
+      plotstrings(j+2)=TRIM(plotstrings(j+2))//' |'
+
+      pos = scan(plotstrings(j+2),'x')
+      DO WHILE (pos > 0)
+        plotstrings(j+2)(pos:pos)=' '
+        pos = scan(plotstrings(j+2),'x')
+      END DO
+
+    END DO
+
+
+    ! legend
+    DO i=1,12
+      WRITE(str_bin, '(ES8.2)') plotbins(i)
+      pos = 15
+      plotstrings(pos-i)=TRIM(plotstrings(pos-i))//' '//symbols(i) // ' > '//str_bin
+    END DO
+
+    ! min, mean, med, max
+    WRITE(str_bin, '(ES8.2)') minval(printvar)
+    plotstrings(1) = 'Minimum: '//str_bin
+    WRITE(str_bin, '(ES8.2)') maxval(printvar)
+    plotstrings(1) = TRIM(plotstrings(1))//'    Maximum: '//str_bin
+
+
+    plotstrings(j_plot+3)(2:2+len(name))=name
+    plotstrings(j_plot+3)=' '//TRIM(plotstrings(j_plot+3))
+    plotstrings(2)=' '//TRIM(plotstrings(2))
+    plotstrings(1)=' '//TRIM(plotstrings(1))
+
+
+    ! IF (present(doflush)) THEN
+    !   IF (doflush) CALL FLUSH()
+    ! END IF
+    DO j=j_plot+3,1,-1
+      print*,TRIM(plotstrings(j))
+    END DO
+
+
+
+
+
+
+
+  END SUBROUTINE
+
 #endif
 
 END MODULE src_dust
