@@ -380,7 +380,7 @@ MODULE src_dust
         ELSE
           ifile_num = ifile_num + 1
           ifile(ifile_num) = 'moist'
-          ifile_dim(ifile_num) = nt!lasttstep
+          ifile_dim(ifile_num) = lasttstep+1-firsttstep
         END IF
       ELSE
         moistFile = 'without'
@@ -474,7 +474,7 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%veg(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
         ALLOCATE(dust(ib1)%vmoist(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
-                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:lasttstep+1-firsttstep))
         ALLOCATE(dust(ib1)%vegmin2(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
 
@@ -748,6 +748,8 @@ MODULE src_dust
 
     ! DEALLOCATE(dust_it)
 
+    ! call quick_nc('soil',var3d=dust(1)%soilmap)
+
     ! ------------------------------------
     ! +-+-+- Section 2 Dust flux calculation -+-+-+
     ! ------------------------------------
@@ -910,6 +912,15 @@ MODULE src_dust
       alpha = alpha*100. !  [cm-1] = 100 [m-1]
     END IF
 
+  !  call quick_nc('alpha',var2d=alpha)
+  !  call quick_nc('soil',var3d=soilmap)
+
+  ! call quick_ascii('alpha',alpha)
+  ! call quick_ascii('sand',soilmap(:,:,1),pmin=0.,pmax=1.)
+  ! call quick_ascii('silt',soilmap(:,:,2),pmin=0.,pmax=1.)
+  ! call quick_ascii('clay',soilmap(:,:,3),pmin=0.,pmax=1.)
+
+
 
   END SUBROUTINE init_alpha
 
@@ -967,6 +978,9 @@ MODULE src_dust
       END DO
     END DO
     ! end lon-lat-loop
+    ! call quick_nc('source',var2d=psrc)
+    ! call quick_ascii('source',psrc,pmin=0.,pmax=1.)
+
 
   END SUBROUTINE init_psrc
 
@@ -1246,7 +1260,7 @@ MODULE src_dust
           !print*, 'calc time step:',T2-T1
         END DO ! j
       END DO ! i
-
+      ! call quick_ascii('Dust',SUM(DustEmis,dim=3))
     END IF ! yaction
 
 
@@ -1522,87 +1536,6 @@ MODULE src_dust
     ! end lon-lat-loop
 
 
-
-    ! !--------TEST NC OUTPUT     only activate when needed
-    !        AllOCATE(printvar(subdomain%ntx,subdomain%nty,1,ndays))
-    !
-    !        do i=1,subdomain%ntx
-    !          do j=1,subdomain%nty
-    !
-    !              ! do t=1,ndays
-    !              !   ! ! if (lai(j,i,1,t) /= 0. .and. lai(j,i,1,t) < 1) then
-    !              !   ! if (lai(j,i,1,t) /= maxval(lai(:,:,1,:))) then
-    !              !   !   if (sp(j,i,1,2) == 0.) then
-    !              !   !     printvar(i,j,1,t)=99.
-    !              !   !   else
-    !              !   !     printvar(i,j,1,t)=lai(j,i,1,t)!lai_eff(j,i,1,t)
-    !              !   !   end if
-    !              !   ! ELSEIF(lai(j,i,1,t) == 0.) then
-    !              !   !   printvar(i,j,1,t)=-99.
-    !              !   ! end if
-    !              ! printvar(i,j,1,t)=feff(j,i,t)
-    !              ! ! printvar(i,j,1,t)=lai_eff(j,i,1,t)
-    !              ! ! printvar(i,j,1,t)=lai(j,i,1,t)!vegmin(j,i,1)
-    !              ! end do
-    !
-    !
-    !
-    !              ! printvar(i,j,1,1)=vegmin(j,i,1)
-    !
-    !              ! soiltype
-    !              printvar(i,j,1,1)=soiltype(j,i)
-    !
-    !              if (i==20 .and. j==20) printvar(i,j,1,1)=50
-    !
-    !
-    !              ! !biom
-    !              ! printvar(i,j,1,1)=sp(j,i,1,5)
-    !
-    !              !cosmo lai
-    !              ! printvar(i,j,1,1)=newlai(i,j)
-    !
-    !               !cosmo z0
-    !               ! printvar(i,j,1,1)=sp (j,i,1,4)
-    !
-    !               !cult
-    !               ! printvar(i,j,1,1)=sp (j,i,1,3)
-    !
-    !          end do
-    !        end do
-    !
-    !        ! print*, 'pvar 20/20',printvar(20,20,1,1)
-    !        ! print*, 'pvar 19/21',printvar(19,21,1,1)
-    !       if (subdomain%ib == 1) then
-    !
-    !          ! call quick_nc(0,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !          ! call quick_nc(0,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !          ! call quick_nc(0,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         !  call quick_nc(0,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         ! call quick_nc(0,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !         ! call quick_nc(0,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !                 ! call quick_nc(0,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !
-    !          call quick_nc(0,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0, &
-    !          subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !       ELSE
-    !         CALL SLEEP(1)
-    !       end if
-    !
-    !       do i=0, num_compute
-    !         if (i==subdomain%ib) then
-    !            ! call quick_nc(1,'efflaipw4.nc','EFFLAI',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb
-    !             ! call quick_nc(1,'z0.nc','Z0',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !            ! call quick_nc(1,'cult.nc','CULT',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           !  call quick_nc(1,'biom.nc','biom',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           ! call quick_nc(1,'efflai.nc','efflai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           ! call quick_nc(1,'vegmin.nc','vegmin',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           ! call quick_nc(1,'lai.nc','lai',printvar(:,:,:,:),ie_tot,je_tot,1,ndays,subdomain%igx0,subdomain%igx1,subdomain%igy0,subdomain%igy1,subdomain%ib,nb)
-    !           call quick_nc(1,'soiltype.nc','soiltype',printvar(:,:,:,:),ie_tot,je_tot,1,1,subdomain%igx0+1,subdomain%igx1+1, &
-    !           subdomain%igy0+1,subdomain%igy1+1,subdomain%ib,nb)
-    !         ELSE
-    !           CALL SLEEP(1)
-    !         end if
-    !       end do
 
   END SUBROUTINE init_tegen
 
@@ -2430,6 +2363,7 @@ MODULE src_dust
     soilmap => dust(subdomain%ib)%soilmap(:,:,:)
 
     IF (yaction == 'init') THEN
+      ! call quick_nc('vmoist',var2dtime=vmoist)
 
     ! start lon-lat-loop
       DO i=1,subdomain%ntx
@@ -3370,11 +3304,17 @@ MODULE src_dust
       var3d    (:,:,:),  &
       var3dtime(:,:,:,:)
 
+    REAL(8), ALLOCATABLE :: &
+      print2d    (:,:)  ,  &
+      print2dtime(:,:,:),  &
+      print3d    (:,:,:),  &
+      print3dtime(:,:,:,:)
+
     CHARACTER(30) :: &
       fname
 
     INTEGER :: &
-      i, &
+      i,j, &
       istat,&
       ncID,&
       xID,&
@@ -3398,8 +3338,9 @@ MODULE src_dust
 
     ! create file
     IF (present(var2d) .OR. present(var3d) .OR. present(var2dtime) .OR. present(var3dtime) ) THEN
-     print*,"create file: ",fname
+     print*,"create quick_nc file: ",fname
      istat=nf90_create(TRIM(fname), NF90_SHARE, ncID)
+     if(istat /= nf90_NoErr) print*,'quick_nc fail #1 ',nf90_strerror(istat)
 
     ELSE
      PRINT*, 'quick_nc data field is missing, return'
@@ -3410,60 +3351,109 @@ MODULE src_dust
     IF (present(var2d)) THEN
       ALLOCATE(varshape(2))
       varshape = shape(var2d)
+      AllOCATE(print2d(varshape(2),varshape(1)))
+      DO i = 1, varshape(2)
+        DO j = 1, varshape(1)
+          print2d(i,j) = var2d(j,i)
+        END DO
+      END DO
     ELSEIF(present(var2dtime)) THEN
       ALLOCATE(varshape(3))
       varshape = shape(var2dtime)
+      AllOCATE(print2dtime(varshape(2),varshape(1),varshape(3)))
+      DO i = 1, varshape(2)
+        DO j = 1, varshape(1)
+          print2dtime(i,j,:) = var2dtime(j,i,:)
+        END DO
+      END DO
     ELSEIF (present(var3d)) THEN
       ALLOCATE(varshape(3))
       varshape = shape(var3d)
+      AllOCATE(print3d(varshape(2),varshape(1),varshape(3)))
+      DO i = 1, varshape(2)
+        DO j = 1, varshape(1)
+          print3d(i,j,:) = var3d(j,i,:)
+        END DO
+      END DO
     ELSEIF (present(var3dtime)) THEN
       ALLOCATE(varshape(4))
       varshape = shape(var3dtime)
+      AllOCATE(print3dtime(varshape(2),varshape(1),varshape(3),varshape(4)))
+      DO i = 1, varshape(2)
+        DO j = 1, varshape(1)
+          print3dtime(i,j,:,:) = var3dtime(j,i,:,:)
+        END DO
+      END DO
     END IF
 
 
     ! Define dimensions
 
     istat=nf90_def_dim(ncID, 'x', varshape(2), xID)
+    if(istat /= nf90_NoErr) print*,'quick_nc fail #2 ',nf90_strerror(istat)
     istat=nf90_def_dim(ncID, 'y', varshape(1), yID)
+    if(istat /= nf90_NoErr) print*,'quick_nc fail #3 ',nf90_strerror(istat)
 
     IF (present(var3d) .OR. present(var3dtime)) THEN
       istat=nf90_def_dim(ncID, 'z', varshape(3), zID)
+      if(istat /= nf90_NoErr) print*,'quick_nc fail #4 ',nf90_strerror(istat)
     END IF
 
     IF (present(var2dtime)) THEN
       istat=nf90_def_dim(ncID, 'time', varshape(3), tID)
+      if(istat /= nf90_NoErr) print*,'quick_nc fail #5 ',nf90_strerror(istat)
     END IF
 
     IF (present(var3dtime)) THEN
       istat=nf90_def_dim(ncID, 'time', varshape(4), tID)
+      if(istat /= nf90_NoErr) print*,'quick_nc fail #6 ',nf90_strerror(istat)
     END IF
 
     ! Define variables
     IF (present(var2d)) THEN
       istat=nf90_def_var(ncID, name, NF90_FLOAT, (/xID,yID/), varID)
+      if(istat /= nf90_NoErr) print*,'quick_nc fail #7 ',nf90_strerror(istat)
     ELSEIF (present(var2dtime)) THEN
       istat=nf90_def_var(ncID, name, NF90_FLOAT, (/xID,yID,tID/), varID)
+      if(istat /= nf90_NoErr) print*,'quick_nc fail #8 ',nf90_strerror(istat)
     ELSEIF (present(var3d)) THEN
       istat=nf90_def_var(ncID, name, NF90_FLOAT, (/xID,yID,zID/), varID)
+      if(istat /= nf90_NoErr) print*,'quick_nc fail #9 ',nf90_strerror(istat)
     ELSEIF (present(var3dtime)) THEN
       istat=nf90_def_var(ncID, name, NF90_FLOAT, (/xID,yID,zID,tID/), varID)
+      if(istat /= nf90_NoErr) print*,'quick_nc fail #10 ',nf90_strerror(istat)
     END IF
 
     istat=nf90_enddef(ncID)
 
     ! wirte variable to file
     IF (present(var2d)) THEN
-      istat=nf90_put_var(ncID, varID,var2d(:,:))
+      istat=nf90_put_var(ncID, varID,print2d(:,:))
+      if(istat /= nf90_NoErr) print*,'quick_nc fail #11 ',nf90_strerror(istat)
     ELSEIF (present(var2dtime)) THEN
-      istat=nf90_put_var(ncID, varID,var2dtime(:,:,:))
+      istat=nf90_put_var(ncID, varID,print2dtime(:,:,:))
+      if(istat /= nf90_NoErr) print*,'quick_nc fail #12 ',nf90_strerror(istat)
     ELSEIF (present(var3d)) THEN
-      istat=nf90_put_var(ncID, varID,var3d(:,:,:))
+      istat=nf90_put_var(ncID, varID,print3d(:,:,:))
+      if(istat /= nf90_NoErr) print*,'quick_nc fail #13 ',nf90_strerror(istat)
     ELSEIF (present(var3dtime)) THEN
-      istat=nf90_put_var(ncID, varID,var3dtime(:,:,:,:))
+      istat=nf90_put_var(ncID, varID,print3dtime(:,:,:,:))
+      if(istat /= nf90_NoErr) print*,'quick_nc fail #14 ',nf90_strerror(istat)
     END IF
 
     istat=nf90_close(ncID)
+    if(istat /= nf90_NoErr) print*,'quick_nc fail #15 ',nf90_strerror(istat)
+
+    DEALLOCATE(varshape)
+    IF (present(var2d)) THEN
+      DEAllOCATE(print2d)
+    ELSEIF(present(var2dtime)) THEN
+      DEAllOCATE(print2dtime)
+    ELSEIF (present(var3d)) THEN
+      DEAllOCATE(print3d)
+    ELSEIF (present(var3dtime)) THEN
+      DEAllOCATE(print3dtime)
+    END IF
 
   END SUBROUTINE quick_nc
 
@@ -3474,7 +3464,7 @@ MODULE src_dust
   !   Mainly for debugging.
   !
   ! Usage:
-  !   call quick_nc('name',var(:,:))
+  !   call quick_ascii('name',var(:,:))
   !   name definens variable name
   !   var is a 2d variable(j,i)
   !
