@@ -2884,8 +2884,8 @@ MODULE src_dust
     istat = 0
 
     ary_size = ndays
-    IF ( ndays == 0 ) ary_size = 1
-    ALLOCATE (var_read(je_tot,ie_tot,ary_size), STAT=istat)
+    ! IF ( ndays == 0 ) ary_size = 1
+    ALLOCATE (var_read(ie_tot,je_tot,ary_size), STAT=istat)
     PRINT*,shape(var_read)
     IF (istat /= 0) THEN
       ierror = 10014
@@ -2991,7 +2991,7 @@ MODULE src_dust
 
 
     INTEGER  :: &
-      i,j,t,v,  &  ! loop
+      i,j,t,iv, &  ! loop
       ary_size, &  ! array size
       varnum,   &  !
       istart,   &  ! index of the start date in the var file
@@ -3185,7 +3185,7 @@ MODULE src_dust
     IF ( varnum  > 0 ) ary_size = varnum
     IF ( ntimes  > 0 ) ary_size = ntimes
 
-    ALLOCATE (var_read(je_tot,ie_tot,ary_size), STAT=istat)
+    ALLOCATE (var_read(ie_tot,je_tot,ary_size), STAT=istat)
     IF (istat /= 0) THEN
       ierror = 10014
       yerrmsg = 'allocation of var_read failed'
@@ -3193,9 +3193,9 @@ MODULE src_dust
     ENDIF
 
     ! loop for all vars
-    DO i = 1, varnum
+    DO iv = 1, varnum
       ! get the id of the var
-      istat = nf90_inq_varid(ncID, varname(i) , varID)
+      istat = nf90_inq_varid(ncID, varname(iv) , varID)
       IF (istat /= nf90_noerr) THEN
         ierror  = 10015
         yerrmsg = TRIM(nf90_strerror(istat))
@@ -3221,8 +3221,8 @@ MODULE src_dust
       ENDIF
 
       ! get the var
-      IF (istart < 1) istart = 1
-      istat = nf90_get_var(ncid, varID, var_read(:,:,i),start= (/1,1,istart/),count=(/ie_tot,je_tot,ntimes/))
+      !IF (istart < 1) istart = 1
+      istat = nf90_get_var(ncid, varID, var_read(:,:,iv),start= (/1,1,istart/),count=(/ie_tot,je_tot,ntimes/))
       IF (istat /= nf90_noerr) THEN
         ierror  = 10017
         yerrmsg = TRIM(nf90_strerror(istat))
@@ -3491,7 +3491,7 @@ MODULE src_dust
     REAL(8),  INTENT(IN) :: &
       var    (:,:)
 
-    REAL(8), OPTIONAL, INTENT(IN) :: &
+    REAL, OPTIONAL, INTENT(IN) :: &
       pmin, &
       pmax
 
@@ -3520,7 +3520,7 @@ MODULE src_dust
       symbols(12),  &
       add_sym
 
-    CHARACTER(8) :: &
+    CHARACTER(9) :: &
       str_bin
 
     CHARACTER(300), ALLOCATABLE :: &
