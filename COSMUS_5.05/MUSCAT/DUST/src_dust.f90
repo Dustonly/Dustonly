@@ -3527,7 +3527,7 @@ MODULE src_dust
     CHARACTER(9) :: &
       str_bin
 
-    CHARACTER(300), ALLOCATABLE :: &
+    CHARACTER(1000), ALLOCATABLE :: &
       plotstrings(:)
 
 
@@ -3564,9 +3564,9 @@ MODULE src_dust
     DO i=1, i_plot
       DO j=1, j_plot
 
-        DO shift_x=0,i_fact-1
-          DO shift_y=0, j_fact-1
-            printvar(j,i) = printvar(j,i) + var(j+shift_y,i+shift_x)
+        DO shift_x=1,i_fact
+          DO shift_y=1, j_fact
+            printvar(j,i) = printvar(j,i) + var((j-1)*j_fact+shift_y,(i-1)*i_fact+shift_x)
           END DO
         END DO
 
