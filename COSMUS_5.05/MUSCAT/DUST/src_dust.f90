@@ -3230,11 +3230,15 @@ MODULE src_dust
       ENDIF
 
       ! wirte the var into outvar
-      IF (varnum == 1) THEN
-        outvar(:,:,:)=var_read(:,:,:)*var_scale+var_offset
-      ELSEIF (varnum > 1) THEN
-        outvar(:,:,i)=var_read(:,:,i)*var_scale+var_offset
-      END IF
+      DO i=1,ie_tot
+        DO j=1,je_tot
+          IF (varnum == 1) THEN
+            outvar(j,i,:)=var_read(i,j,:)*var_scale+var_offset
+          ELSEIF (varnum > 1) THEN
+            outvar(j,i,iv)=var_read(i,j,iv)*var_scale+var_offset
+          END IF
+        END DO
+      END DO
 
     END DO
 
