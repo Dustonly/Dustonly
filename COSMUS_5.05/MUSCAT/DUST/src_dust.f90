@@ -85,7 +85,7 @@ MODULE src_dust
   PRIVATE
 
   ! subroutines for calling outside the module
-  PUBLIC :: organize_dust
+  PUBLIC :: organize_dust,quick_nc,quick_ascii
 
 
 
@@ -563,9 +563,9 @@ MODULE src_dust
           IF (TRIM(ifile(i)) == 'soil' .AND. soilmaptype == 1) copy2d => dust(ib1)%soiltype
           IF (TRIM(ifile(i)) == 'soil' .AND. soilmaptype == 2) copy3d => dust(ib1)%soilmap
           IF (TRIM(ifile(i)) == 'source' ) copy2d => dust(ib1)%source
-          IF (TRIM(ifile(i)) == 'z0') copy2d => dust(ib1)%z0
+          IF (TRIM(ifile(i)) == 'z0')      copy2d => dust(ib1)%z0
           ! IF (filenum == 4) copy2d => dust(ib1)%biome
-          ! IF (filenum == 5) copy3d => dust(ib1)%veg
+          IF (TRIM(ifile(i)) == 'vegday' ) copy3d => dust(ib1)%veg
           ! IF (filenum == 6) copy3d => dust(ib1)%veg
           ! IF (filenum == 7) copy2d => dust(ib1)%vegmin2
           IF (TRIM(ifile(i)) == 'moist') copy3d => dust(ib1)%vmoist
@@ -2621,6 +2621,11 @@ MODULE src_dust
       varname='swvl1'
       ntimes = SIZE(outvar(1,1,:))
       timecheck = .FALSE.
+    ELSEIF (infile == 'vegday') THEN
+      filename = TRIM(vegdayFile)
+      varname='FCOVER'
+      ntimes = SIZE(outvar(1,1,:))
+      timecheck = .True.
     END IF
 
     IF (filename(LEN(TRIM(filename))-2:) /= '.nc') THEN
