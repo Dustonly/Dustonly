@@ -868,9 +868,9 @@ MODULE src_dust
             soilmap(j,i,:) = 0.0
             soilmap(j,i,nmode-1) = 1.
           END IF
-        ELSEIF (psrcType == 2) THEN ! MSG source scheme by schepanski08
-          soilmap(j,i,:) = 0.0
+        ELSEIF (psrcType == 2) THEN ! MSG source scheme by schepanski08      
           IF (psrc(j,i) >= 2) THEN
+            soilmap(j,i,:) = 0.0
             soilmap(j,i,nmode-1) = 1.
           END IF
         END IF
