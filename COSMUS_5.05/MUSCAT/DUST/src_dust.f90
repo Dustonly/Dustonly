@@ -602,7 +602,6 @@ MODULE src_dust
 
         ! +-+-+- Sec 1.4.3 Moisture -+-+-+
         IF (moist_scheme == 1) THEN
-          print*, 'call fecan'
           CALL fecan('init',decomp(ib1),ntstep)
         END IF
 
@@ -2590,6 +2589,20 @@ MODULE src_dust
       var_read(:,:,:)
 
 
+    CHARACTER (len = 10) :: &
+      lon_names(4), & ! common names for the longitudes
+      lat_names(4)    ! common names for the latitudes
+
+
+      lon_names(1)='x'
+      lon_names(2)='lon'
+      lon_names(3)='rlon'
+      lon_names(4)='longitude'
+
+      lat_names(1)='y'
+      lat_names(2)='lat'
+      lat_names(3)='rlat'
+      lat_names(4)='latitude'
 
     ! start subroutine
     ! ---------------------------------------------------------
@@ -2646,9 +2659,18 @@ MODULE src_dust
     ENDIF
 
     ! get id of lat dimension
-    istat = nf90_inq_dimid(ncID, 'y', dimID)
+    DO i = 1, size(lat_names)
+      istat = nf90_inq_dimid(ncID, TRIM(lat_names(i)), dimID)
+      IF (istat == nf90_noerr) EXIT
+    END DO
     IF (istat /= nf90_noerr) THEN
       ierror  = 10002
+      PRINT*,''
+      PRINT*,'ERROR'
+      PRINT*,'  No latitude dimension was found in ',infile
+      PRINT*,'  possible names for the latitude dimension:'
+      PRINT*,'  ',lat_names
+      PRINT*, ''
       yerrmsg = TRIM(nf90_strerror(istat))
       RETURN
     ENDIF
@@ -2668,13 +2690,22 @@ MODULE src_dust
       RETURN
     END IF
 
-     ! get id of lon dimension
-     istat = nf90_inq_dimid(ncID, 'x', dimID)
-     IF (istat /= nf90_noerr) THEN
-       ierror  = 10005
-       yerrmsg = TRIM(nf90_strerror(istat))
-       RETURN
-     ENDIF
+    ! get id of lon dimension
+    DO i = 1, size(lon_names)
+      istat = nf90_inq_dimid(ncID, TRIM(lon_names(i)), dimID)
+      IF (istat == nf90_noerr) EXIT
+    END DO
+    IF (istat /= nf90_noerr) THEN
+      ierror  = 10005
+      PRINT*,''
+      PRINT*,'ERROR'
+      PRINT*,'  No longitude dimension was found in ',infile
+      PRINT*,'  possible names for the longitude dimension:'
+      PRINT*,'  ',lon_names
+      PRINT*, ''
+      yerrmsg = TRIM(nf90_strerror(istat))
+      RETURN
+    ENDIF
 
      ! read the length of lon dimension
      istat = nf90_inquire_dimension(ncID, dimID, len = dimlen)
