@@ -594,17 +594,25 @@ MODULE src_dust
         ib1 = 1
 #endif
 
-
+        ! +-+-+- Sec 1.4.1 Soilmap -+-+-+
         IF (soilmaptype ==  1) CALL init_soilmap(decomp(ib1))
+
+        ! +-+-+- Sec 1.4.2 Alpha -+-+-+
         CALL init_alpha(decomp(ib1),2)
 
+        ! +-+-+- Sec 1.4.3 Moisture -+-+-+
+        IF (moist_scheme == 1) THEN
+          print*, 'call fecan'
+          CALL fecan('init',decomp(ib1),ntstep)
+        END IF
+
+        ! +-+-+- Sec 1.4.4 Preferential Sources -+-+-+
         IF (psrcType > 0) THEN
           CAll init_psrc(decomp(ib1))
         END IF
 
 
-        ! +-+-+- Sec 1.4.1 dust flux -+-+-+
-
+        ! +-+-+- Sec 1.4.5 Dust Flux -+-+-+
         IF (dust_scheme == 1) THEN
           ! init of the dust emission sheme by Tegen et al. 2002
           ! CALL init_tegen(decomp(ib1))!ierr,yerr)
@@ -617,9 +625,7 @@ MODULE src_dust
         END IF
 
 
-        ! +-+-+- Sec 1.4.2 vegetation init -+-+-+
-
-
+        ! +-+-+- Sec 1.4.6 Vegetation -+-+-+
         IF (veg_scheme == 1) THEN
           CALL okin_vegetation(decomp(ib1),dimveg)
         ELSE IF (veg_scheme == 2) THEN
@@ -627,18 +633,13 @@ MODULE src_dust
         END IF
 
 
-        ! +-+-+- Sec 1.4.2 surface roughness -+-+-+
+        ! +-+-+- Sec 1.4.7 Surface Roughness -+-+-+
         IF (lwithz0) THEN
           ! Drag partition
           CALL roughness(decomp(ib1),dimveg)
         END IF
 
 
-        ! +-+-+- Sec 1.4.3 moisture -+-+-+
-        IF (moist_scheme == 1) THEN
-          print*, 'call fecan'
-          CALL fecan('init',decomp(ib1),ntstep)
-        END IF
 
       END DO
 
