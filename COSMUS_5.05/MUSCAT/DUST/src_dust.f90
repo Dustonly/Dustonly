@@ -597,18 +597,19 @@ MODULE src_dust
         ! +-+-+- Sec 1.4.1 Soilmap -+-+-+
         IF (soilmaptype ==  1) CALL init_soilmap(decomp(ib1))
 
-        ! +-+-+- Sec 1.4.2 Alpha -+-+-+
-        CALL init_alpha(decomp(ib1),2)
 
-        ! +-+-+- Sec 1.4.3 Moisture -+-+-+
+        ! +-+-+- Sec 1.4.2 Moisture -+-+-+
         IF (moist_scheme == 1) THEN
           CALL fecan('init',decomp(ib1),ntstep)
         END IF
 
-        ! +-+-+- Sec 1.4.4 Preferential Sources -+-+-+
+        ! +-+-+- Sec 1.4.3 Preferential Sources -+-+-+
         IF (psrcType > 0) THEN
           CAll init_psrc(decomp(ib1))
         END IF
+
+        ! +-+-+- Sec 1.4.4 Alpha -+-+-+
+        CALL init_alpha(decomp(ib1),2)
 
 
         ! +-+-+- Sec 1.4.5 Dust Flux -+-+-+
@@ -867,7 +868,7 @@ MODULE src_dust
             soilmap(j,i,:) = 0.0
             soilmap(j,i,nmode-1) = 1.
           END IF
-        ELSEIF (psrcType == 2) THEN ! MSG source scheme by schepanski08      
+        ELSEIF (psrcType == 2) THEN ! MSG source scheme by schepanski08
           IF (psrc(j,i) >= 2) THEN
             soilmap(j,i,:) = 0.0
             soilmap(j,i,nmode-1) = 1.
@@ -1141,9 +1142,9 @@ MODULE src_dust
 
             ! Mask Effective area determined by preferential source fraction:
             ! only for psrcType = 2
-            IF (psrcType == 2) THEN
-              fluxbin(n) = fluxbin(n) * source(j,i)
-            END IF
+            ! IF (psrcType == 1) THEN
+            !   fluxbin(n) = fluxbin(n) * source(j,i)
+            ! END IF
 
             ! Mask Effective area determined by vegetation fraction:
             ! only for veg_scheme = 2
@@ -2628,7 +2629,7 @@ MODULE src_dust
       filename = TRIM(psrcFile)
 	    varname = 'source'
     ELSEIF (infile == 'z0') THEN
-      filename = TRIM(psrcFile)
+      filename = TRIM(z0File)
       varname = 'z0'
     ELSEIF (infile == 'moist') THEN
       filename = TRIM(moistFile)
