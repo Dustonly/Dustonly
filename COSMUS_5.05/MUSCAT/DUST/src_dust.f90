@@ -2203,7 +2203,7 @@ MODULE src_dust
         FF = 1.
 
         ! fraction efficace totale
-        feff = FF*CCC
+        local_feff = FF*CCC
 
 
         IF (local_feff < 0.) local_feff = 0.
