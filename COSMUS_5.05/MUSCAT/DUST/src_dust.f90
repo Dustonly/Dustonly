@@ -175,6 +175,8 @@ MODULE src_dust
     ! Subroutine Body
     !---------------------------------------------------------------------
 
+    IF (lddebug) PRINT*, 'Enter organize_dust, yaction=',yaction
+
     ierr = 0
 
     ! ------------------------------------
@@ -648,7 +650,7 @@ MODULE src_dust
 
     ! DEALLOCATE(dust_it)
 
-    ! call quick_nc('soil',var3d=dust(1)%soilmap)
+    call quick_nc('z0',var2d=dust(1)%z0)
 
     ! ------------------------------------
     ! +-+-+- Section 2 Dust flux calculation -+-+-+
@@ -675,8 +677,8 @@ MODULE src_dust
 
     END IF ! (yaction == "***")
 
+    IF (lddebug) PRINT*, 'Leave organize_dust, yaction=',yaction,', ierr=',ierr,''//NEW_LINE('')
 
-    ! STOP 'TESTING'
   END SUBROUTINE organize_dust
 
   !+ init_soilmap
@@ -707,6 +709,8 @@ MODULE src_dust
     soiltype => dust(subdomain%ib)%soiltype(:,:)
     soilmap => dust(subdomain%ib)%soilmap(:,:,:)
 
+    IF (lddebug) PRINT*, 'Enter init_soilmap'
+
     ! start lon-lat-loop
     DO i=1,subdomain%ntx
       DO j=1,subdomain%nty
@@ -723,6 +727,8 @@ MODULE src_dust
       END DO
     END DO
     ! end lon-lat-loop
+
+    IF (lddebug) PRINT*, 'Leave init_soilmap',''//NEW_LINE('')
 
   END SUBROUTINE init_soilmap
 
@@ -754,11 +760,11 @@ MODULE src_dust
       soiltype(:,:), &
       soilmap(:,:,:)
 
-
-
     alpha    => dust(subdomain%ib)%alpha2(:,:)
     soiltype => dust(subdomain%ib)%soiltype(:,:)
     soilmap  => dust(subdomain%ib)%soilmap(:,:,:)
+
+    IF (lddebug) PRINT*, 'Enter init_alpha'
 
     ! start lon-lat-loop
     DO i=1,subdomain%ntx
@@ -820,7 +826,7 @@ MODULE src_dust
   ! call quick_ascii('silt',soilmap(:,:,2),pmin=0.,pmax=1.)
   ! call quick_ascii('clay',soilmap(:,:,3),pmin=0.,pmax=1.)
 
-
+  IF (lddebug) PRINT*, 'Leave init_alpha',''//NEW_LINE('')
 
   END SUBROUTINE init_alpha
 
@@ -859,6 +865,8 @@ MODULE src_dust
     psrc => dust(subdomain%ib)%source(:,:)
     soilmap => dust(subdomain%ib)%soilmap(:,:,:)
 
+    IF (lddebug) PRINT*, 'Enter init_psrc'
+
     ! start lon-lat-loop
     DO i=1,subdomain%ntx
       DO j=1,subdomain%nty
@@ -881,6 +889,7 @@ MODULE src_dust
     ! call quick_nc('source',var2d=psrc)
     ! call quick_ascii('source',psrc,pmin=0.,pmax=1.)
 
+    IF (lddebug) PRINT*, 'Leave init_psrc',''//NEW_LINE('')
 
   END SUBROUTINE init_psrc
 
@@ -970,6 +979,7 @@ MODULE src_dust
     EmiRate  => block(subdomain%ib)%EmiRate(:,:,:,:)
 #endif
 
+    IF (lddebug) PRINT*, 'Enter tegen02, yaction=',yaction
 
     IF (yaction == 'init') THEN
       call cpu_time(T1)
@@ -1160,9 +1170,10 @@ MODULE src_dust
           !print*, 'calc time step:',T2-T1
         END DO ! j
       END DO ! i
-      ! call quick_ascii('Dust',SUM(DustEmis,dim=3))
+      !call quick_ascii('Dust',SUM(DustEmis,dim=3))
     END IF ! yaction
 
+    IF (lddebug) PRINT*, 'Leave tegen02, yaction=',yaction,''//NEW_LINE('')
 
   END SUBROUTINE tegen02
 
@@ -1255,6 +1266,8 @@ MODULE src_dust
     !  => dust_ini(ib1)%veg
     !  => dust_ini(ib1)%veg
     !  => dust_ini(ib1)%vegmin
+
+    IF (lddebug) PRINT*, 'Enter init_tegen'
 
     ! +-+-+- Sec 1 init of threshold friction velocity Uth -+-+-+
     ! Marticorena and Bergametti 1995 Sec 2.2, eq. (3)-(7)
@@ -1436,6 +1449,7 @@ MODULE src_dust
     ! end lon-lat-loop
 
 
+    IF (lddebug) PRINT*, 'Leave init_tegen',''//NEW_LINE('')
 
   END SUBROUTINE init_tegen
 
@@ -1576,8 +1590,7 @@ MODULE src_dust
     EmiRate  => block(subdomain%ib)%EmiRate(:,:,:,:)
 #endif
 
-
-
+IF (lddebug) PRINT*, 'Enter emission_tegen'
 
     ! +-+-+- Sec 1 Set the actually date -+-+-+
 
@@ -1807,6 +1820,9 @@ MODULE src_dust
         END DO
       END DO
     END DO
+
+    IF (lddebug) PRINT*, 'Leave emission_tegen',''//NEW_LINE('')
+
   END SUBROUTINE emission_tegen
 
   !+ get_ustar
@@ -1865,6 +1881,7 @@ MODULE src_dust
     vsur    => meteo(subdomain%ib)%v(1,:,:,WindCur)
 #endif
 
+    IF (lddebug) PRINT*, 'Enter get_ustar'
 
     IF (fricvelo_scheme == 1) THEN
       DO i = 1,subdomain%ntx
@@ -1890,6 +1907,7 @@ MODULE src_dust
 
     END IF
 
+    IF (lddebug) PRINT*, 'Leave get_ustar',''//NEW_LINE('')
 
   END SUBROUTINE get_ustar
 
@@ -1935,6 +1953,8 @@ MODULE src_dust
     veg     => dust(subdomain%ib)%veg(:,:,:)
     vegmin  => dust(subdomain%ib)%vegmin2(:,:)
     feff    => dust(subdomain%ib)%feff(:,:,:)
+
+    IF (lddebug) PRINT*, 'Enter okin_vegetation'
 
     ! start lon-lat-loop
     DO i=1,subdomain%ntx
@@ -1996,6 +2016,8 @@ MODULE src_dust
     END DO
     ! end lon-lat-loop
 
+    IF (lddebug) PRINT*, 'Leave okin_vegetation',''//NEW_LINE('')
+
   END SUBROUTINE okin_vegetation
 
   !+ linear_vegetation
@@ -2049,6 +2071,8 @@ MODULE src_dust
     cult  => dust(subdomain%ib)%cult(:,:)
     biome => dust(subdomain%ib)%biome(:,:)
     veff  => dust(subdomain%ib)%veff(:,:,:)
+
+    IF (lddebug) PRINT*, 'Enter linear_vegetation'
 
     ! start lon-lat-loop
     DO i=1,subdomain%ntx
@@ -2115,6 +2139,8 @@ MODULE src_dust
     END DO
     ! end lon-lat-loop
 
+    IF (lddebug) PRINT*, 'Leave linear_vegetation',''//NEW_LINE('')
+
   END SUBROUTINE linear_vegetation
 
 
@@ -2172,6 +2198,8 @@ MODULE src_dust
     z0   => dust(subdomain%ib)%z0(:,:)
     feff => dust(subdomain%ib)%feff(:,:,:)
 
+    IF (lddebug) PRINT*, 'Enter roughness'
+
     ! z0s  = dp / 30.
     z0s  = 0.001 !! en cm, these Marticorena p.85
     ! d1   = 0.  !100
@@ -2213,6 +2241,9 @@ MODULE src_dust
       END DO
     END DO
     ! end lon-lat-loop
+    call quick_nc('feff',var2d=feff(:,:,1))
+
+    IF (lddebug) PRINT*, 'Leave roughness'//NEW_LINE('')
 
   END SUBROUTINE roughness
 
@@ -2262,6 +2293,8 @@ MODULE src_dust
     w_str => dust(subdomain%ib)%w_str(:,:)
     soilmap => dust(subdomain%ib)%soilmap(:,:,:)
 
+    IF (lddebug) PRINT*, 'Enter fecan, yaction=',yaction
+
     IF (yaction == 'init') THEN
       ! call quick_nc('vmoist',var2dtime=vmoist)
 
@@ -2302,7 +2335,9 @@ MODULE src_dust
         END DO
       END DO
 
-    END IF ! yaction == 'init'
+    END IF ! yaction == 'calc'
+
+    IF (lddebug) PRINT*, 'Leave fecan, yaction=',yaction,''//NEW_LINE('')
 
   END SUBROUTINE fecan
 
@@ -2404,6 +2439,7 @@ MODULE src_dust
     CHARACTER(120), ALLOCATABLE :: &
       header(:)            ! header of input file
 
+    IF (lddebug) PRINT*, 'Enter read_ascii'
 
     ! Print short status
     PRINT*,'read_ascii ', filename
@@ -2520,6 +2556,8 @@ MODULE src_dust
     CLOSE(unit)
     IF ( ios /= 0 ) STOP "Error closing file"
 
+    IF (lddebug) PRINT*, 'Leave read_ascii',''//NEW_LINE('')
+
   END SUBROUTINE read_ascii
 
 
@@ -2609,11 +2647,12 @@ MODULE src_dust
     ! ---------------------------------------------------------
 
 
-
+    IF (lddebug) PRINT*, 'Enter read_infile'
 
     ! Definitions
     varnum = 1
     ntimes = 0
+    istart = 0
 
     IF (infile == 'soil') THEN
       filename = TRIM(soiltypeFile)
@@ -2857,8 +2896,9 @@ MODULE src_dust
 
     DEALLOCATE (var_read)
     IF (ntimes > 0) DEALLOCATE (times)
-    ! DEALLOCATE (outvar)
-    RETURN
+
+    IF (lddebug) PRINT*, 'Leave read_infile, ierr=',ierror,''//NEW_LINE('')
+
   END SUBROUTINE read_infile
 
 
@@ -2902,6 +2942,7 @@ MODULE src_dust
     INTEGER :: i,j,k,jx,jy,in,jn,RefLoc  ! loops and
     INTEGER :: igx0,igy0,SurfLoc         ! helping integers
 
+    IF (lddebug) PRINT*, 'Enter copy2block'
 
  !----------------------------------------------------------------
  !---  Fine Grid
@@ -2947,11 +2988,11 @@ MODULE src_dust
       END DO
     END IF
 
-  !----------------------------------------------------------------
+    IF (lddebug) PRINT*, 'Leave copy2block',''//NEW_LINE('')
+
   END SUBROUTINE copy2block
 
 
-#ifdef OFFLINE
   SUBROUTINE quick_nc(name,var2d,var2dtime,var3d,var3dtime)
   !---------------------------------------------------------------------
   ! Description:
@@ -3005,7 +3046,7 @@ MODULE src_dust
     INTEGER, ALLOCATABLE :: &
       varshape(:)
 
-
+    IF (lddebug) PRINT*, 'Enter quick_nc'
 
     xID=0
     yID=0
@@ -3134,6 +3175,8 @@ MODULE src_dust
       DEAllOCATE(print3dtime)
     END IF
 
+    IF (lddebug) PRINT*, 'Leave quick_nc, ierr=',istat,''//NEW_LINE('')
+
   END SUBROUTINE quick_nc
 
   SUBROUTINE quick_ascii(name,var,pmin,pmax)
@@ -3199,6 +3242,7 @@ MODULE src_dust
     CHARACTER(1000), ALLOCATABLE :: &
       plotstrings(:)
 
+    IF (lddebug) PRINT*, 'Enter quick_ascii'
 
     ! get screen size
     CALL EXECUTE_COMMAND_LINE('tput cols > screen.tmp')
@@ -3340,13 +3384,12 @@ MODULE src_dust
     END DO
 
 
-
+    IF (lddebug) PRINT*, 'Leave quick_ascii',''//NEW_LINE('')
 
 
 
 
   END SUBROUTINE
 
-#endif
 
 END MODULE src_dust

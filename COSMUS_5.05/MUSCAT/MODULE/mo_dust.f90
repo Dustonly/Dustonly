@@ -218,7 +218,8 @@ MODULE mo_dust
     leveltype       ! 10m, or mlv
 
   LOGICAL :: &
-    laccumulation
+    laccumulation, &
+    lddebug
 #endif
 
 END MODULE mo_dust

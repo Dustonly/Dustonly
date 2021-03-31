@@ -2,7 +2,7 @@ PROGRAM dust_only
 
   USE mo_dust
   USE offline_org
-  USE src_dust, ONLY: organize_dust
+  USE src_dust, ONLY: organize_dust, quick_ascii, quick_nc
 
   ! USE   src_dust, ONLY: organize_dust  !new dust module !MF
   ! USE   mo_dust
@@ -48,16 +48,18 @@ PROGRAM dust_only
   CALL read_namelist(ierr)
   IF (ierr /= 0) THEN
     print*, 'ERROR reading namelist'
-    ierr =  100 + ierr
+    ierr =  ierr
     print*, ierr
     STOP
   END IF
+
+  IF (lddebug) PRINT*, 'Additional debugging output: TRUE'
 
   print*, 'Define Grid'
   CALL def_grid(ierr)
   IF (ierr /= 0) THEN
     print*, 'ERROR def grid'
-    ierr =  200 + ierr
+    ierr =  ierr
     print*, ierr
     STOP
   END IF
@@ -70,7 +72,7 @@ PROGRAM dust_only
       CALL netcdf_in(TRIM(windFile),TRIM(u_var_name),u,lasttstep,.TRUE.,ierr,yerr)
       IF (ierr /= 0) THEN
         print*, 'ERROR netcdf in'
-        ierr =  300 + ierr
+        ierr =  ierr
         print*, ierr, yerr
         STOP
       END IF
@@ -81,7 +83,7 @@ PROGRAM dust_only
       CALL netcdf_in(TRIM(windFile),TRIM(u_var_name),v,lasttstep,.TRUE.,ierr,yerr)
       IF (ierr /= 0) THEN
         print*, 'ERROR netcdf in'
-        ierr =  300 + ierr
+        ierr =  ierr
         print*, ierr, yerr
         STOP
       END IF
@@ -94,7 +96,7 @@ PROGRAM dust_only
       CALL netcdf_in(TRIM(windFile),TRIM(ust_var_name),ust,lasttstep,.TRUE.,ierr,yerr)
       IF (ierr /= 0) THEN
         print*, 'ERROR netcdf in'
-        ierr =  300 + ierr
+        ierr =  ierr
         print*, ierr, yerr
         STOP
       END IF
@@ -116,7 +118,7 @@ PROGRAM dust_only
   CALL organize_dust('init',domain)
   IF (ierr /= 0) THEN
     print*, 'ERROR organize_dust:init'
-    ierr =  300 + ierr
+    ierr =  ierr
     print*, ierr
     STOP
   END IF
@@ -149,6 +151,7 @@ PROGRAM dust_only
     ! accumulate dust emisson g m-2 s-1 -> kg m-2
     IF (laccumulation) THEN
       dust_em_accum = dust_em_accum + dust(1)%d_emis*dt*1.E-3
+      ! call quick_ascii('dust',sum(dust_em_accum,dim=3),pmin=0.,pmax=1.e-2)
     ELSE
       dust_em_accum = dust(1)%d_emis*dt*1.E-3
     END IF
@@ -184,7 +187,7 @@ SUBROUTINE def_grid(ierr)
   ierr = 0
 
 
-
+  IF (lddebug) PRINT*, 'Enter def_grid'
 
   ! init domain in MUSCAT style
 
@@ -244,12 +247,13 @@ SUBROUTINE def_grid(ierr)
   AllOCATE(dust_em_accum(je_tot,ie_tot,nt))
   dust_em_accum=0
 
-
+  IF (lddebug) PRINT*, 'Leave def_grid, ierr=',ierr,''//NEW_LINE('')
 
 END SUBROUTINE def_grid
 
 
 FUNCTION get_hstop(date_start,date_end)
+  USE mo_dust
 
   IMPLICIT NONE
 
@@ -276,6 +280,8 @@ FUNCTION get_hstop(date_start,date_end)
     lmon,    &
     lday,    &
     lhour
+
+  IF (lddebug) PRINT*, 'Enter get_hstop'
 
   ! read date into integers vars
   READ(date_start(1:4),*)  syear
@@ -355,6 +361,8 @@ FUNCTION get_hstop(date_start,date_end)
 
   END DO
 
+  IF (lddebug) PRINT*, 'Leave get_hstop',''//NEW_LINE('')
+
 END FUNCTION get_hstop
 
 
@@ -408,7 +416,8 @@ SUBROUTINE read_namelist(ierr)
     u_var_name,        & ! Name of u variable in Input file
     v_var_name,        & ! Name of v variable in Input file
     ust_var_name,      & ! Name of ust variable in Input file
-    laccumulation
+    laccumulation,     & ! accumulated output
+    lddebug              ! flaf for debug output
 
   ! Defaults
   soiltypeFile    = 'without'   ! Soil Type Data
@@ -435,6 +444,7 @@ SUBROUTINE read_namelist(ierr)
   v_var_name      = 'v10'
   ust_var_name    = 'zust'
   laccumulation   = .FALSE.
+  lddebug         = .FALSE.
 
 
 
@@ -535,6 +545,8 @@ SUBROUTINE netcdf_in(infile,varname,outvar,ntimes,timecheck,ierror,yerrmsg)
 
   ! start subroutine
   ! ---------------------------------------------------------
+
+  IF (lddebug) PRINT*, 'Enter netcdf_in'
 
   ! Print short status
   PRINT*,'read_nc ', infile
@@ -744,8 +756,9 @@ SUBROUTINE netcdf_in(infile,varname,outvar,ntimes,timecheck,ierror,yerrmsg)
 
   DEALLOCATE (times)
   DEALLOCATE (var_read)
-  ! DEALLOCATE (outvar)
-  RETURN
+
+  IF (lddebug) PRINT*, 'Leave netcdf_in, ierr=',ierror,''//NEW_LINE('')
+
 END SUBROUTINE netcdf_in
 
 SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
@@ -800,7 +813,7 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
     CHARACTER (LEN=40) :: ydate
     CHARACTER(120) :: yerrmsg
 
-
+    IF (lddebug) PRINT*, 'Enter netcdf_out, status=',status
 
     ! Sec 1 create the nc file
     IF (status == 'create') THEN
@@ -1372,7 +1385,7 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
     ENDIF
 
 
-
+    IF (lddebug) PRINT*, 'Leave netcdf_out, status=',status,', ierr=',ierr,''//NEW_LINE('')
 
 
 END SUBROUTINE netcdf_out
