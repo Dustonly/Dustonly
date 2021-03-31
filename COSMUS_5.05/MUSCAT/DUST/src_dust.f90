@@ -959,12 +959,12 @@ MODULE src_dust
       DO j=1,subdomain%nty
 
         IF (psrcType == 1) THEN ! preferential source scheme by Tegen02
-          IF (psrc(j,i) > 0.5) THEN
+          IF (psrc(j,i) > 0.5 .AND. sum(soilmap(j,i,:)) > 0.0) THEN
             soilmap(j,i,:) = 0.0
             soilmap(j,i,nmode-1) = 1.
           END IF
         ELSEIF (psrcType == 2) THEN ! MSG source scheme by schepanski08
-          IF (psrc(j,i) >= 2) THEN
+          IF (psrc(j,i) >= 2 .AND. sum(soilmap(j,i,:)) > 0.0) THEN
             soilmap(j,i,:) = 0.0
             soilmap(j,i,nmode-1) = 1.
           END IF
@@ -2897,10 +2897,11 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       ! get value of the scaling factor
       istat = nf90_get_att(ncID, varID, 'scale_factor',var_scale)
       IF (istat /= nf90_noerr) THEN
-        ! ierror  = 10016
         var_scale = 1
-        ! yerrmsg = TRIM(nf90_strerror(istat))
-        !RETURN
+      ENDIF
+      istat = nf90_get_att(ncID, varID, 'scale',var_scale)
+      IF (istat /= nf90_noerr) THEN
+        var_scale = 1
       ENDIF
 
       ! get value of the offset
