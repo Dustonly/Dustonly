@@ -424,6 +424,7 @@ SUBROUTINE read_namelist(ierr)
   psrcType        = 0           ! 0 : psrc, 1 : msgsrc, 2 : acDust  MF
   fricvelo_scheme = 1
   dust_scheme     = 1           ! 1=Tegen02
+  threshold_scheme= 1
   veg_scheme      = 0           ! 0=no vegetation, 1=okin scheme, 2=linear (Tegen02)
   soilmaptype     = 1
   psrcFile        = 'without'   ! Potential Sources Data

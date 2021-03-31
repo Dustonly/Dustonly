@@ -200,6 +200,16 @@ MODULE src_dust
         STOP
       END IF
 
+      ! threshold_scheme need right values
+      IF (threshold_scheme < 0 .OR. threshold_scheme > 2) THEN
+        ierr = 100001
+        yerr = 'wrong value for threshold_scheme'
+        PRINT*,'ERROR    src_dust "init" '
+        PRINT*,'         #',ierr
+        PRINT*,'         ',yerr
+        STOP
+      END IF
+
       ! soiltypeFile always necessary
       IF (TRIM(soiltypeFile) == 'without') THEN
         ierr = 100002
@@ -596,32 +606,34 @@ MODULE src_dust
         ib1 = 1
 #endif
 
-        ! +-+-+- Sec 1.4.1 Soilmap -+-+-+
-        IF (soilmaptype ==  1) CALL init_soilmap(decomp(ib1))
+        ! +-+-+- Sec 1.4.1 thresold -+-+-+
+        CALL init_thresold()
+
+        ! +-+-+- Sec 1.4.2 Soilmap -+-+-+
+        IF (soilmaptype ==  1) THEN
+          CALL init_soilmap(decomp(ib1))
+        END IF
 
 
-        ! +-+-+- Sec 1.4.2 Moisture -+-+-+
+        ! +-+-+- Sec 1.4.3 Moisture -+-+-+
         IF (moist_scheme == 1) THEN
           CALL fecan('init',decomp(ib1),ntstep)
         END IF
 
-        ! +-+-+- Sec 1.4.3 Preferential Sources -+-+-+
+        ! +-+-+- Sec 1.4.4 Preferential Sources -+-+-+
         IF (psrcType > 0) THEN
           CAll init_psrc(decomp(ib1))
         END IF
 
-        ! +-+-+- Sec 1.4.4 Alpha -+-+-+
+        ! +-+-+- Sec 1.4.5 Alpha -+-+-+
         CALL init_alpha(decomp(ib1),2)
 
 
-        ! +-+-+- Sec 1.4.5 Dust Flux -+-+-+
+        ! +-+-+- Sec 1.4.6 Dust Flux -+-+-+
         IF (dust_scheme == 1) THEN
           ! init of the dust emission sheme by Tegen et al. 2002
-          ! CALL init_tegen(decomp(ib1))!ierr,yerr)
           CALL init_tegen(decomp(ib1),ndays=dimveg)!ierr,yerr)
-        END IF
-
-        IF (dust_scheme == 2) THEN
+        ELSEIF (dust_scheme == 2) THEN
           ! init of the dust emission sheme by Tegen et al. 2002
           CALL tegen02('init',decomp(ib1))!ierr,yerr)
         END IF
@@ -680,6 +692,81 @@ MODULE src_dust
     IF (lddebug) PRINT*, 'Leave organize_dust, yaction=',yaction,', ierr=',ierr,''//NEW_LINE('')
 
   END SUBROUTINE organize_dust
+
+  !+ init_thresold
+  !---------------------------------------------------------------------
+  SUBROUTINE init_thresold()
+  !---------------------------------------------------------------------
+  ! Description:
+
+  ! psrcType == 1
+  ! Preferential Sources = Potential lakes
+  !   If a grid box is identified as dust source then the soiltype switches to
+  !   best emission properties (100% silt).
+  !
+  !
+  !--------------------------------------------------------------------
+
+    USE mo_dust
+    USE tegen02_param
+#ifdef OFFLINE
+    USE offline_org
+#endif
+
+    IMPLICIT NONE
+
+    INTEGER :: &
+      n
+
+    REAL(8) :: &
+      dp,      & ! Current diameter
+      dmy_B,   & ! Reynolds number, dummy for thresold friction velocity
+      dmy_K   ! Reynolds number, dummy for thresold friction velocity
+
+
+    IF (lddebug) PRINT*, 'Enter init_thresold'
+
+    ! +-+-+- Sec 1 define particle diameter -+-+-+
+
+    ! define particle diameter
+    dp_meter(1) = Dmin
+    DO n = 2, nclass
+      dp_meter(n) = dp_meter(n-1) * EXP(Dstep)
+    END DO
+
+
+    ! +-+-+- Sec 2  calculat thresold friction velocity -+-+-+
+
+    IF (threshold_scheme == 0) THEN
+      Uth = 0.2 ! [ms-1] minimum value
+      PRINT*, '*** WARNING! ***'
+      PRINT*, 'threshold_scheme == 0'
+      PRINT*, 'threshold friction velocity is set to minimum (0.2 ms-1)'
+      PRINT*,''
+    END IF
+
+    ! particle size loop, calculation of Uth for every particle size
+    DO n = 1, nclass
+      dp = dp_meter(n)
+
+      IF (threshold_scheme == 1) THEN
+
+        dmy_K = SQRT(rop * g * dp / roa) * SQRT(10000. + 0.006 /(rop * g * dp ** 2.5))   ! Marticorena 95 eq(4) but in [m]
+        dmy_B = a_rnolds * (dp ** x_rnolds) + b_rnolds                                   ! Marticorena 95 eq(5)
+        IF (dmy_B < 10) THEN
+          Uth(n) = 0.0013 * dmy_K / SQRT(1.928 * (dmy_B ** 0.092) - 1.)                  ! Marticorena 95 eq(6) but in [m]
+        ELSE
+          Uth(n) = 0.001207 * dmy_K * ( 1. -0.0858 * EXP(-0.0617 * (dmy_B - 10.)) )      ! Marticorena 95 eq(7) but in [m]
+        END IF
+
+      ELSEIF (threshold_scheme == 2) THEN
+        Uth(n) = SQRT(0.0123 * (rop/roa * g *dp + 3.e-4/(roa*dp)) )
+      END IF
+    END DO ! n = 1, nclass
+
+    IF (lddebug) PRINT*, 'Leave init_thresold',''//NEW_LINE('')
+
+  END SUBROUTINE init_thresold
 
   !+ init_soilmap
   !---------------------------------------------------------------------
@@ -893,6 +980,8 @@ MODULE src_dust
 
   END SUBROUTINE init_psrc
 
+
+
   !+ init_tegen
   !---------------------------------------------------------------------
   SUBROUTINE tegen02(yaction,subdomain)
@@ -932,8 +1021,6 @@ MODULE src_dust
 
     REAL(8) :: &
       dp,      & ! Current diameter
-      dmy_B,   & ! Reynolds number, dummy for thresold friction velocity
-      dmy_K,   &   ! Reynolds number, dummy for thresold friction velocity
       dM,      &   ! mass size distribution
       stot,    &    ! total basal surface
       uwind,   &
@@ -984,14 +1071,6 @@ MODULE src_dust
     IF (yaction == 'init') THEN
       call cpu_time(T1)
 
-      ! +-+-+- Sec xx define particle diameter -+-+-+
-
-      ! define particle diameter
-      dp_meter(1) = Dmin
-      DO n = 2, nclass
-        dp_meter(n) = dp_meter(n-1) * EXP(Dstep)
-      END DO
-
 
       ALLOCATE(median_dp(nmode))
 
@@ -1001,29 +1080,6 @@ MODULE src_dust
       IF (nmode == 4) median_dp(nmode-3) = median_dp_csand
 
       ALLOCATE(srel_map(subdomain%nty,subdomain%ntx,nclass))
-
-
-
-      ! +-+-+- Sec xx  calculat thresold friction velocity -+-+-+
-
-      ! particle size loop, calculation of Uth for every particle size
-      DO n = 1, nclass
-        dp = dp_meter(n)
-
-        IF (threshold_scheme == 0) THEN
-
-          dmy_K = SQRT(rop * g * dp / roa) * SQRT(10000. + 0.006 /(rop * g * dp ** 2.5))   ! Marticorena 95 eq(4) but in [m]
-          dmy_B = a_rnolds * (dp ** x_rnolds) + b_rnolds                                   ! Marticorena 95 eq(5)
-          IF (dmy_B < 10) THEN
-            Uth(n) = 0.0013 * dmy_K / SQRT(1.928 * (dmy_B ** 0.092) - 1.)                  ! Marticorena 95 eq(6) but in [m]
-          ELSE
-            Uth(n) = 0.001207 * dmy_K * ( 1. -0.0858 * EXP(-0.0617 * (dmy_B - 10.)) )      ! Marticorena 95 eq(7) but in [m]
-          END IF
-        ELSEIF (threshold_scheme == 1) THEN
-          Uth(n) = SQRT(0.0123 * (rop/roa * g *dp + 3.e-4/(roa*dp)) )
-        END IF
-
-      END DO ! n = 1, nclass
 
       ! +-+-+- Sec xx srel calculation -+-+-+
       ! start lon-lat-loop
@@ -1281,25 +1337,9 @@ MODULE src_dust
 
     nn = 0
     dp = Dmin
-    ! particle size loop, calculation of Uth for every particle size
-    DO WHILE(dp.lE.Dmax + 1E-05)
-      nn = nn + 1
-      gransize(nn) = dp
 
-      IF (threshold_scheme == 0) THEN
-        dmy_B = a_rnolds * (dp ** x_rnolds) + b_rnolds
-        dmy_K = SQRT(rop * g * dp / roa) * SQRT(1. + 0.006 /(rop * g * dp ** 2.5))
-        IF (dmy_B < 10) THEN
-          Uth(nn) = 0.129 * dmy_K / SQRT(1.928 * (dmy_B ** 0.092) - 1.)
-        ELSE
-          Uth(nn) = 0.129 * dmy_K * ( 1. -0.0858 * EXP(-0.0617 * (dmy_B - 10.)) )
-        END IF
-      ELSEIF (threshold_scheme == 1) THEN
-        Uth(nn) = SQRT(0.0123 * (rop/roa * g/100 *dp/100 + 3.e-4/(roa*1000*dp/100)) ) * 100
-      END IF
-      dp = dp * EXP(Dstep)
-    END DO
 
+    Uth = Uth * 100 ! ms-1 to cms-1
 
     ! +-+-+- Sec 2 init of surface saltation flux -+-+-+
     ! Marticorena and Bergametti 1995 Sec 2.3.1, see eq. ()
