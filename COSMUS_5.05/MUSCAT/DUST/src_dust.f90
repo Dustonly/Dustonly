@@ -3293,7 +3293,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     CLOSE(funit)
     CALL EXECUTE_COMMAND_LINE('rm screen.tmp')
 
-    i_screen = i_screen/2 - 2
+    i_screen = i_screen/2 - 2 - 10
     j_screen = j_screen - 3
 
 
