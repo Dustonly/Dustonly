@@ -499,7 +499,9 @@ MODULE src_dust
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
         ALLOCATE(dust(ib1)%alpha2(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
-        ALLOCATE(dust(ib1)%feff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
+        ALLOCATE(dust(ib1)%feff_z0(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
+        ALLOCATE(dust(ib1)%feff_veg(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
         ALLOCATE(dust(ib1)%veff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
@@ -525,7 +527,8 @@ MODULE src_dust
         dust(ib1)%z0(:,:)=0.001 !cm
         dust(ib1)%source(:,:)=0.
         dust(ib1)%alpha2(:,:)=0.
-        dust(ib1)%feff(:,:,:)=1.
+        dust(ib1)%feff_z0(:,:)=1.
+        dust(ib1)%feff_veg(:,:,:)=1.
         dust(ib1)%veff(:,:,:)=1.
         dust(ib1)%mfac(:,:)=1.
         dust(ib1)%d_emis(:,:,:)=0.
@@ -662,7 +665,7 @@ MODULE src_dust
 
     ! DEALLOCATE(dust_it)
 
-    call quick_nc('z0',var2d=dust(1)%z0)
+    ! call quick_nc('z0',var2d=dust(1)%z0)
 
     ! ------------------------------------
     ! +-+-+- Section 2 Dust flux calculation -+-+-+
@@ -1031,6 +1034,7 @@ MODULE src_dust
       uthp, &
       dmy_R, &
       s_rel,  &
+      feff, &
       dflux
 
     REAL(8) :: &
@@ -1041,7 +1045,7 @@ MODULE src_dust
 
     REAL(8), POINTER :: source(:,:)
     REAL(8), POINTER :: soilmap(:,:,:)
-    REAL(8), POINTER :: feff(:,:,:)
+    REAL(8), POINTER :: feff_z0(:,:)
     REAL(8), POINTER :: veff(:,:,:)
     REAL(8), POINTER :: mfac(:,:)
     REAL(8), POINTER :: z0(:,:)
@@ -1054,7 +1058,7 @@ MODULE src_dust
 
     source   => dust(subdomain%ib)%source(:,:)
     soilmap  => dust(subdomain%ib)%soilmap(:,:,:)
-    feff     => dust(subdomain%ib)%feff(:,:,:)
+    feff_z0     => dust(subdomain%ib)%feff_z0(:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
     mfac     => dust(subdomain%ib)%mfac(:,:)
     z0       => dust(subdomain%ib)%z0(:,:)
@@ -1150,12 +1154,13 @@ MODULE src_dust
 
           ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
-          IF(feff(j,i,tnow) > 0. .AND. ustar(j,i) > 0. ) THEN
+          feff = feff_z0(j,i)
 
-            m = 1 ! index of dust bin
-            dflux = 0.
-            fluxbin = 0.
+          m = 1 ! index of dust bin
+          dflux = 0.
+          fluxbin = 0.
 
+          IF(feff > 0. .AND. ustar(j,i) > 0. ) THEN
             DO n = 1, nclass
               dp = dp_meter(n)
 
@@ -1163,7 +1168,7 @@ MODULE src_dust
               ! from the particle thr. fric. velo.,
               ! the drag partition from soil roughness and vegetation
               ! and the moisture factor
-              uthp = uth(n)/feff(j,i,tnow) * mfac(j,i)
+              uthp = uth(n)/feff * mfac(j,i)
 
               s_rel = srel_map(j,i,n)
 
@@ -1276,7 +1281,8 @@ MODULE src_dust
       su,               & ! surface area of particles
       suV,              & ! surface volume of particles
       su_loc,           & ! local su step
-      su_locV!,          & ! local suV step
+      su_locV,          & ! local suV step
+      feff
 
     ! 1D Arrays
     REAL (8)   :: &
@@ -1309,7 +1315,7 @@ MODULE src_dust
       source(:,:),       &
       z0(:,:),           &
       alpha(:,:),        &
-      feff(:,:,:)
+      feff_z0(:,:)
 
     REAL(8), ALLOCATABLE :: printvar(:,:,:,:)
 
@@ -1317,7 +1323,7 @@ MODULE src_dust
     source => dust(subdomain%ib)%source(:,:)
     z0 => dust(subdomain%ib)%z0(:,:)
     alpha => dust(subdomain%ib)%alpha2(:,:)
-    feff => dust(subdomain%ib)%feff(:,:,:)
+    feff_z0 => dust(subdomain%ib)%feff_z0(:,:)
     !  => dust_ini(ib1)%biome
     !  => dust_ini(ib1)%veg
     !  => dust_ini(ib1)%veg
@@ -1564,6 +1570,7 @@ MODULE src_dust
       dbstart,          & !minimum dust bin for sandblasting
       en_kin,           & !kinetic energy of dust
       dlast,            &
+      feff,             & ! drag partition
       cultfac
 
 
@@ -1597,7 +1604,7 @@ MODULE src_dust
     REAL(8), POINTER :: soiltype(:,:)
     REAL(8), POINTER :: source(:,:)
     REAL(8), POINTER :: alpha(:,:)
-    REAL(8), POINTER :: feff(:,:,:)
+    REAL(8), POINTER :: feff_z0(:,:)
     REAL(8), POINTER :: veff(:,:,:)
     REAL(8), POINTER :: mfac(:,:)
     REAL(8), POINTER :: z0(:,:)
@@ -1616,7 +1623,7 @@ MODULE src_dust
     soiltype => dust(subdomain%ib)%soiltype(:,:)
     source   => dust(subdomain%ib)%source(:,:)
     alpha    => dust(subdomain%ib)%alpha2(:,:)
-    feff     => dust(subdomain%ib)%feff(:,:,:)
+    feff_z0     => dust(subdomain%ib)%feff_z0(:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
     mfac     => dust(subdomain%ib)%mfac(:,:)
     z0       => dust(subdomain%ib)%z0(:,:)
@@ -1689,10 +1696,11 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
         ustar_cm = ustar(j,i)*100.
 
 
+        feff = feff_z0(j,i)
 
         ! +-+-+- Sec 3 Flux calculation -+-+-+
-        IF (feff(j,i,tnow) > 0.) THEN
-          IF (ustar_cm > 0 .AND. ustar_cm > umin2/feff(j,i,tnow) ) THEN
+        IF (feff > 0.) THEN
+          IF (ustar_cm > 0 .AND. ustar_cm > umin2/feff ) THEN
             kk = 0
             dp = Dmin
             DO WHILE (dp <= Dmax+1E-5)
@@ -1702,7 +1710,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
               ! ! Is this reduction necessary (MF)?
               Uthp=uth(kk)*umin2/umin*u1fac !reduce threshold for cultivated soils
               ! drag coeff
-              Uthp=Uthp/feff(j,i,tnow)
+              Uthp=Uthp/feff
               ! ! moist
               ! Uthp=Uthp*mfac(j,i,tnow)
               ! Marticorena:
@@ -1987,12 +1995,12 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     REAL(8), POINTER ::  &
       veg(:,:,:),        &
       vegmin(:,:),       &
-      feff(:,:,:)!,       &
+      feff_veg(:,:,:)!,       &
 
 
     veg     => dust(subdomain%ib)%veg(:,:,:)
     vegmin  => dust(subdomain%ib)%vegmin2(:,:)
-    feff    => dust(subdomain%ib)%feff(:,:,:)
+    feff_veg    => dust(subdomain%ib)%feff_veg(:,:,:)
 
     IF (lddebug) PRINT*, 'Enter okin_vegetation'
 
@@ -2040,16 +2048,16 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
            SSR = 1. - 1./((1./4.8)*gapheight + 1.)
 
            ! the drag partition is defined as sqrt(SSR)
-           feff(j,i,vegnow) = SQRT(SSR)
+           feff_veg(j,i,vegnow) = SQRT(SSR)
 
 
          ELSE ! if cover is smaller than one plant
-           feff(j,i,vegnow) = 1
+           feff_veg(j,i,vegnow) = 1
          ENDIF
 
          ! This should not happen, but just in case
-         IF(feff(j,i,vegnow) < 0.) feff(j,i,vegnow)=0.
-         IF(feff(j,i,vegnow) > 1.) feff(j,i,vegnow)=1.
+         IF(feff_veg(j,i,vegnow) < 0.) feff_veg(j,i,vegnow)=0.
+         IF(feff_veg(j,i,vegnow) > 1.) feff_veg(j,i,vegnow)=1.
 
         END DO
       END DO
@@ -2233,10 +2241,10 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
     REAL(8), POINTER ::  &
       z0(:,:),           &
-      feff(:,:,:)!,       &
+      feff_z0(:,:)!,       &
 
     z0   => dust(subdomain%ib)%z0(:,:)
-    feff => dust(subdomain%ib)%feff(:,:,:)
+    feff_z0 => dust(subdomain%ib)%feff_z0(:,:)
 
     IF (lddebug) PRINT*, 'Enter roughness'
 
@@ -2277,11 +2285,12 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
         IF (local_feff < 0.) local_feff = 0.
         IF (local_feff > 1.) local_feff = 1.
       END IF
-      feff(j,i,:) = local_feff
+      feff_z0(j,i) = local_feff
       END DO
     END DO
     ! end lon-lat-loop
-    call quick_nc('feff',var2d=feff(:,:,1))
+
+    ! call quick_nc('z0',var2d=z0)
 
     IF (lddebug) PRINT*, 'Leave roughness'//NEW_LINE('')
 

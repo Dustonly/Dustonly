@@ -108,7 +108,8 @@ MODULE mo_dust
     z0  (:,:),          & ! roughness length
     source  (:,:),      & ! preferential dust source
     alpha2   (:,:),      & ! ratio horiz/vertical flux
-    feff    (:,:,:),    & ! drag partition
+    feff_z0    (:,:),    & ! drag partition by roughness
+    feff_veg   (:,:,:),    & ! drag partition by vegetation
     veff    (:,:,:),    &   ! effective vegetation
     mfac    (:,:)          ! moisture factore
   END TYPE dust_subdomain
