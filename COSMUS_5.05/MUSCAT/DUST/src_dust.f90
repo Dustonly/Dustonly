@@ -735,6 +735,7 @@ MODULE src_dust
     dp_meter(1) = Dmin
     DO n = 2, nclass
       dp_meter(n) = dp_meter(n-1) * EXP(Dstep)
+PRINT*,n,dp_meter(n)
     END DO
 
 
@@ -1019,11 +1020,12 @@ MODULE src_dust
 
 
     INTEGER :: &
-      i,j,n,m, & ! loops
+      i,j,n,m,n_bomb, & ! loops
       tnow
 
     REAL(8) :: &
       dp,      & ! Current diameter
+      dp_bomb, & ! diameter of bombardment particles
       dM,      &   ! mass size distribution
       stot,    &    ! total basal surface
       uwind,   &
@@ -1034,8 +1036,15 @@ MODULE src_dust
       uthp, &
       dmy_R, &
       s_rel,  &
+      m_rel,  &
+      m_rel_sum, &
+      mtot,  &
       feff, &
-      dflux
+      hflux, &
+      vflux, &
+      checksum, checkflux,checkflux2
+
+      REAL(8),ALLOCATABLE :: m_rel_ar(:)
 
     REAL(8) :: &
       fluxtot (ntrace), &
@@ -1084,6 +1093,19 @@ MODULE src_dust
       IF (nmode == 4) median_dp(nmode-3) = median_dp_csand
 
       ALLOCATE(srel_map(subdomain%nty,subdomain%ntx,nclass))
+      ALLOCATE(mrel_map(subdomain%nty,subdomain%ntx,nclass))
+      ALLOCATE(mrel_sum(subdomain%nty,subdomain%ntx,nclass))
+      ALLOCATE(mrel_mx(subdomain%nty,subdomain%ntx,nclass,nclass))
+
+      call cpu_time(T2)
+
+      print*, 'zw time:',T2-T1
+
+      srel_map = 0.
+      mrel_map = 0.
+      mrel_sum = 0.
+      mrel_mx  = 0.
+
 
       ! +-+-+- Sec xx srel calculation -+-+-+
       ! start lon-lat-loop
@@ -1091,6 +1113,7 @@ MODULE src_dust
         DO j = 1,subdomain%nty
 
           stot = 0.
+          mtot = 0.
           DO n = 1, nclass
             dp = dp_meter(n)
 
@@ -1103,23 +1126,69 @@ MODULE src_dust
 
             ! size distribution of basal surface Marticorena 95 eq(30)
             srel_map(j,i,n) = dM / (2./3. * rop * dp) * Dstep
+            mrel_map(j,i,n) = dM * Dstep
 
             ! total basal surface Marticorena 95 eq(31)
             stot = stot + srel_map(j,i,n)
+            mtot = mtot + mrel_map(j,i,n)
+
+            mrel_sum(j,i,n) = mtot
 
           END DO ! n = 1, nclass
 
 
-          DO n = 1, nclass
-            dp = dp_meter(n)
+          IF (stot > 0.) THEN
+            srel_map(j,i,:) = srel_map(j,i,:)/stot
+            mrel_map(j,i,:) = mrel_map(j,i,:)/mtot
+            mrel_sum(j,i,:) = mrel_sum(j,i,:)/mtot
+          ELSE
+            srel_map(j,i,:) = 0.
+            mrel_map(j,i,:) = 0.
+          END IF
 
-            IF (stot > 0.) THEN
-              srel_map(j,i,n) = srel_map(j,i,n)/stot
-            ELSE
-              srel_map(j,i,n) = 0.
-            END IF
+          ! DO n = 1, nclass
+          !   dp = dp_meter(n)
+          !
+          !   ! IF (stot > 0.) THEN
+          !   !   srel_map(j,i,n) = srel_map(j,i,n)/stot
+          !   !   mrel_map(j,i,n) = mrel_map(j,i,n)/mtot
+          !   !   mrel_sum(j,i,n) = mrel_sum(j,i,n)/mtot
+          !   ! ELSE
+          !   !   srel_map(j,i,n) = 0.
+          !   !   mrel_map(j,i,n) = 0.
+          !   ! END IF
+          !
+          !   AllOCATE (m_rel_ar(n))
+          !
+          !   IF (mrel_sum(j,i,n) > 0.) THEN
+          !     m_rel_ar(:) = mrel_map(j,i,:n)/mrel_sum(j,i,n)
+          !   ELSE
+          !     m_rel_ar(:) = 0.
+          !   END IF
+          !
+          !   mrel_mx (j,i,n,1:n) = m_rel_ar(:)
+          !   DEALLOCATE (m_rel_ar)
+          !
+          ! END DO ! n = 1, nclass
 
-          END DO ! n = 1, nclass
+          ! DO n = 1, nclass
+          !   dp = dp_meter(n)
+          !   ! IF (mrel_sum(j,i,n) > 0.) THEN
+          !   !   ! DO n_bomb = 1, n
+          !   !   !   ! diameter of particles effected by soltation bombardment
+          !   !   !   dp_bomb = dp_meter(n_bomb)
+          !   !   !
+          !   !   !   ! scale horizontal flux with the relativ particle mass of dp_bomb
+          !   !   !   m_rel     = mrel_map(j,i,n_bomb)
+          !   !   !   m_rel_sum = mrel_sum(j,i,n)
+          !   !   !
+          !   !   !   ! Vertical dust flux
+          !   !   !   mrel_mx (j,i,n,n_bomb) =  m_rel/m_rel_sum
+          !   !   !
+          !   !   ! END DO
+          !   ! END IF
+          !   if (i==50 .and. j==50)print*, n, srel_map(j,i,n),mrel_map(j,i,n),srel_map(j,i,n)* (2./3. * rop * dp)
+          ! END DO ! n = 1, nclass
 
 
         END DO ! j=1,subdomain%nty
@@ -1129,6 +1198,7 @@ MODULE src_dust
       call cpu_time(T2)
 
       print*, 'init time:',T2-T1
+      stop "mrel_mx"
 
     ELSEIF (yaction == 'calc') THEN
       ! +-+-+- Sec 1 Set the actually date -+-+-+
@@ -1156,8 +1226,8 @@ MODULE src_dust
 
           feff = feff_z0(j,i)
 
-          m = 1 ! index of dust bin
-          dflux = 0.
+
+          hflux = 0.
           fluxbin = 0.
 
           IF(feff > 0. .AND. ustar(j,i) > 0. ) THEN
@@ -1169,13 +1239,7 @@ MODULE src_dust
               ! the drag partition from soil roughness and vegetation
               ! and the moisture factor
               uthp = uth(n)/feff * mfac(j,i)
-
               s_rel = srel_map(j,i,n)
-
-              IF (m > DustBins) m = DustBins
-              IF (m <= DustBins) THEN
-                IF (dp > dustbin_top(m)) m = m+1
-              END IF
 
 
               IF (ustar(j,i) > uthp) THEN
@@ -1184,22 +1248,37 @@ MODULE src_dust
                 dmy_R = 1
               END IF
 
-
               ! Horizontal dust flux
-              dflux = roa/g * ustar(j,i)**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
-              ! END IF
+              hflux = roa/g * ustar(j,i)**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
+              ! soltation bombardment
+              IF (hflux > 0.) THEN
+                m = 1 ! index of dust bin
 
-              ! Vertical dust flux
-              dflux = dflux * alpha(j,i)
+                DO n_bomb = 1, n
+                  ! diameter of particles effected by soltation bombardment
+                  dp_bomb = dp_meter(n_bomb)
 
-              ! bin-wise integration
-              IF (m <= DustBins) THEN
-                fluxbin(m) = fluxbin(m)+dflux
+                  ! calc current dust bin index
+
+                  IF (m <= DustBins) THEN
+                    IF (dp_bomb > dustbin_top(m)) m = m+1
+                  END IF
+
+                  ! scale horizontal flux with the relativ particle mass of dp_bomb
+                  m_rel     = mrel_map(j,i,n_bomb)
+                  m_rel_sum = mrel_sum(j,i,n)
+
+                  ! Vertical dust flux
+                  vflux = hflux * m_rel/m_rel_sum * alpha(j,i)
+
+                  ! bin-wise integration
+                  IF (m <= DustBins) THEN
+                    fluxbin(m) = fluxbin(m)+vflux
+                  END IF
+
+                END DO
               END IF
-
-
             END DO ! n = 1, nclass
-
 
           ENDIF
 
@@ -1379,7 +1458,7 @@ MODULE src_dust
 
           IF (solspe(ns,nd) == 0.) THEN
             su_loc = 0.
-          !  su_locV=0.
+            su_locV=0.
           ELSE
             !Marticorena 95, eq. (29)
             dmy_xk = solspe(ns,np)/(sqrt(2.* pi2)*log(solspe(ns,nsi)))
@@ -1415,7 +1494,7 @@ MODULE src_dust
           srelV(ns,nn) = su_classV(nn)/StotalV
           utest(ns)=utest(ns)+srelV(ns,nn)
           su_srelV(ns,nn)=utest(ns)
-          ! if (ns == 27 .and. nn == 99) print*, 'utest',ns,nn,utest(ns),su_srelV(ns,nn)!,srelV(ns,nn),su_classV(nn),StotalV,su_class(nn),Stotal
+          if (ns == 16 ) print*, 'utest',ns,nn,utest(ns),srelV(ns,nn),srelV(ns,nn)/(su_srelV(ns,nn)-su_srelV(ns,1))
         END IF
       END DO !nn=1,nclass
     END DO !ns (soil type)
@@ -1613,6 +1692,10 @@ MODULE src_dust
     REAL(8), POINTER :: w_str(:,:)
     REAL(8), POINTER :: DustEmis(:,:,:), EmiRate(:,:,:,:)
 
+    Real :: checksum1,checksum2,checksum3,checksum4,checksum5
+    checksum1=0
+    checksum2=0
+    checksum3=0
 
 
 
@@ -1705,6 +1788,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
             dp = Dmin
             DO WHILE (dp <= Dmax+1E-5)
               kk = kk+1
+              if (i==50 .and. j==50) print*, kk,dp
 
               ! original Tegen Code
               ! ! Is this reduction necessary (MF)?
@@ -1744,8 +1828,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
                 !#############################################################################
                 !V_start
                 !   This is only done for diatomite fields (Bodele) (Tegen et al ACP 2006).
-   	            !   In other regions, all sizes are mobilised.
-   	            !----------------------------------------------------------------------
+                !   In other regions, all sizes are mobilised.
+                !----------------------------------------------------------------------
                 dbstart=dp
                 IF(i_s1 == 13) THEN
                   en_kin = 0.5*1./24.*rop_bod*pi2*(dp**3)*(95.*van)**2  !g*cm2/s2
@@ -1756,17 +1840,21 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
                 ELSE
                   dbstart = dmin        !all sizes mobilised
                 END IF
-
+dbstart=1.3806605495010290E-004
                 !V_end
                 !#############################################################################
-
+                checksum1 = checksum1 + flux_diam
                 IF (dbstart >= dp) THEN
                   fluxtyp(kk)=fluxtyp(kk)+flux_diam
+                  IF (i == 50 .and. j == 50) print*, 'I', kk,fluxtyp(kk)
+
                 ELSE
                   ! loop over dislocated dust particle sizes
                   dpd=dmin
                   kkk=0
                   kfirst=0
+                  checksum4 = 0
+                  checksum5 = 0
                   DO WHILE(dpd <= dp+1e-5)
                     kkk=kkk+1
 
@@ -1779,17 +1867,30 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
                         fluxtyp(kkk) = fluxtyp(kkk) +flux_diam               &
                                       *srelV(i_s11,kkk)/((su_srelV(i_s11,kk) &
                                       -su_srelV(i_s11,kkmin)))
+                                      checksum4 = checksum4 + srelV(i_s11,kkk)/(su_srelV(i_s11,kk)-su_srelV(i_s11,kkmin))
+                                      IF (i == 50 .and. j == 50)print*, 'II', kk,kkk,fluxtyp(kkk),flux_diam, &
+                                      srelV(i_s11,kkk)/(su_srelV(i_s11,kk)-su_srelV(i_s11,kkmin)),checksum4, &
+                                      checksum5,checksum4-checksum5
+
+                                      ! IF (i == 50 .and. j == 50)print*,'  ', dp, 'add flux',flux_diam,flux_diam               &
+                                      ! *srelV(i_s11,kkk)/((su_srelV(i_s11,kk) &
+                                      ! -su_srelV(i_s11,kkmin)))
+
                       END IF ! (kk > kkmin)
+                    else
+                      checksum5 = checksum5 + srelV(i_s11,kkk)/(su_srelV(i_s11,kk)-su_srelV(i_s11,kkmin))
                     END IF ! (dpd >= dbstart)
                     dpd=dpd*exp(dstep)
                   END DO ! dpd
+                  IF (i == 50 .and. j == 50)print*,''
                   ! end of saltation loop
                 END IF ! (dbstart >= dp)
               END IF ! (fdp1 <= 0 .OR. fdp2 <= 0)
 
+
               dp = dp * exp(Dstep)
             END DO ! WHILE (dp <= Dmax+1E-5)
-
+            checksum2 = checksum2 + sum(fluxtyp)
             ! +-+-+- Sec 4 Section assign fluxes to bins -+-+-+
 
             dp=dmin
@@ -1814,6 +1915,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
             DO nn=1,ntrace
               fluxtot(nn) = fluxtot(nn) + fluxbin(nn)
+              checksum3 = checksum3 + fluxtot(nn)
             END DO
 
           END IF   ! (Ustar > 0 .AND. Ustar > umin2/feff(j,i,tnow) )
@@ -1869,6 +1971,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       END DO
     END DO
 
+    print*,'checks', i,j,checksum1,checksum2,checksum3
     IF (lddebug) PRINT*, 'Leave emission_tegen',''//NEW_LINE('')
 
   END SUBROUTINE emission_tegen
