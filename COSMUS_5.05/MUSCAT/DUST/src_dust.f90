@@ -1040,8 +1040,7 @@ MODULE src_dust
       mtot,  &
       feff, &
       hflux, &
-      vflux, &
-      checksum, checkflux,checkflux2
+      vflux
 
       REAL(8),ALLOCATABLE :: m_rel_ar(:)
 
@@ -1097,12 +1096,6 @@ MODULE src_dust
       ALLOCATE(mrel_mx(subdomain%nty,subdomain%ntx,nclass,DustBins+1))
 
 
-      ! srel_map = 0.
-      ! mrel_map = 0.
-      ! mrel_sum = 0.
-      ! mrel_mx  = 0.
-
-
       ! +-+-+- Sec xx srel calculation -+-+-+
       ! start lon-lat-loop
       DO i = 1,subdomain%ntx
@@ -1142,32 +1135,6 @@ MODULE src_dust
             mrel_map(j,i,:) = 0.
           END IF
 
-           ! DO n = 1, nclass
-           !   dp = dp_meter(n)
-
-           !   IF (stot > 0.) THEN
-           !     srel_map(j,i,n) = srel_map(j,i,n)/stot
-           !     mrel_map(j,i,n) = mrel_map(j,i,n)/mtot
-           !     mrel_sum(j,i,n) = mrel_sum(j,i,n)/mtot
-           !   ELSE
-           !     srel_map(j,i,n) = 0.
-           !     mrel_map(j,i,n) = 0.
-           !   END IF
-
-           !   ! AllOCATE (m_rel_ar(n))
-
-           !   ! IF (mrel_sum(j,i,n) > 0.) THEN
-           !   !   mrel_mx(j,i,n,1:n) = mrel_map(j,i,:n)/mrel_sum(j,i,n)
-           !   ! ELSE
-           !   !   mrel_mx(j,i,n,1:n) = 0.
-           !   ! END IF
-
-           !   ! mrel_mx (j,i,n,1:n) = m_rel_ar(:)
-           !   ! DEALLOCATE (m_rel_ar)
-           ! END DO ! n = 1, nclass
-
-
-
 
           DO n = 1, nclass
             dp = dp_meter(n)
@@ -1185,19 +1152,11 @@ MODULE src_dust
                     IF (dp_bomb > dustbin_top(m)) m = m+1
                   END IF
 
-
                   ! bin-wise integration
-                  ! IF (m <= DustBins) THEN
                     mrel_mx(j,i,n,m) = mrel_mx(j,i,n,m) + m_rel/m_rel_sum
-                  ! END IF
 
-
-                 ! Vertical dust flux
-                 ! mrel_mx (j,i,n,n_bomb) =  m_rel/m_rel_sum
-
-               END DO
+               END DO ! n_bomb
              END IF
-            ! if (i==50 .and. j==50)print*, n, srel_map(j,i,n),mrel_map(j,i,n),srel_map(j,i,n)* (2./3. * rop * dp)
           END DO ! n = 1, nclass
 
 
@@ -1272,42 +1231,8 @@ MODULE src_dust
                   END DO
 
               END IF
-
-
-              ! soltation bombardment
-              ! IF (hflux > 0.) THEN
-              !   m = 1 ! index of dust bin
-
-              !   DO n_bomb = 1, n
-              !     ! diameter of particles effected by soltation bombardment
-              !     dp_bomb = dp_meter(n_bomb)
-
-              !     ! calc current dust bin index
-              !     IF (m <= DustBins) THEN
-              !       IF (dp_bomb > dustbin_top(m)) m = m+1
-              !     END IF
-
-              !     ! scale horizontal flux with the relativ particle mass of dp_bomb
-              !     m_rel     = mrel_map(j,i,n_bomb)
-              !     m_rel_sum = mrel_sum(j,i,n)
-
-              !     ! Vertical dust flux
-              !     vflux = hflux * m_rel/m_rel_sum * alpha(j,i)
-
-              !     ! bin-wise integration
-              !     IF (m <= DustBins) THEN
-              !       fluxbin(m) = fluxbin(m)+vflux
-              !     END IF
-
-              !   END DO
-              ! END IF
             END DO ! n = 1, nclass
-
           ENDIF
-
-          ! DO n=1,ntrace
-          !   fluxtot(n) = fluxtot(n) + fluxbin(n)
-          ! END DO
 
           DO n=1,ntrace
             ! fluxtot: g/cm2/sec --> kg/m2/sec
@@ -1517,7 +1442,6 @@ MODULE src_dust
           srelV(ns,nn) = su_classV(nn)/StotalV
           utest(ns)=utest(ns)+srelV(ns,nn)
           su_srelV(ns,nn)=utest(ns)
-          if (ns == 16 ) print*, 'utest',ns,nn,utest(ns),srelV(ns,nn),srelV(ns,nn)/(su_srelV(ns,nn)-su_srelV(ns,1))
         END IF
       END DO !nn=1,nclass
     END DO !ns (soil type)
@@ -1715,12 +1639,6 @@ MODULE src_dust
     REAL(8), POINTER :: w_str(:,:)
     REAL(8), POINTER :: DustEmis(:,:,:), EmiRate(:,:,:,:)
 
-    Real :: checksum1,checksum2,checksum3,checksum4,checksum5
-    checksum1=0
-    checksum2=0
-    checksum3=0
-
-
 
     IF (nDust == 0) RETURN
     IF (DustMod <= 0) RETURN
@@ -1864,23 +1782,17 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
                 END IF
                 !V_end
                 !#############################################################################
-                checksum1 = checksum1 + flux_diam
                 IF (dbstart >= dp) THEN
                   fluxtyp(kk)=fluxtyp(kk)+flux_diam
-                  IF (i == 50 .and. j == 50) print*, 'I', kk,fluxtyp(kk)
-
                 ELSE
                   ! loop over dislocated dust particle sizes
                   dpd=dmin
                   kkk=0
                   kfirst=0
-                  checksum4 = 0
-                  checksum5 = 0
                   ! DO WHILE(dpd <= dp+1e-5)
                   DO WHILE(dpd <= dp)
                     kkk=kkk+1
 
-                    ! IF (i == 50 .and. j == 50)print*, dpd,dp,Dstep
                     IF (dpd >= dbstart) THEN
                       IF(kfirst == 0) kkmin=kkk
                       kfirst=1
@@ -1890,21 +1802,11 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
                         fluxtyp(kkk) = fluxtyp(kkk) +flux_diam               &
                                       *srelV(i_s11,kkk)/((su_srelV(i_s11,kk) &
                                       -su_srelV(i_s11,kkmin)))
-                                      checksum4 = srelV(i_s11,kkk)/(su_srelV(i_s11,kk)-su_srelV(i_s11,kkmin))
-                                      checksum5 = checksum5 + srelV(i_s11,kkk)/(su_srelV(i_s11,kk)-su_srelV(i_s11,kkmin))
-                                      IF (i == 50 .and. j == 50)print*, 'II', kk,kkk,&
-                                      checksum4 *100., &
-                                      checksum5 *100.
-
-                                      ! IF (i == 50 .and. j == 50)print*,'  ', dp, 'add flux',flux_diam,flux_diam               &
-                                      ! *srelV(i_s11,kkk)/((su_srelV(i_s11,kk) &
-                                      ! -su_srelV(i_s11,kkmin)))
 
                       END IF ! (kk > kkmin)
                     END IF ! (dpd >= dbstart)
                     dpd=dpd*exp(dstep)
                   END DO ! dpd
-                  IF (i == 50 .and. j == 50)print*,''
                   ! end of saltation loop
                 END IF ! (dbstart >= dp)
               END IF ! (fdp1 <= 0 .OR. fdp2 <= 0)
@@ -1912,7 +1814,6 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
               dp = dp * exp(Dstep)
             END DO ! WHILE (dp <= Dmax+1E-5)
-            checksum2 = checksum2 + sum(fluxtyp)
             ! +-+-+- Sec 4 Section assign fluxes to bins -+-+-+
 
             dp=dmin
@@ -1937,7 +1838,6 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
             DO nn=1,ntrace
               fluxtot(nn) = fluxtot(nn) + fluxbin(nn)
-              checksum3 = checksum3 + fluxtot(nn)
             END DO
 
           END IF   ! (Ustar > 0 .AND. Ustar > umin2/feff(j,i,tnow) )
@@ -1993,7 +1893,6 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       END DO
     END DO
 
-    print*,'checks', i,j,checksum1,checksum2,checksum3
     IF (lddebug) PRINT*, 'Leave emission_tegen',''//NEW_LINE('')
 
   END SUBROUTINE emission_tegen
