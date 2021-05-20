@@ -735,7 +735,6 @@ MODULE src_dust
     dp_meter(1) = Dmin
     DO n = 2, nclass
       dp_meter(n) = dp_meter(n-1) * EXP(Dstep)
-PRINT*,n,dp_meter(n)
     END DO
 
 
@@ -1095,16 +1094,13 @@ PRINT*,n,dp_meter(n)
       ALLOCATE(srel_map(subdomain%nty,subdomain%ntx,nclass))
       ALLOCATE(mrel_map(subdomain%nty,subdomain%ntx,nclass))
       ALLOCATE(mrel_sum(subdomain%nty,subdomain%ntx,nclass))
-      ALLOCATE(mrel_mx(subdomain%nty,subdomain%ntx,nclass,nclass))
+      ALLOCATE(mrel_mx(subdomain%nty,subdomain%ntx,nclass,DustBins+1))
 
-      call cpu_time(T2)
 
-      print*, 'zw time:',T2-T1
-
-      srel_map = 0.
-      mrel_map = 0.
-      mrel_sum = 0.
-      mrel_mx  = 0.
+      ! srel_map = 0.
+      ! mrel_map = 0.
+      ! mrel_sum = 0.
+      ! mrel_mx  = 0.
 
 
       ! +-+-+- Sec xx srel calculation -+-+-+
@@ -1146,49 +1142,63 @@ PRINT*,n,dp_meter(n)
             mrel_map(j,i,:) = 0.
           END IF
 
-          ! DO n = 1, nclass
-          !   dp = dp_meter(n)
-          !
-          !   ! IF (stot > 0.) THEN
-          !   !   srel_map(j,i,n) = srel_map(j,i,n)/stot
-          !   !   mrel_map(j,i,n) = mrel_map(j,i,n)/mtot
-          !   !   mrel_sum(j,i,n) = mrel_sum(j,i,n)/mtot
-          !   ! ELSE
-          !   !   srel_map(j,i,n) = 0.
-          !   !   mrel_map(j,i,n) = 0.
-          !   ! END IF
-          !
-          !   AllOCATE (m_rel_ar(n))
-          !
-          !   IF (mrel_sum(j,i,n) > 0.) THEN
-          !     m_rel_ar(:) = mrel_map(j,i,:n)/mrel_sum(j,i,n)
-          !   ELSE
-          !     m_rel_ar(:) = 0.
-          !   END IF
-          !
-          !   mrel_mx (j,i,n,1:n) = m_rel_ar(:)
-          !   DEALLOCATE (m_rel_ar)
-          !
-          ! END DO ! n = 1, nclass
+           ! DO n = 1, nclass
+           !   dp = dp_meter(n)
 
-          ! DO n = 1, nclass
-          !   dp = dp_meter(n)
-          !   ! IF (mrel_sum(j,i,n) > 0.) THEN
-          !   !   ! DO n_bomb = 1, n
-          !   !   !   ! diameter of particles effected by soltation bombardment
-          !   !   !   dp_bomb = dp_meter(n_bomb)
-          !   !   !
-          !   !   !   ! scale horizontal flux with the relativ particle mass of dp_bomb
-          !   !   !   m_rel     = mrel_map(j,i,n_bomb)
-          !   !   !   m_rel_sum = mrel_sum(j,i,n)
-          !   !   !
-          !   !   !   ! Vertical dust flux
-          !   !   !   mrel_mx (j,i,n,n_bomb) =  m_rel/m_rel_sum
-          !   !   !
-          !   !   ! END DO
-          !   ! END IF
-          !   if (i==50 .and. j==50)print*, n, srel_map(j,i,n),mrel_map(j,i,n),srel_map(j,i,n)* (2./3. * rop * dp)
-          ! END DO ! n = 1, nclass
+           !   IF (stot > 0.) THEN
+           !     srel_map(j,i,n) = srel_map(j,i,n)/stot
+           !     mrel_map(j,i,n) = mrel_map(j,i,n)/mtot
+           !     mrel_sum(j,i,n) = mrel_sum(j,i,n)/mtot
+           !   ELSE
+           !     srel_map(j,i,n) = 0.
+           !     mrel_map(j,i,n) = 0.
+           !   END IF
+
+           !   ! AllOCATE (m_rel_ar(n))
+
+           !   ! IF (mrel_sum(j,i,n) > 0.) THEN
+           !   !   mrel_mx(j,i,n,1:n) = mrel_map(j,i,:n)/mrel_sum(j,i,n)
+           !   ! ELSE
+           !   !   mrel_mx(j,i,n,1:n) = 0.
+           !   ! END IF
+
+           !   ! mrel_mx (j,i,n,1:n) = m_rel_ar(:)
+           !   ! DEALLOCATE (m_rel_ar)
+           ! END DO ! n = 1, nclass
+
+
+
+
+          DO n = 1, nclass
+            dp = dp_meter(n)
+            IF (mrel_sum(j,i,n) > 0.) THEN
+              m = 1
+               DO n_bomb = 1, n
+                 ! diameter of particles effected by soltation bombardment
+                 dp_bomb = dp_meter(n_bomb)
+
+                 ! scale horizontal flux with the relativ particle mass of dp_bomb
+                 m_rel     = mrel_map(j,i,n_bomb)
+                 m_rel_sum = mrel_sum(j,i,n)
+
+                  IF (m <= DustBins) THEN
+                    IF (dp_bomb > dustbin_top(m)) m = m+1
+                  END IF
+
+
+                  ! bin-wise integration
+                  ! IF (m <= DustBins) THEN
+                    mrel_mx(j,i,n,m) = mrel_mx(j,i,n,m) + m_rel/m_rel_sum
+                  ! END IF
+
+
+                 ! Vertical dust flux
+                 ! mrel_mx (j,i,n,n_bomb) =  m_rel/m_rel_sum
+
+               END DO
+             END IF
+            ! if (i==50 .and. j==50)print*, n, srel_map(j,i,n),mrel_map(j,i,n),srel_map(j,i,n)* (2./3. * rop * dp)
+          END DO ! n = 1, nclass
 
 
         END DO ! j=1,subdomain%nty
@@ -1198,7 +1208,6 @@ PRINT*,n,dp_meter(n)
       call cpu_time(T2)
 
       print*, 'init time:',T2-T1
-      stop "mrel_mx"
 
     ELSEIF (yaction == 'calc') THEN
       ! +-+-+- Sec 1 Set the actually date -+-+-+
@@ -1250,34 +1259,48 @@ PRINT*,n,dp_meter(n)
 
               ! Horizontal dust flux
               hflux = roa/g * ustar(j,i)**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
+
               ! soltation bombardment
               IF (hflux > 0.) THEN
-                m = 1 ! index of dust bin
-
-                DO n_bomb = 1, n
-                  ! diameter of particles effected by soltation bombardment
-                  dp_bomb = dp_meter(n_bomb)
-
-                  ! calc current dust bin index
-
-                  IF (m <= DustBins) THEN
-                    IF (dp_bomb > dustbin_top(m)) m = m+1
-                  END IF
-
-                  ! scale horizontal flux with the relativ particle mass of dp_bomb
-                  m_rel     = mrel_map(j,i,n_bomb)
-                  m_rel_sum = mrel_sum(j,i,n)
 
                   ! Vertical dust flux
-                  vflux = hflux * m_rel/m_rel_sum * alpha(j,i)
+                  vflux = hflux * alpha(j,i)
 
                   ! bin-wise integration
-                  IF (m <= DustBins) THEN
-                    fluxbin(m) = fluxbin(m)+vflux
-                  END IF
+                  DO m = 1, DustBins
+                    fluxbin(m) = fluxbin(m)+vflux * mrel_mx(j,i,n,m)
+                  END DO
 
-                END DO
               END IF
+
+
+              ! soltation bombardment
+              ! IF (hflux > 0.) THEN
+              !   m = 1 ! index of dust bin
+
+              !   DO n_bomb = 1, n
+              !     ! diameter of particles effected by soltation bombardment
+              !     dp_bomb = dp_meter(n_bomb)
+
+              !     ! calc current dust bin index
+              !     IF (m <= DustBins) THEN
+              !       IF (dp_bomb > dustbin_top(m)) m = m+1
+              !     END IF
+
+              !     ! scale horizontal flux with the relativ particle mass of dp_bomb
+              !     m_rel     = mrel_map(j,i,n_bomb)
+              !     m_rel_sum = mrel_sum(j,i,n)
+
+              !     ! Vertical dust flux
+              !     vflux = hflux * m_rel/m_rel_sum * alpha(j,i)
+
+              !     ! bin-wise integration
+              !     IF (m <= DustBins) THEN
+              !       fluxbin(m) = fluxbin(m)+vflux
+              !     END IF
+
+              !   END DO
+              ! END IF
             END DO ! n = 1, nclass
 
           ENDIF
@@ -1788,7 +1811,6 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
             dp = Dmin
             DO WHILE (dp <= Dmax+1E-5)
               kk = kk+1
-              if (i==50 .and. j==50) print*, kk,dp
 
               ! original Tegen Code
               ! ! Is this reduction necessary (MF)?
@@ -1840,7 +1862,6 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
                 ELSE
                   dbstart = dmin        !all sizes mobilised
                 END IF
-dbstart=1.3806605495010290E-004
                 !V_end
                 !#############################################################################
                 checksum1 = checksum1 + flux_diam
@@ -1855,9 +1876,11 @@ dbstart=1.3806605495010290E-004
                   kfirst=0
                   checksum4 = 0
                   checksum5 = 0
-                  DO WHILE(dpd <= dp+1e-5)
+                  ! DO WHILE(dpd <= dp+1e-5)
+                  DO WHILE(dpd <= dp)
                     kkk=kkk+1
 
+                    ! IF (i == 50 .and. j == 50)print*, dpd,dp,Dstep
                     IF (dpd >= dbstart) THEN
                       IF(kfirst == 0) kkmin=kkk
                       kfirst=1
@@ -1867,18 +1890,17 @@ dbstart=1.3806605495010290E-004
                         fluxtyp(kkk) = fluxtyp(kkk) +flux_diam               &
                                       *srelV(i_s11,kkk)/((su_srelV(i_s11,kk) &
                                       -su_srelV(i_s11,kkmin)))
-                                      checksum4 = checksum4 + srelV(i_s11,kkk)/(su_srelV(i_s11,kk)-su_srelV(i_s11,kkmin))
-                                      IF (i == 50 .and. j == 50)print*, 'II', kk,kkk,fluxtyp(kkk),flux_diam, &
-                                      srelV(i_s11,kkk)/(su_srelV(i_s11,kk)-su_srelV(i_s11,kkmin)),checksum4, &
-                                      checksum5,checksum4-checksum5
+                                      checksum4 = srelV(i_s11,kkk)/(su_srelV(i_s11,kk)-su_srelV(i_s11,kkmin))
+                                      checksum5 = checksum5 + srelV(i_s11,kkk)/(su_srelV(i_s11,kk)-su_srelV(i_s11,kkmin))
+                                      IF (i == 50 .and. j == 50)print*, 'II', kk,kkk,&
+                                      checksum4 *100., &
+                                      checksum5 *100.
 
                                       ! IF (i == 50 .and. j == 50)print*,'  ', dp, 'add flux',flux_diam,flux_diam               &
                                       ! *srelV(i_s11,kkk)/((su_srelV(i_s11,kk) &
                                       ! -su_srelV(i_s11,kkmin)))
 
                       END IF ! (kk > kkmin)
-                    else
-                      checksum5 = checksum5 + srelV(i_s11,kkk)/(su_srelV(i_s11,kk)-su_srelV(i_s11,kkmin))
                     END IF ! (dpd >= dbstart)
                     dpd=dpd*exp(dstep)
                   END DO ! dpd
@@ -2818,7 +2840,7 @@ dbstart=1.3806605495010290E-004
       END IF
     ELSEIF (infile == 'source') THEN
       filename = TRIM(psrcFile)
-	    varname = 'source'
+      varname = 'source'
     ELSEIF (infile == 'z0') THEN
       filename = TRIM(z0File)
       varname = 'z0'
