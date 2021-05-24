@@ -1336,7 +1336,6 @@ MODULE src_dust
     ! https://doi.org/10.1029/95JD00690
 
     gransize(:) = 0.
-    Uth(:)  = 0.
     su_srelV(:,:) =  0.
     srelV(:,:) = 0.
     srel(:,:)= 0.
