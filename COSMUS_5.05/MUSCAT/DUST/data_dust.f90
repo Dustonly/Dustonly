@@ -143,6 +143,8 @@ MODULE tegen02_param
     Dmin        = 2.0E-7,                 & ! minimum particules diameter (cm)
     Dmax        = 1.55E-3,                & ! maximum particules diameter (cm)
     Dstep       = 4.6E-2,                 & ! diameter increment (-)
+    !Dstep       = 2.3E-2,                 & ! diameter increment (-)
+    ! Dstep       = 64.4E-2,                 & ! diameter increment (-)
 
     median_dp_csand = 707.0E-6,           & ! median diameter of coarse sand [m]
     median_dp_sand  = 158.0E-6,           & ! median diameter of sand [m]
@@ -229,6 +231,8 @@ MODULE dust_tegen_param
     Dmin        = 0.00002E0,                  & !minimum particules diameter (cm)
     Dmax        = 0.155E0,                    & !maximum particules diameter (cm)
     Dstep       = 0.0460517018598807E0,       & !diameter increment (cm)
+    ! Dstep       = 64.4E-2,                 & ! diameter increment (-)
+
     e           = 2.7182818285E0,             & !
     g           = 981.E0,                     & !gravitational constant (cm.s-2)
     pi2         = 3.141592654E0,              & !pi=3.141592654
@@ -656,7 +660,7 @@ MODULE dust_tegen_data
              0.0158E0, 2.E0, 0.4E0 ,           &
              0.0015E0, 2.E0, 0.17E0 ,          &
              0.0002E0, 2.E0, 0.E0 ,            &
-             2.1E-06,  0.2E0/                
+             2.1E-06,  0.2E0/
 
   !--     soil type 2 : Medium
             data (solspe(2,jspe),jspe=1,nspe)/ &

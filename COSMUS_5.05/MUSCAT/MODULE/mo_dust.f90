@@ -125,6 +125,8 @@ MODULE mo_dust
   INTEGER, PARAMETER :: &
     nats   = 45,        & ! amount of soil types
     nclass = 196          ! amount of particule classes
+    ! !nclass = 392          ! amount of particule classes
+    ! nclass = 14          ! amount of particule classes
 
   INTEGER :: &
     nmode          ! number of soil modes, depending on the soil data set
@@ -141,7 +143,10 @@ MODULE mo_dust
     read_input(:,:,:)       ! (j,i,time)
 
   REAL(8), ALLOCATABLE ::  &
-    srel_map(:,:,:)          ! (j,i,nclass)
+    srel_map(:,:,:),&          ! (j,i,nclass)
+    mrel_map(:,:,:),&          ! (j,i,nclass)
+    mrel_sum(:,:,:),&          ! (j,i,nclass)
+    mrel_mx(:,:,:,:)          ! (j,i,nclass,nclass)
 
   REAL (8)   :: &
     dp_meter(nclass) ! particle diameter [m]
