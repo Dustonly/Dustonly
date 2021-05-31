@@ -221,7 +221,8 @@ MODULE dust_tegen_param
 
   REAL(8), PARAMETER ::                       &
     a_rnolds    = 1331.647E0,                 & !Reynolds constant
-    aeff        = 0.35E0,                     & !efficient fraction
+    ! aeff        = 0.35E0,                     & !efficient fraction
+    aeff        = 0.7E0,                     & !efficient fraction
     aw          = 1.121E0,                    & !soil moisture parameter
     abs_density = 2.6E0,                      & !absolute density of the soil (2.6 g/cm3)
     b_rnolds    = 0.38194E0,                  & !Reynolds constant
