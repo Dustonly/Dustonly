@@ -1095,6 +1095,7 @@ MODULE src_dust
       ALLOCATE(mrel_sum(subdomain%nty,subdomain%ntx,nclass))
       ALLOCATE(mrel_mx(subdomain%nty,subdomain%ntx,nclass,DustBins+1))
 
+      mrel_mx = 0.
 
       ! +-+-+- Sec xx srel calculation -+-+-+
       ! start lon-lat-loop
@@ -1152,14 +1153,18 @@ MODULE src_dust
                     IF (dp_bomb > dustbin_top(m)) m = m+1
                   END IF
 
+
                   ! bin-wise integration
+                  IF (m <= DustBins) THEN
                     mrel_mx(j,i,n,m) = mrel_mx(j,i,n,m) + m_rel/m_rel_sum
+                  ELSE
+                    mrel_mx(j,i,n,m) = 1.0 - SUM(mrel_mx(j,i,n,1:DustBins))
+                    EXIT
+                  END IF
 
                END DO ! n_bomb
              END IF
           END DO ! n = 1, nclass
-
-
         END DO ! j=1,subdomain%nty
       END DO ! i=1,subdomain%ntx
 
