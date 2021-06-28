@@ -167,7 +167,8 @@ MODULE mo_dust
   LOGICAL     :: &
     lvegdaily,     &   ! daily or monthly input of lai
     laidaily,    & ! daily or monthly input of lai     MF
-    lvegmin        ! daily or monthly input of lai     MF
+    lvegmin,     &        ! daily or monthly input of lai     MF
+    lddebug       ! additional output
 
 
   !-- LM grid arrays
@@ -224,8 +225,7 @@ MODULE mo_dust
     leveltype       ! 10m, or mlv
 
   LOGICAL :: &
-    laccumulation, &
-    lddebug
+    laccumulation
 #endif
 
 END MODULE mo_dust

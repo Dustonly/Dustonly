@@ -107,7 +107,7 @@ MODULE src_dust
 
     ! Modules
 #ifndef OFFLINE
-    USE data_runcontrol,    ONLY : hstop
+    USE data_runcontrol,    ONLY : nstart, nstop, ntstep, hstop
 #else
     USE offline_org
 #endif
@@ -485,8 +485,13 @@ MODULE src_dust
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
         ALLOCATE(dust(ib1)%veg(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+#ifdef OFFLINE
         ALLOCATE(dust(ib1)%vmoist(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:lasttstep+1-firsttstep))
+#else
+        ALLOCATE(dust(ib1)%vmoist(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nstop+1-nstart))
+#endif
         ALLOCATE(dust(ib1)%vegmin2(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
 
@@ -1005,7 +1010,19 @@ MODULE src_dust
     USE mo_dust
     USE tegen02_param
     USE dust_tegen_data
-#ifdef OFFLINE
+#ifndef OFFLINE
+    USE partition
+    USE sub_block
+    USE sub_geo
+    USE sub_met
+    USE mo_ctm
+    USE mo_gas, ONLY: ConvPart
+    ! USE dust_org
+    USE data_io,  ONLY : ydate_ini
+    USE data_runcontrol,    ONLY : hstart, ntstep
+    USE data_modelconfig, ONLY: dt
+    USE data_fields, ONLY:  ustar_fv
+#else
     USE offline_org
 #endif
 
@@ -1916,7 +1933,11 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
   !   Use pre-calculated data of ustar.
   !--------------------------------------------------------------------
 
-#ifdef OFFLINE
+#ifndef OFFLINE
+    USE sub_geo
+    USE sub_met
+    USE data_fields, ONLY:  ustar_fv
+#else
     USE offline_org
 #endif
 
@@ -1979,7 +2000,10 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
         END DO
       END DO
     ELSEIF (fricvelo_scheme == 2) THEN
+#ifndef OFFLINE
+#else
       ustar(:,:) = ust(:,:,ntstep)
+#endif
 
     END IF
 
@@ -3090,7 +3114,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
     USE mo_dust
     USE netcdf
-    USE offline_org
+    ! USE offline_org
 
     IMPLICIT NONE
 
@@ -3276,7 +3300,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
     USE mo_dust
     USE netcdf
-    USE offline_org
+    ! USE offline_org
 
     IMPLICIT NONE
 
