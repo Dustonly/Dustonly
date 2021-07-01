@@ -677,10 +677,10 @@ MODULE src_dust
     ! ------------------------------------
     ELSEIF (yaction == "calc") THEN
 
-      CALL get_ustar(decomp(ib1))
+      CALL get_ustar(subdomain)
 
       IF (moist_scheme == 1) THEN
-        CALL fecan('calc',decomp(ib1),ntstep)
+        CALL fecan('calc',subdomain,ntstep)
       END IF
 
 
