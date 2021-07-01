@@ -2729,9 +2729,10 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       var_read(:,:,:)
 
 
-    CHARACTER (len = 10) :: &
+    CHARACTER (len = 16) :: &
       lon_names(4), & ! common names for the longitudes
-      lat_names(4)    ! common names for the latitudes
+      lat_names(4), & ! common names for the latitudes
+      scale_names(2)
 
 
       lon_names(1)='x'
@@ -2743,6 +2744,9 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       lat_names(2)='lat'
       lat_names(3)='rlat'
       lat_names(4)='latitude'
+
+      scale_names(1)='scale'
+      scale_names(2)='scale_factor'
 
     ! start subroutine
     ! ---------------------------------------------------------
@@ -2956,14 +2960,14 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       ENDIF
 
       ! get value of the scaling factor
-      istat = nf90_get_att(ncID, varID, 'scale_factor',var_scale)
-      IF (istat /= nf90_noerr) THEN
-        var_scale = 1
-      ENDIF
-      istat = nf90_get_att(ncID, varID, 'scale',var_scale)
-      IF (istat /= nf90_noerr) THEN
-        var_scale = 1
-      ENDIF
+      DO i = 1, size(scale_names)
+        istat = nf90_get_att(ncID, varID,scale_names(i),var_scale)
+        IF (istat == nf90_noerr) THEN
+          EXIT
+        ELSE
+          var_scale = 1
+        ENDIF
+      END DO
 
       ! get value of the offset
       istat = nf90_get_att(ncID, varID, 'add_offset',var_offset)
