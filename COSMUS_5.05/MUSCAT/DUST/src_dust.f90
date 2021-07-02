@@ -1070,6 +1070,7 @@ MODULE src_dust
     REAL(8), POINTER :: source(:,:)
     REAL(8), POINTER :: soilmap(:,:,:)
     REAL(8), POINTER :: feff_z0(:,:)
+    REAL(8), POINTER :: feff_veg(:,:,:)
     REAL(8), POINTER :: veff(:,:,:)
     REAL(8), POINTER :: mfac(:,:)
     REAL(8), POINTER :: z0(:,:)
@@ -1082,7 +1083,8 @@ MODULE src_dust
 
     source   => dust(subdomain%ib)%source(:,:)
     soilmap  => dust(subdomain%ib)%soilmap(:,:,:)
-    feff_z0     => dust(subdomain%ib)%feff_z0(:,:)
+    feff_z0  => dust(subdomain%ib)%feff_z0(:,:)
+    feff_veg => dust(subdomain%ib)%feff_veg(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
     mfac     => dust(subdomain%ib)%mfac(:,:)
     z0       => dust(subdomain%ib)%z0(:,:)
@@ -1214,8 +1216,7 @@ MODULE src_dust
 
           ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
-          feff = feff_z0(j,i)
-
+          feff = feff_z0(j,i) * feff_veg(j,i,tnow)
 
           hflux = 0.
           fluxbin = 0.
