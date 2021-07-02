@@ -2098,7 +2098,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
            !   crop land SSR0 = 0.
            ! With this asumptions the Formula for the SSR is:
 
-           SSR = 1. - 1./((1./4.8)*gapheight + 1.)
+           SSR = 1. + 0.32/((1./4.8)*gapheight + 1.) - 1./((1./4.8)*gapheight + 1.)
 
            ! the drag partition is defined as sqrt(SSR)
            feff_veg(j,i,vegnow) = SQRT(SSR)
