@@ -823,6 +823,7 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
       IF (istat /= nf90_noerr) THEN
         ierr  = 10208
         yerrmsg = TRIM(nf90_strerror(istat))
+        print*, 'Maybe the output directory does not exist'
         RETURN
       ENDIF
 
