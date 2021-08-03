@@ -1967,7 +1967,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 #ifndef OFFLINE
     USE sub_geo
     USE sub_met
-    USE data_fields, ONLY:  ustar_fv
+    USE data_parallel, ONLY: nboundlines
+    USE data_fields, ONLY:  tcm,u_10m,v_10m
 #else
     USE offline_org
 #endif
@@ -2031,16 +2032,28 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 #endif
 
 
+
           ustar(j,i) = (VK * tot_wind )/(log( dz(1,j,i)/(z0(j,i)/100.))) ! [m/s]
         END DO
       END DO
     ELSEIF (fricvelo_scheme == 2) THEN
-#ifndef OFFLINE
-#else
+#ifdef OFFLINE
       ustar(:,:) = ust(:,:,ntstep)
-#endif
+#else
+      DO i=1,subdomain%ntx
+        DO j=1,subdomain%nty
 
+          ! calc fric velo only for land points
+          IF (SUM(soilmap(j,i,:)) > 0.5) THEN
+            tot_wind   = SQRT (u_10m(i+nboundlines,j+nboundlines) **2 + v_10m(i+nboundlines,j+nboundlines)**2 )
+            ustar(j,i) = tot_wind*SQRT(tcm(i+nboundlines,j+nboundlines))
+          END IF
+        END DO ! j
+      END DO ! i
+#endif
     END IF
+
+
 
     IF (lddebug) PRINT*, 'Leave get_ustar',''//NEW_LINE('')
 
