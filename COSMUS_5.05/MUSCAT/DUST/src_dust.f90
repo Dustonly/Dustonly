@@ -425,6 +425,14 @@ MODULE src_dust
 8010  format(1x,50('+')//    &
       'Dust_Init: Dust name ',a20,' not included as tracer!' / 1x,50('+'))
 
+      IF (SurfLevel /= 0) THEN
+          PRINT*, ' Wrong setting in the MUSCAT namelist'
+          PRINT*, '    SurfLevel /= 0'
+          Print*, '    at the moment the dust code only supports'
+          PRINT*, '    SurfLevel = 0'
+          STOP
+      END IF
+
       ! Define corners of subdomain?
       IF (SurfLevel >= 0)  THEN
         SurfRef = 2**SurfLevel
