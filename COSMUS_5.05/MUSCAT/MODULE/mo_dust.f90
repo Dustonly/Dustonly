@@ -111,7 +111,12 @@ MODULE mo_dust
     feff_z0    (:,:),    & ! drag partition by roughness
     feff_veg   (:,:,:),    & ! drag partition by vegetation
     veff    (:,:,:),    &   ! effective vegetation
-    mfac    (:,:)          ! moisture factore
+    mfac    (:,:),&          ! moisture factore
+    ustar(:,:),&          ! (j,i,)
+    srel_map(:,:,:),&          ! (j,i,nclass)
+    mrel_map(:,:,:),&          ! (j,i,nclass)
+    mrel_sum(:,:,:),&          ! (j,i,nclass)
+    mrel_mx(:,:,:,:)          ! (j,i,nclass,nclass)
   END TYPE dust_subdomain
   TYPE (dust_subdomain), ALLOCATABLE, TARGET :: dust(:)
 
@@ -133,7 +138,7 @@ MODULE mo_dust
                    ! nmode = 3 for soilgrids data
                    ! nmode = 4 for the lookup table
 
-  REAL, ALLOCATABLE :: &
+  REAL, ALLOCATABLE, TARGET :: &
     median_dp(:)   ! median particle diameter of mode
                    ! IF (nmode = 3) median_dp = (707.0E-6,158.0E-6,15.0E-6,2.0E-6)
                    ! IF (nmode = 4) median_dp = (158.0E-6,15.0E-6,2.0E-6)
@@ -142,17 +147,17 @@ MODULE mo_dust
   REAL(8), ALLOCATABLE ::  &
     read_input(:,:,:)       ! (j,i,time)
 
-  REAL(8), ALLOCATABLE ::  &
-    srel_map(:,:,:),&          ! (j,i,nclass)
-    mrel_map(:,:,:),&          ! (j,i,nclass)
-    mrel_sum(:,:,:),&          ! (j,i,nclass)
-    mrel_mx(:,:,:,:)          ! (j,i,nclass,nclass)
+  ! REAL(8), ALLOCATABLE ::  &
+  !   srel_map(:,:,:),&          ! (j,i,nclass)
+  !   mrel_map(:,:,:),&          ! (j,i,nclass)
+  !   mrel_sum(:,:,:),&          ! (j,i,nclass)
+  !   mrel_mx(:,:,:,:)          ! (j,i,nclass,nclass)
 
   REAL (8)   :: &
     dp_meter(nclass) ! particle diameter [m]
 
-  REAL(8), ALLOCATABLE ::  &
-    ustar(:,:)          ! (j,i,nclass)
+  ! REAL(8), ALLOCATABLE ::  &
+  !   ustar(:,:)          ! (j,i,nclass)
 
   REAL (8)   :: &
     Uth(Nclass)!,              & ! threshold friction velocity

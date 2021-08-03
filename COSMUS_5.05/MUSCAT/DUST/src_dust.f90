@@ -175,7 +175,7 @@ MODULE src_dust
     ! Subroutine Body
     !---------------------------------------------------------------------
 
-    IF (lddebug) PRINT*, 'Enter organize_dust, yaction=',yaction
+    IF (lddebug) PRINT*, 'Enter organize_dust, yaction=',yaction,' my_cart_id=',my_cart_id
 
     ierr = 0
 
@@ -440,13 +440,17 @@ MODULE src_dust
         igy1 = domain%igy1 / SurfRef
       END IF
 
-
+      ! igx0 = domain%igx0
+      ! igy0 = domain%igy0
+      ! igx1 = domain%igx1
+      ! igy1 = domain%igy1
 
 
       ! - Init of 'dust' type 'dust_subdomain', see data_dust
 
       ! allocate datatype 'dust' as array with nb number of blocks
       ALLOCATE(dust(nb))
+      ALLOCATE(median_dp(nmode))
       ! ALLOCATE(dust_ini(nb))
       ! ALLOCATE(dust_flux(nb))
 
@@ -519,9 +523,15 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%soilmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,nmode))
 
-        ALLOCATE(ustar(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
+        ALLOCATE(dust(ib1)%ustar(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
 
+
+
+        ALLOCATE(dust(ib1)%srel_map(decomp(ib1)%nty,decomp(ib1)%ntx,nclass))
+        ALLOCATE(dust(ib1)%mrel_map(decomp(ib1)%nty,decomp(ib1)%ntx,nclass))
+        ALLOCATE(dust(ib1)%mrel_sum(decomp(ib1)%nty,decomp(ib1)%ntx,nclass))
+        ALLOCATE(dust(ib1)%mrel_mx(decomp(ib1)%nty,decomp(ib1)%ntx,nclass,DustBins+1))
 
         dust(ib1)%biome(:,:)=0.
         dust(ib1)%cult(:,:)=0.
@@ -540,7 +550,7 @@ MODULE src_dust
 
         dust(ib1)%soilmap = 0.
 
-        ustar = 0
+        dust(ib1)%ustar = 0.
 
       END DO
 
@@ -1075,7 +1085,12 @@ MODULE src_dust
     REAL(8), POINTER :: mfac(:,:)
     REAL(8), POINTER :: z0(:,:)
     REAL(8), POINTER :: alpha(:,:)
+    REAL(8), POINTER :: ustar(:,:)
     REAL(8), POINTER :: DustEmis(:,:,:)
+    REAL(8), POINTER :: srel_map(:,:,:)
+    REAL(8), POINTER :: mrel_map(:,:,:)
+    REAL(8), POINTER :: mrel_sum(:,:,:)
+    REAL(8), POINTER :: mrel_mx(:,:,:,:)
 
 #ifndef OFFLINE
     REAL(8), POINTER :: EmiRate(:,:,:,:)
@@ -1089,7 +1104,12 @@ MODULE src_dust
     mfac     => dust(subdomain%ib)%mfac(:,:)
     z0       => dust(subdomain%ib)%z0(:,:)
     alpha    => dust(subdomain%ib)%alpha2(:,:)
+    ustar    => dust(subdomain%ib)%ustar(:,:)
     DustEmis => dust(subdomain%ib)%d_emis(:,:,:)
+    srel_map => dust(subdomain%ib)%srel_map(:,:,:)
+    mrel_map => dust(subdomain%ib)%mrel_map(:,:,:)
+    mrel_sum => dust(subdomain%ib)%mrel_sum(:,:,:)
+    mrel_mx  => dust(subdomain%ib)%mrel_mx(:,:,:,:)
 
 
 #ifndef OFFLINE
@@ -1102,17 +1122,17 @@ MODULE src_dust
       call cpu_time(T1)
 
 
-      ALLOCATE(median_dp(nmode))
+      ! ALLOCATE(median_dp(nmode))
 
       median_dp(nmode)   = median_dp_clay
       median_dp(nmode-1) = median_dp_silt
       median_dp(nmode-2) = median_dp_sand
       IF (nmode == 4) median_dp(nmode-3) = median_dp_csand
 
-      ALLOCATE(srel_map(subdomain%nty,subdomain%ntx,nclass))
-      ALLOCATE(mrel_map(subdomain%nty,subdomain%ntx,nclass))
-      ALLOCATE(mrel_sum(subdomain%nty,subdomain%ntx,nclass))
-      ALLOCATE(mrel_mx(subdomain%nty,subdomain%ntx,nclass,DustBins+1))
+      ! ALLOCATE(srel_map(subdomain%nty,subdomain%ntx,nclass))
+      ! ALLOCATE(mrel_map(subdomain%nty,subdomain%ntx,nclass))
+      ! ALLOCATE(mrel_sum(subdomain%nty,subdomain%ntx,nclass))
+      ! ALLOCATE(mrel_mx(subdomain%nty,subdomain%ntx,nclass,DustBins+1))
 
       mrel_mx = 0.
 
@@ -1187,7 +1207,6 @@ MODULE src_dust
         END DO ! j=1,subdomain%nty
       END DO ! i=1,subdomain%ntx
 
-
       call cpu_time(T2)
 
       print*, 'init time:',T2-T1
@@ -1231,6 +1250,7 @@ MODULE src_dust
               ! and the moisture factor
               uthp = uth(n)/feff * mfac(j,i)
               s_rel = srel_map(j,i,n)
+
 
 
               IF (ustar(j,i) > uthp) THEN
@@ -1656,6 +1676,7 @@ MODULE src_dust
     REAL(8), POINTER :: veff(:,:,:)
     REAL(8), POINTER :: mfac(:,:)
     REAL(8), POINTER :: z0(:,:)
+    REAL(8), POINTER :: ustar(:,:)
     ! REAL(8), POINTER :: umin2(:,:)
     REAL(8), PARAMETER :: umin2=umin
     REAL(8), POINTER :: w_str(:,:)
@@ -1673,6 +1694,7 @@ MODULE src_dust
     veff     => dust(subdomain%ib)%veff(:,:,:)
     mfac     => dust(subdomain%ib)%mfac(:,:)
     z0       => dust(subdomain%ib)%z0(:,:)
+    ustar    => dust(subdomain%ib)%ustar(:,:)
     ! lai_eff => dust(subdomain%ib)%lai_eff(:,:,:,:)
     ! umin2    => dust(subdomain%ib)%umin2(:,:,1)
     !
@@ -1963,6 +1985,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     REAL(8), POINTER :: vsur(:,:)
     REAL(8), POINTER :: qrsur(:,:)
     REAL(8), POINTER :: rhosur(:,:)
+    REAL(8), POINTER :: ustar(:,:)
+    REAL(8), POINTER :: soilmap(:,:,:)
 #endif
 
     REAL(8), PARAMETER :: &
@@ -1977,6 +2001,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     qrsur   => meteo(subdomain%ib)%QRSur(:,:,ScalCur)
     usur    => meteo(subdomain%ib)%u(1,:,:,WindCur)
     vsur    => meteo(subdomain%ib)%v(1,:,:,WindCur)
+    ustar   => dust(subdomain%ib)%ustar(:,:)
+    soilmap => dust(subdomain%ib)%soilmap(:,:,:)
 #endif
 
     IF (lddebug) PRINT*, 'Enter get_ustar'
