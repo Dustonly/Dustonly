@@ -398,7 +398,7 @@ MODULE src_dust
         moistFile = 'without'
       END IF
 #else
-      moist_scheme=0
+      ! moist_scheme=0
 #endif
 
 
@@ -642,7 +642,7 @@ MODULE src_dust
 
 
         ! +-+-+- Sec 1.4.3 Moisture -+-+-+
-        IF (moist_scheme == 1) THEN
+        IF (moist_scheme > 0) THEN
           CALL fecan('init',decomp(ib1),ntstep)
         END IF
 
@@ -697,7 +697,7 @@ MODULE src_dust
 
       CALL get_ustar(subdomain)
 
-      IF (moist_scheme == 1) THEN
+      IF (moist_scheme > 0) THEN
         CALL fecan('calc',subdomain,ntstep)
       END IF
 
@@ -2411,6 +2411,12 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
 #ifdef OFFLINE
     USE offline_org
+#else
+    USE data_fields, ONLY : w_so
+    USE data_parallel, ONLY: nboundlines
+    USE data_modelconfig,ONLY : &
+        czmls,        & ! depth of the main soil layers in m
+        czhls           ! depth of the half soil layers in m
 #endif
 
     IMPLICIT NONE
@@ -2470,9 +2476,25 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       DO i=1,subdomain%ntx
         DO j=1,subdomain%nty
 
-          ! calculate gravimeric soil moisture from the volumeric soil moisture
-          ! moist_g = moist_v * rho_water / rho_soil * 100%   -> [kg_water/m3_soil / kg_soil/m3_soil] = [%]
-          moist = vmoist(j,i,time_now) * 1000/2650 * 100
+          ! print*,w_so(i+nboundlines,j+nboundlines,1,:)/ (czhls(2) - czhls(1))
+
+          IF (moist_scheme == 1) THEN
+
+            ! calculate gravimeric soil moisture from the volumeric soil moisture
+            ! moist_g = moist_v * rho_water / rho_soil * 100%   -> [kg_water/m3_soil / kg_soil/m3_soil] = [%]
+            moist = vmoist(j,i,time_now) * 1000/2650 * 100
+
+#ifndef OFFLINE
+          ELSE IF (moist_scheme == 2) THEN
+
+            ! use cosmo soil moisture w_so
+            ! w_so is given in meter of the warter column
+            ! to get the volumeric soil moisture w_so has to be devided by the layer thickness
+            ! wich is in cosmo 0.01 m for the first layer
+
+            moist = w_so(i+nboundlines,j+nboundlines,1,1) / (czhls(2) - czhls(1)) * 1000/2650 * 100
+#endif
+          END IF
 
 
           IF (moist <= w_str(j,i)) THEN
