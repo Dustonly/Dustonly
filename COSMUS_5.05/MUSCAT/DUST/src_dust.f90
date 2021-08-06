@@ -66,6 +66,11 @@ MODULE src_dust
     startlat_tot    ! transformed latitude of the lower left grid point
                     ! of the total domain (in degrees, N>0)
 
+  USE data_runcontrol, ONLY: &
+    hstart,               & ! start of the forecast in full hours
+    hstop                   ! end of the forecast in hours
+
+
   USE data_parallel, ONLY:  &
     my_cart_id,             &
     icomm_cart,             & ! communicator for the virtual cartesian topology
@@ -380,8 +385,7 @@ MODULE src_dust
 
       ! soil moisture need input stream
       ! at the moment soil moisture only for the offline version
-#ifdef OFFLINE
-      IF (moist_scheme > 0) THEN
+      IF (moist_scheme == 1) THEN
         IF (TRIM(moistFile) == 'without') THEN
           ierr = 100008
           yerr = 'moistFile is missing'
@@ -392,14 +396,15 @@ MODULE src_dust
         ELSE
           ifile_num = ifile_num + 1
           ifile(ifile_num) = 'moist'
+#ifdef OFFLINE
           ifile_dim(ifile_num) = lasttstep+1-firsttstep
+#else
+          ifile_dim(ifile_num) = (hstop - hstart) * moistinc + 2
+#endif
         END IF
       ELSE
         moistFile = 'without'
       END IF
-#else
-      ! moist_scheme=0
-#endif
 
 
 
@@ -502,7 +507,7 @@ MODULE src_dust
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:lasttstep+1-firsttstep))
 #else
         ALLOCATE(dust(ib1)%vmoist(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
-                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nstop+1-nstart))
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:(hstop - hstart) * moistinc + 2))
 #endif
         ALLOCATE(dust(ib1)%vegmin2(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
