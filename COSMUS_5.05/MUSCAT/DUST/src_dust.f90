@@ -570,11 +570,11 @@ MODULE src_dust
 
       ! +-+-+- Sec 1.3 Input -+-+-+
       DO i = 1, ifile_num
-        print*,ifile(i)
         AllOCATE (read_input(igy0+1:igy1,igx0+1:igx1,ifile_dim(i)))
 
         ! only prozess #0 open files
         IF (my_cart_id == 0) THEN
+          print*,ifile(i)
           CALL read_infile(ifile(i),read_input,ierr,yerr)
 
 
