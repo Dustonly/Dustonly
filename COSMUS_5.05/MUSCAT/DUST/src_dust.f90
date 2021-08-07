@@ -2404,7 +2404,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
   !+ roughness
   !---------------------------------------------------------------------
-  SUBROUTINE fecan(yaction,subdomain,time_now)
+  SUBROUTINE fecan(yaction,subdomain,timestep_now)
   !---------------------------------------------------------------------
   ! Description:
   !
@@ -2420,6 +2420,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     USE data_fields, ONLY : w_so
     USE data_parallel, ONLY: nboundlines
     USE data_modelconfig,ONLY : &
+        dt,           &
         czmls,        & ! depth of the main soil layers in m
         czhls           ! depth of the half soil layers in m
 #endif
@@ -2429,13 +2430,15 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     TYPE(rectangle), INTENT(IN) :: subdomain
 
     INTEGER, INTENT(IN) :: &
-      time_now
+      timestep_now
 
     CHARACTER(LEN=*), INTENT(IN)            :: &
       yaction ! action to be performed
 
-    INTEGER :: &
-      i,j      ! loops
+    INTEGER ::  &
+      i,j,      & ! loops
+      moist_time_step, &  ! time of soil moisture file
+      int_time_step       ! interpolation time between two soil moist times
 
     REAL(8) :: &
       clay ,   &  ! soil clay contant [%]
@@ -2487,9 +2490,20 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
             ! calculate gravimeric soil moisture from the volumeric soil moisture
             ! moist_g = moist_v * rho_water / rho_soil * 100%   -> [kg_water/m3_soil / kg_soil/m3_soil] = [%]
-            moist = vmoist(j,i,time_now) * 1000/2650 * 100
+#ifdef OFFLINE
+            moist = vmoist(j,i,timestep_now) * 1000/2650 * 100
 
-#ifndef OFFLINE
+#else
+            ! moist_new = vmoist(j,i,timestep_now)
+            moist_time_step = INT(timestep_now * dt / 3600)
+            int_time_step = timestep_now - moistinc * 3600 * moist_time_step / dt
+
+            ! time interpolation
+            moist = (vmoist(j,i,moist_time_step+1) * (3600/dt - int_time_step)/(3600/dt) &
+                   + vmoist(j,i,moist_time_step+2) * (int_time_step)/(3600/dt))
+
+            ! Volumeric to gravimeric moisture
+            moist = moist * 1000/2650 * 100
           ELSE IF (moist_scheme == 2) THEN
 
             ! use cosmo soil moisture w_so
