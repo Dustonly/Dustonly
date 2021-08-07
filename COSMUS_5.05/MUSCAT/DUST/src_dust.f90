@@ -714,7 +714,7 @@ MODULE src_dust
 
       IF (dust_scheme == 2) THEN
         ! init of the dust emission sheme by Tegen et al. 2002
-        CALL tegen02(yaction,subdomain)!ierr,yerr)
+        CALL tegen02(yaction,subdomain,flux=flux)!ierr,yerr)
       END IF
       ! STOP 'TESTING'
 
@@ -1015,7 +1015,7 @@ MODULE src_dust
 
   !+ init_tegen
   !---------------------------------------------------------------------
-  SUBROUTINE tegen02(yaction,subdomain)
+  SUBROUTINE tegen02(yaction,subdomain,flux)
   !---------------------------------------------------------------------
   ! Description:
   !   This subroutine performes the initialization for
@@ -1056,6 +1056,9 @@ MODULE src_dust
       yaction ! action to be performed
 
     TYPE(rectangle), INTENT(IN) :: subdomain
+
+    REAL(8), OPTIONAL, INTENT(INOUT)        :: &
+        flux(ntz,subdomain%nty,subdomain%ntx,nt)
 
 
     INTEGER :: &
@@ -1107,6 +1110,7 @@ MODULE src_dust
 
 #ifndef OFFLINE
     REAL(8), POINTER :: EmiRate(:,:,:,:)
+    REAL(8), POINTER :: dz(:,:,:)
 #endif
 
     source   => dust(subdomain%ib)%source(:,:)
@@ -1127,6 +1131,7 @@ MODULE src_dust
 
 #ifndef OFFLINE
     EmiRate  => block(subdomain%ib)%EmiRate(:,:,:,:)
+    dz      => geo  (subdomain%ib)%dz(:,:,:)
 #endif
 
     IF (lddebug) PRINT*, 'Enter tegen02, yaction=',yaction
@@ -1308,13 +1313,21 @@ MODULE src_dust
 
             ! write output in [g m-2 s-1]
             DustEmis(j,i,n) = fluxbin(n) * 1.E3
+
+#ifndef OFFLINE
+            flux(1,j,i,DustInd(n))   = flux(1,j,i,DustInd(n)) + fluxbin(n)/dz(1,j,i)
+            !---  summarize biogenic and total emission rates
+            EmiRate(EmiIndBio,j,i,DustInd(n)) = EmiRate(EmiIndBio,j,i,DustInd(n)) + fluxbin(n)
+            EmiRate(EmiIndSum,j,i,DustInd(n)) = EmiRate(EmiIndSum,j,i,DustInd(n)) + fluxbin(n)
+#endif
           END DO
+
 
           call cpu_time(T2)
           !print*, 'calc time step:',T2-T1
         END DO ! j
       END DO ! i
-      !call quick_ascii('Dust',SUM(DustEmis,dim=3))
+      ! call quick_ascii('Dust',SUM(DustEmis,dim=3))
     END IF ! yaction
 
     IF (lddebug) PRINT*, 'Leave tegen02, yaction=',yaction,''//NEW_LINE('')
