@@ -1312,9 +1312,16 @@ MODULE src_dust
             END IF
 
             ! write output in [g m-2 s-1]
-            DustEmis(j,i,n) = fluxbin(n) * 1.E3
+            fluxbin(n) = fluxbin(n) * 1.E3
 
-#ifndef OFFLINE
+#ifdef OFFLINE
+            DustEmis(j,i,n) = fluxbin(n)
+
+#else
+            ! chemistry units (nradm=1): g/m2/s ==> g/m2/s * mol2part
+            fluxbin(n) = fluxbin(n) * ConvPart
+            DustEmis(j,i,n) = fluxbin(n)
+
             flux(1,j,i,DustInd(n))   = flux(1,j,i,DustInd(n)) + fluxbin(n)/dz(1,j,i)
             !---  summarize biogenic and total emission rates
             EmiRate(EmiIndBio,j,i,DustInd(n)) = EmiRate(EmiIndBio,j,i,DustInd(n)) + fluxbin(n)
