@@ -41,6 +41,11 @@ MODULE mo_dust
     soilmaptype,      & ! 1 : solspe table, 2 : soilgrids
     threshold_scheme   ! 0 : Marticorena, 1 : Shao  !
 
+  REAL :: &
+    moistinc, &    ! time increment of soil moisture
+    SSR_min
+
+
   !-- Files with soil data
   CHARACTER(120) ::     &
     soiltypeFile,       & ! Filename of Soil Type Data
