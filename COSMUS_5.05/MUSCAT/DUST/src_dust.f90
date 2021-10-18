@@ -2034,6 +2034,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       tot_wind
 
     REAL(8), POINTER :: z0(:,:)
+    REAL(8), POINTER :: ustar(:,:)
+    REAL(8), POINTER :: soilmap(:,:,:)
 #ifndef OFFLINE
     REAL(8), POINTER :: dxK(:,:)
     REAL(8), POINTER :: dyK(:,:)
@@ -2042,14 +2044,14 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     REAL(8), POINTER :: vsur(:,:)
     REAL(8), POINTER :: qrsur(:,:)
     REAL(8), POINTER :: rhosur(:,:)
-    REAL(8), POINTER :: ustar(:,:)
-    REAL(8), POINTER :: soilmap(:,:,:)
 #endif
 
     REAL(8), PARAMETER :: &
       VK = 0.4
 
     z0       => dust(subdomain%ib)%z0(:,:)
+    ustar   => dust(subdomain%ib)%ustar(:,:)
+    soilmap => dust(subdomain%ib)%soilmap(:,:,:)
 #ifndef OFFLINE
     dxK     => geo  (subdomain%ib)%dxK(:,:)
     dyK     => geo  (subdomain%ib)%dyK(:,:)
