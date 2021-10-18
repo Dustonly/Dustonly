@@ -2189,11 +2189,12 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
            ! -- paramet of the SSR (Okin)
            ! There is a constant c1 with the best fit value of c1=4.8 by okin.
            ! In the aprroach there is a minimum SSR. For Okins experiments the best fit of
-           !   the best fit of SSR0 is 0.32. However I (MF) assume for dense vegetated
-           !   crop land SSR0 = 0.
-           ! With this asumptions the Formula for the SSR is:
+           ! the best fit of SSR_min is 0.32. I (MF) assumed for dense vegetated
+           ! crop land SSR_min = 0.
+           ! However latest tests showed that SSR_min = 0.07 might be a good value for cropland.
+           ! SSR_min is adjustable in the namelist.
 
-           SSR = 1. + 0.32/((1./4.8)*gapheight + 1.) - 1./((1./4.8)*gapheight + 1.)
+           SSR = 1. + SSR_min/((1./4.8)*gapheight + 1.) - 1./((1./4.8)*gapheight + 1.)
 
            ! the drag partition is defined as sqrt(SSR)
            feff_veg(j,i,vegnow) = SQRT(SSR)
