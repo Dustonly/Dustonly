@@ -73,6 +73,10 @@ MODULE src_dust
 
   USE data_parallel, ONLY:  &
     my_cart_id,             &
+    my_cart_pos,            &
+    nprocx,                 &
+    nprocy,                 &
+    nboundlines,            &
     icomm_cart,             & ! communicator for the virtual cartesian topology
     imp_reals,              & ! datatypes for MPI
     num_compute               ! number of compute PEs
@@ -1063,6 +1067,10 @@ MODULE src_dust
 
     INTEGER :: &
       i,j,n,m,n_bomb, & ! loops
+      start_x,        &
+      start_y,        &
+      stop_x,         &
+      stop_y,         &
       tnow
 
     REAL(8) :: &
@@ -1154,10 +1162,25 @@ MODULE src_dust
 
       mrel_mx = 0.
 
+      ! create a gap between the outer edge of the domain and the dust emission
+      ! emissions too close to the edge may are distorted by the boundary data
+      ! only in the online model
+      start_x = 1
+      start_y = 1
+      stop_x  = subdomain%ntx
+      stop_y  = subdomain%nty
+
+#ifndef OFFLINE
+      IF (my_cart_pos(1) == 0)        start_x = start_x + nboundlines
+      IF (my_cart_pos(2) == 0)        start_y = start_y + nboundlines
+      IF (my_cart_pos(1) == nprocx-1) stop_x  = stop_x  - nboundlines
+      IF (my_cart_pos(2) == nprocy-1) stop_y  = stop_y  - nboundlines
+#endif
+
       ! +-+-+- Sec xx srel calculation -+-+-+
       ! start lon-lat-loop
-      DO i = 1,subdomain%ntx
-        DO j = 1,subdomain%nty
+      DO i = start_x,stop_x
+        DO j = start_y,stop_y
 
           stot = 0.
           mtot = 0.
