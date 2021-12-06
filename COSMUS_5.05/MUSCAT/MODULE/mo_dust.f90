@@ -39,6 +39,7 @@ MODULE mo_dust
     psrcType,     & ! Flag for type of potential dust source
                     ! 0 : off, 1 : psrc, 2 : msgsrc
     soilmaptype,      & ! 1 : solspe table, 2 : soilgrids
+    mineralmaptype, &   !0: none, 1:GMINER data  SGMA
     threshold_scheme   ! 0 : Marticorena, 1 : Shao  !
 
   REAL :: &
@@ -49,6 +50,7 @@ MODULE mo_dust
   !-- Files with soil data
   CHARACTER(120) ::     &
     soiltypeFile,       & ! Filename of Soil Type Data
+    mineraltypeFile,    & ! Filename of Mineralogical data SGMA
     psrcFile,           & ! Filename of preferential Dust Sources
     cultFile,           & ! Filename of Cultivation Class
     vegmonFile,         & ! Filename of monthly vegitation cover
@@ -79,6 +81,23 @@ MODULE mo_dust
         ! DustName(6) /'DP_240'/,    &
         ! DustName(7) /'DP_720'/,    &
         ! DustName(8) /'DP_2200'/
+  INTEGER, PARAMETER :: DustBins_m = 5  !8  ! number of dust particle fractions
+  INTEGER :: DustInd_m(DustBins_m)            ! indices of dust particles
+
+  REAL :: dustbin_top_m(DustBins_m)    !for the mineralogy DustBins
+  DATA dustbin_top_m(1) /1.E-6/,  &
+       dustbin_top_m(2) /3.E-6/,  &
+       dustbin_top_m(3) /9.E-6/,  &
+       dustbin_top_m(4) /26.E-6/, &
+       dustbin_top_m(5) /80.E-6/
+
+  CHARACTER(20) :: DustName_m(DustBins_m)
+  DATA  DustName_m(1) /'DP_M_01'/,     &
+        DustName_m(2) /'DP_M_03'/,     &
+        DustName_m(3) /'DP_M_09'/,     &
+        DustName_m(4) /'DP_M_26'/,     &
+        DustName_m(5) /'DP_M_80'/
+
 
   ! TYPE dust_fx
   ! REAL(8), POINTER ::   &
@@ -96,6 +115,7 @@ MODULE mo_dust
   REAL(8), POINTER ::     &
     soilprop (:,:,:,:),   & !soil properties
     soilmap(:,:,:),       & ! sand, silt, clay map
+    mineralmap(:,:,:),    & ! illite, kaolinite, smectite, feldpsar, calcite, hematite SGMA
     lai (:,:,:,:),        & !leafe area index
     vegmin (:,:,:),       & !minimum of vegetation
     alpha (:,:,:),        & !ratio horiz/vertical flux

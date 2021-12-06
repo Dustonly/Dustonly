@@ -1027,6 +1027,37 @@ MODULE dust_tegen_data
              0.0002E0, 2.E0, 0.3298E0 ,        &
              3.98E-06,  0.2E0/
 
+!----------------------------------------------------------------
+!mineral_dist --> fractions of the dustbin emission that corresponds to the mineral size distribution
+!----------------------------------------------------------------
+
+REAL, DIMENSION(nmin,DustBins) :: mineral_dist
+!the fractions are temporary, more analysis is needed
+      data (mineral_dist(1,bins), bins=1,DustBins)/ &
+        1., 0.5, 0. , 0. , 0./
+      data (mineral_dist(2,bins), bins=1,DustBins)/ &
+        1., 0.5, 0. , 0. , 0./
+      data (mineral_dist(3,bins), bins=1,DustBins)/ &
+        1., 0.5, 0. , 0. , 0./
+      data (mineral_dist(4,bins), bins=1,DustBins)/ &
+        1., 0.5, 0. , 0. , 0./
+      data (mineral_dist(5,bins), bins=1,DustBins)/ &
+        1., 0.5, 0. , 0. , 0./
+      data (mineral_dist(6,bins), bins=1,DustBins)/ &
+        1., 0.5, 0. , 0. , 0./
+      data (mineral_dist(7,bins), bins=1,DustBins)/ &
+        0., 0.5, 1. , 1. , 0.5/
+      data (mineral_dist(8,bins), bins=1,DustBins)/ &
+        0., 0.5, 1. , 1. , 0.5/
+      data (mineral_dist(9,bins), bins=1,DustBins)/ &
+        0., 0.5, 1. , 1. , 0.5/
+      data (mineral_dist(10,bins), bins=1,DustBins)/ &
+        0., 0.5, 1. , 1. , 0.5/
+      data (mineral_dist(11,bins), bins=1,DustBins)/ &
+        0., 0.5, 1. , 1. , 0.5/
+      data (mineral_dist(12,bins), bins=1,DustBins)/ &
+        0., 0.5, 1. , 1. , 0.5/
+
 END MODULE dust_tegen_data
 
 #ifdef OFFLINE
