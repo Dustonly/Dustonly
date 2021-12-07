@@ -124,6 +124,7 @@ MODULE mo_dust
     w_str (:,:),        & !threshold soil moisture w' (Fecan, F. et al., 1999)
     umin2(:,:,:),         &
     d_emis(:,:,:),         & !dust emission
+    d_emis_m(:,:,:,:),     & !dust mineralogical emission SGMA
     biome(:,:),         &
     cult(:,:),          &
     veg (:,:,:),        & !leafe area index

@@ -128,7 +128,8 @@ MODULE tegen02_param
     nbin = 24,               & !max number of bins
     ! nmode = 4,               &
     nspe = 14,               & !Nmode*3+2
-    ntrace = DustBins          !max number of bins
+    ntrace = DustBins,       &   !max number of bins
+    nmin = 12
 
 
   REAL(8), PARAMETER ::                   &
@@ -217,7 +218,8 @@ MODULE dust_tegen_param
     nbin = 24,               & !max number of bins
     ! nmode = 4,               &
     nspe = 14,               & !Nmode*3+2
-    ntrace = DustBins          !max number of bins
+    ntrace = DustBins,       &   !max number of bins
+    nmin = 12
 
 
   REAL(8), PARAMETER ::                       &
@@ -277,9 +279,9 @@ MODULE dust_tegen_data
 ! This module contains parameters for the Tegen dust emisson scheme
 !---------------------------------------------------------------------
   USE mo_dust, ONLY: &
-    nats
+    nats, DustBins
   USE dust_tegen_param, ONLY: &
-  combimax,nspe
+  combimax,nspe, nmin
 
 
   ! ------------
@@ -326,7 +328,7 @@ MODULE dust_tegen_data
 
    IMPLICIT NONE
 
-   INTEGER :: jspe
+   INTEGER :: jspe, bins
 
    INTEGER, DIMENSION(combimax) :: active
 
@@ -1070,7 +1072,8 @@ MODULE offline_org
     ust(:,:,:), &      ! friction velocity
     dz(:,:,:), &
     dust_flux(:,:,:,:), & !
-    dust_em_accum(:,:,:)
+    dust_em_accum(:,:,:), &
+    dust_em_accum_m(:,:,:,:)   !dust accumulation for mineral bins
 
 
   ! data type for muscat subdomain
@@ -1116,8 +1119,8 @@ MODULE offline_org
     ConvPart    = 1,    &
     nt          = 8,    &
     ntz         = 1,    &
-    ScalCur     = 1!,    &
-    ! WindCur     = 1
+    ScalCur     = 1,    &
+    miner       = 12     !minerals number
 
   INTEGER :: &
     SurfRef, &

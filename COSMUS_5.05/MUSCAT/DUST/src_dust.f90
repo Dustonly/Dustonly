@@ -107,7 +107,7 @@ MODULE src_dust
 
   !+ organize dust
   !---------------------------------------------------------------------
-  SUBROUTINE organize_dust(yaction,subdomain,flux)
+  SUBROUTINE organize_dust(yaction,subdomain,flux,flux_m)
   !---------------------------------------------------------------------
   ! Description:
   !   This subroutine organize the dust emission sheme in muscat
@@ -138,7 +138,7 @@ MODULE src_dust
     ! Variables vor Initialization
     INTEGER        :: &
       ib1,            &
-      js,             &
+      js, js_m,       &   !!js_m is for the mineralogy DustBins
       igx0, igx1,     &
       igy0, igy1,     &
       ix0,  ix1,      &
@@ -911,9 +911,9 @@ MODULE src_dust
 
     USE mo_dust
     USE dust_tegen_data
-  #ifdef OFFLINE
+#ifdef OFFLINE
     USE offline_org
-  #endif
+#endif
 
     IMPLICIT NONE
 
@@ -1140,7 +1140,7 @@ MODULE src_dust
 
   !+ init_tegen
   !---------------------------------------------------------------------
-  SUBROUTINE tegen02(yaction,subdomain,flux)
+  SUBROUTINE tegen02(yaction,subdomain,flux, flux_m)
   !---------------------------------------------------------------------
   ! Description:
   !   This subroutine performes the initialization for
@@ -1187,7 +1187,7 @@ MODULE src_dust
         flux_m(ntz,subdomain%nty,subdomain%ntx,nt,12)
 
     INTEGER :: &
-      i,j,n,m,n_bomb, & ! loops
+      i,j,n,m,mr,n_bomb, & ! loops
       start_x,        &
       start_y,        &
       stop_x,         &
@@ -1242,7 +1242,7 @@ MODULE src_dust
 
 #ifndef OFFLINE
     REAL(8), POINTER :: EmiRate(:,:,:,:)
-    REAL(8), POINTER :: EmiRate_m(:,:,:,:,:)
+  !  REAL(8), POINTER :: EmiRate_m(:,:,:,:,:)
     REAL(8), POINTER :: dz(:,:,:)
 #endif
 
@@ -1266,7 +1266,7 @@ MODULE src_dust
 
 #ifndef OFFLINE
     EmiRate  => block(subdomain%ib)%EmiRate(:,:,:,:)
-    EmiRate_m  => block(subdomain%ib)%EmiRate_m(:,:,:,:,:)
+    !EmiRate_m  => block(subdomain%ib)%EmiRate_m(:,:,:,:,:)
     dz      => geo  (subdomain%ib)%dz(:,:,:)
 #endif
 
@@ -1503,12 +1503,12 @@ MODULE src_dust
             !---  summarize biogenic and total emission rates
             EmiRate(EmiIndBio,j,i,DustInd(n)) = EmiRate(EmiIndBio,j,i,DustInd(n)) + fluxbin(n)
             EmiRate(EmiIndSum,j,i,DustInd(n)) = EmiRate(EmiIndSum,j,i,DustInd(n)) + fluxbin(n)
-            IF (mineralmaptype == 1) THEN
-              DO mr=1,12
-                EmiRate_m(EmiIndBio,j,i,DustInd(n),mr) = EmiRate_m(EmiIndBio,j,i,DustInd(n),mr) + fluxbin_m(n,mr)
-                EmiRate_m(EmiIndSum,j,i,DustInd(n),mr) = EmiRate_m(EmiIndSum,j,i,DustInd(n),mr) + fluxbin_m(n,mr)
-              END DO
-            END IF
+            !IF (mineralmaptype == 1) THEN
+            !  DO mr=1,12
+            !    EmiRate_m(EmiIndBio,j,i,DustInd(n),mr) = EmiRate_m(EmiIndBio,j,i,DustInd(n),mr) + fluxbin_m(n,mr)
+            !    EmiRate_m(EmiIndSum,j,i,DustInd(n),mr) = EmiRate_m(EmiIndSum,j,i,DustInd(n),mr) + fluxbin_m(n,mr)
+            !  END DO
+            !END IF
 #endif
           END DO
 
