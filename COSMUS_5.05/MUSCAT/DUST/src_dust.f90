@@ -138,7 +138,7 @@ MODULE src_dust
     ! Variables vor Initialization
     INTEGER        :: &
       ib1,            &
-      js, js_m,       &   !!js_m is for the mineralogy DustBins
+      js, mr,         &   !mr is for the mineralogy DustBins
       igx0, igx1,     &
       igy0, igy1,     &
       ix0,  ix1,      &
@@ -436,36 +436,41 @@ MODULE src_dust
       ! necessary for AOD Calc?
       DO js=1,DustBins
 #ifndef OFFLINE
-        string = TRIM(ADJUSTL(DustName(js)))
-        DustInd(js)  = ifind(nt, string, tracer_name)   ! ifind -> muscat funktion /INIT/ifind.f90
+        string = TRIM(ADJUSTL(DustName(js,1)))
+        DustInd(js,1)  = ifind(nt, string, tracer_name)   ! ifind -> muscat funktion /INIT/ifind.f90
 #else
-        DustInd(js) = js
+        DustInd(js,1) = js
 #endif
-        IF (DustInd(js) <= 0)  THEN
+        IF (DustInd(js,1) <= 0)  THEN
           WRITE(*,8010)  string
           STOP  'Dust_Init: Error in Input Data !!'
         END IF
+        PRINT*,'Dust Bin name + number:', string, js
       END DO
+
+      !if the mineralogy map is included then get the mineralogy DustBins
+      IF(mineralmaptype == 1) THEN
+        DO js=1,DustBins
+          DO mr=2,13
+#ifndef OFFLINE
+            string = TRIM(ADJUSTL(DustName(js,mr)))
+            PRINT*, 'DustBin mr name:', string
+            DustInd(js,mr)  = ifind(nt, string, tracer_name)   ! ifind -> muscat funktion /INIT/ifind.f90
+#else
+            DustInd(js,mr) = js
+#endif
+            IF (DustInd(js,mr) <= 0)  THEN
+              WRITE(*,8010)  string
+              STOP  'Dust_Init: Error in Input Data !!'
+            END IF
+          END DO
+        END DO
+      END IF
 
 
 8010  format(1x,50('+')//    &
-      'Dust_Init: Dust name ',a20,' not included as tracer!' / 1x,50('+'))
+'Dust_Init: Dust name ',a20,' not included as tracer!' / 1x,50('+'))
 
-      !if the mineralogy map is included then get the mineralogy DustBins SGMA
-      IF(mineralmaptype == 1) THEN
-        DO js_m=1,DustBins_m
-#ifndef OFFLINE
-          string = TRIM(ADJUSTL(DustName(js_m)))
-          DustInd_m(js_m)  = ifind(nt, string, tracer_name)   ! ifind -> muscat funktion /INIT/ifind.f90
-#else
-          DustInd_m(js_m) = js_m
-#endif
-          IF (DustInd_m(js_m) <= 0)  THEN
-            WRITE(*,8010)  string
-            STOP  'Dust_Init: Error in Input Data !!'
-          END IF
-        END DO
-      END IF
 
       IF (SurfLevel /= 0) THEN
           PRINT*, ' Wrong setting in the MUSCAT namelist'
@@ -1494,15 +1499,15 @@ MODULE src_dust
               END DO
             END IF
 
-            flux(1,j,i,DustInd(n))   = flux(1,j,i,DustInd(n)) + fluxbin(n)/dz(1,j,i)
+            flux(1,j,i,DustInd(n,1))   = flux(1,j,i,DustInd(n,1)) + fluxbin(n)/dz(1,j,i)
             IF (mineralmaptype == 1) THEN
               DO mr=1,12
-                flux_m(1,j,i,DustInd(n),mr)   = flux_m(1,j,i,DustInd(n),mr) + fluxbin_m(n,mr)/dz(1,j,i)
+                flux_m(1,j,i,DustInd(n,mr+1),mr)   = flux_m(1,j,i,DustInd(n,mr+1),mr) + fluxbin_m(n,mr)/dz(1,j,i)
               END DO
             END IF
             !---  summarize biogenic and total emission rates
-            EmiRate(EmiIndBio,j,i,DustInd(n)) = EmiRate(EmiIndBio,j,i,DustInd(n)) + fluxbin(n)
-            EmiRate(EmiIndSum,j,i,DustInd(n)) = EmiRate(EmiIndSum,j,i,DustInd(n)) + fluxbin(n)
+            EmiRate(EmiIndBio,j,i,DustInd(n,1)) = EmiRate(EmiIndBio,j,i,DustInd(n,1)) + fluxbin(n)
+            EmiRate(EmiIndSum,j,i,DustInd(n,1)) = EmiRate(EmiIndSum,j,i,DustInd(n,1)) + fluxbin(n)
             !IF (mineralmaptype == 1) THEN
             !  DO mr=1,12
             !    EmiRate_m(EmiIndBio,j,i,DustInd(n),mr) = EmiRate_m(EmiIndBio,j,i,DustInd(n),mr) + fluxbin_m(n,mr)
@@ -2142,12 +2147,12 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
         !---  add fluxes to right hand side
         DO nn=1,DustBins
 
-          DustEmis(j,i,DustInd(nn)) = FDust(j,i,nn)
+          DustEmis(j,i,DustInd(nn,1)) = FDust(j,i,nn)
 #ifndef OFFLINE
-          Flux(1,j,i,DustInd(nn))   = Flux(1,j,i,DustInd(nn)) + FDust(j,i,nn)/dz(1,j,i)
+          Flux(1,j,i,DustInd(nn,1))   = Flux(1,j,i,DustInd(nn,1)) + FDust(j,i,nn)/dz(1,j,i)
           !---  summarize biogenic and total emission rates
-          EmiRate(EmiIndBio,j,i,DustInd(nn)) = EmiRate(EmiIndBio,j,i,DustInd(nn)) + FDust(j,i,nn)
-          EmiRate(EmiIndSum,j,i,DustInd(nn)) = EmiRate(EmiIndSum,j,i,DustInd(nn)) + FDust(j,i,nn)
+          EmiRate(EmiIndBio,j,i,DustInd(nn,1)) = EmiRate(EmiIndBio,j,i,DustInd(nn,1)) + FDust(j,i,nn)
+          EmiRate(EmiIndSum,j,i,DustInd(nn,1)) = EmiRate(EmiIndSum,j,i,DustInd(nn,1)) + FDust(j,i,nn)
 #endif
         END DO
       END DO

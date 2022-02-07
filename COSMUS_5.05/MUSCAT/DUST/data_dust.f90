@@ -1058,7 +1058,7 @@ REAL, DIMENSION(nmin,DustBins) :: mineral_dist
       data (mineral_dist(11,bins), bins=1,DustBins)/ &
         0., 0.5, 1. , 1. , 0.5/
       data (mineral_dist(12,bins), bins=1,DustBins)/ &
-        0., 0.5, 1. , 1. , 0.5/
+        1., 1.0, 1. , 1. , 1.0/
 
 END MODULE dust_tegen_data
 
