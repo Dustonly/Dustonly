@@ -443,7 +443,7 @@ MODULE src_dust
 #endif
         IF (DustInd(js,1) <= 0)  THEN
           WRITE(*,8010)  string
-          STOP  'Dust_Init: Error in Input Data !!'
+          STOP  '1stloop_Dust_Init: Error in Input Data !!'
         END IF
         PRINT*,'Dust Bin name + number:', string, js
       END DO
@@ -454,15 +454,15 @@ MODULE src_dust
           DO mr=2,13
 #ifndef OFFLINE
             string = TRIM(ADJUSTL(DustName(js,mr)))
-            PRINT*, 'DustBin mr name:', string
             DustInd(js,mr)  = ifind(nt, string, tracer_name)   ! ifind -> muscat funktion /INIT/ifind.f90
 #else
             DustInd(js,mr) = js
 #endif
             IF (DustInd(js,mr) <= 0)  THEN
               WRITE(*,8010)  string
-              STOP  'Dust_Init: Error in Input Data !!'
+              STOP  '2ndloop-Dust_Init: Error in Input Data !!'
             END IF
+            PRINT*,'Dust Bin mr name + number:', string, js
           END DO
         END DO
       END IF
@@ -970,10 +970,10 @@ MODULE src_dust
     END DO
     ! end lon-lat-loop
 
-    call quick_nc('mineral',var3d=mineralmap(:,:,:))
+    !call quick_nc('mineral',var3d=mineralmap(:,:,:))
 
-    call quick_ascii('illite',mineralmap(:,:,1),pmin=0.,pmax=1.)
-    call quick_ascii('feldspar',mineralmap(:,:,7),pmin=0.,pmax=1.)
+    !call quick_ascii('illite',mineralmap(:,:,1),pmin=0.,pmax=1.)
+    !call quick_ascii('feldspar',mineralmap(:,:,7),pmin=0.,pmax=1.)
 
   IF (lddebug) PRINT*, 'Leave init_mineralmap',''//NEW_LINE('')
 
@@ -1145,7 +1145,7 @@ MODULE src_dust
 
   !+ init_tegen
   !---------------------------------------------------------------------
-  SUBROUTINE tegen02(yaction,subdomain,flux, flux_m)
+  SUBROUTINE tegen02(yaction,subdomain,flux)
   !---------------------------------------------------------------------
   ! Description:
   !   This subroutine performes the initialization for
@@ -1188,8 +1188,8 @@ MODULE src_dust
     TYPE(rectangle), INTENT(IN) :: subdomain
 
     REAL(8), OPTIONAL, INTENT(INOUT)        :: &
-        flux(ntz,subdomain%nty,subdomain%ntx,nt), &
-        flux_m(ntz,subdomain%nty,subdomain%ntx,nt,12)
+        flux(ntz,subdomain%nty,subdomain%ntx,nt)
+        !flux_m(ntz,subdomain%nty,subdomain%ntx,nt,13)
 
     INTEGER :: &
       i,j,n,m,mr,n_bomb, & ! loops
@@ -1224,7 +1224,7 @@ MODULE src_dust
     REAL(8) :: &
       fluxtot (ntrace), &
       fluxbin (ntrace), &
-      fluxbin_m (ntrace,12) !mineralogical flux SGMA
+      fluxbin_m (ntrace,13) !mineralogical flux SGMA
 
     real    ::  T1,T2
 
@@ -1492,17 +1492,17 @@ MODULE src_dust
 #else
             ! chemistry units (nradm=1): g/m2/s ==> g/m2/s * mol2part
             fluxbin(n) = fluxbin(n) * ConvPart
-            DustEmis(j,i,n) = fluxbin(n)
+            DustEmis(j,i,DustInd(n,1)) = fluxbin(n)
             IF (mineralmaptype == 1) THEN
               DO mr=1,12
-                DustEmis_m(j,i,n,mr) = fluxbin_m(n,mr) * ConvPart
+                DustEmis(j,i,DustInd(n,mr+1)) = fluxbin_m(n,mr) * ConvPart
               END DO
             END IF
 
             flux(1,j,i,DustInd(n,1))   = flux(1,j,i,DustInd(n,1)) + fluxbin(n)/dz(1,j,i)
             IF (mineralmaptype == 1) THEN
               DO mr=1,12
-                flux_m(1,j,i,DustInd(n,mr+1),mr)   = flux_m(1,j,i,DustInd(n,mr+1),mr) + fluxbin_m(n,mr)/dz(1,j,i)
+                flux(1,j,i,DustInd(n,mr+1))   = flux(1,j,i,DustInd(n,mr+1)) + fluxbin_m(n,mr)/dz(1,j,i)
               END DO
             END IF
             !---  summarize biogenic and total emission rates
@@ -2994,7 +2994,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     ! local Vars
 
     CHARACTER(15)     :: &
-      varname(3)       ! name of variable that shoud be read
+      varname(12)       ! name of variable that shoud be read
 
     CHARACTER(120)     :: &
       filename       ! name of variable that shoud be read
