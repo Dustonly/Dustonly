@@ -107,7 +107,7 @@ MODULE src_dust
 
   !+ organize dust
   !---------------------------------------------------------------------
-  SUBROUTINE organize_dust(yaction,subdomain,flux,flux_m)
+  SUBROUTINE organize_dust(yaction,subdomain,flux)
   !---------------------------------------------------------------------
   ! Description:
   !   This subroutine organize the dust emission sheme in muscat
@@ -132,8 +132,7 @@ MODULE src_dust
       subdomain
 
     REAL(8), OPTIONAL, INTENT(INOUT)        :: &
-        flux(ntz,subdomain%nty,subdomain%ntx,nt), &
-        flux_m(ntz,subdomain%nty,subdomain%ntx,nt,12)   !added for minerals SGMA
+        flux(ntz,subdomain%nty,subdomain%ntx,nt)
 
     ! Variables vor Initialization
     INTEGER        :: &
@@ -267,7 +266,7 @@ MODULE src_dust
 
 
       ! psrcType need right values
-      IF (psrcType < 0 .OR. psrcType > 2) THEN
+      IF (psrcType < 0 .OR. psrcType > 3) THEN
         ierr = 100003
         yerr = 'wrong value for psrcType'
         PRINT*,'ERROR    src_dust "init" '
@@ -445,7 +444,7 @@ MODULE src_dust
           WRITE(*,8010)  string
           STOP  '1stloop_Dust_Init: Error in Input Data !!'
         END IF
-        PRINT*,'Dust Bin name + number:', string, js
+        PRINT*,'Dust Bin name + number:', string, js, 'DustInd:', DustInd(js,1)
       END DO
 
       !if the mineralogy map is included then get the mineralogy DustBins
@@ -1462,15 +1461,25 @@ MODULE src_dust
             !
 
             ! Mask Effective area determined by preferential source fraction:
-            ! only for psrcType = 2
-            ! IF (psrcType == 1) THEN
-            !   fluxbin(n) = fluxbin(n) * source(j,i)
-            ! END IF
+            ! only for psrcType = 3
+             IF (psrcType == 3) THEN
+               fluxbin(n) = fluxbin(n) * source(j,i)
+               IF (mineralmaptype == 1) THEN
+                 DO mr=1,12
+                   fluxbin_m(n,mr) = fluxbin_m(n,mr) * source(j,i)
+                 END DO
+               END IF
+             END IF
 
             ! Mask Effective area determined by vegetation fraction:
             ! only for veg_scheme = 2
             IF (veg_scheme == 2) THEN
               fluxbin(n) = fluxbin(n) * veff(j,i,tnow)
+              IF (mineralmaptype == 1) THEN
+                DO mr=1,12
+                  fluxbin_m(n,mr) = fluxbin_m(n,mr) * veff(j,i,tnow)
+                END DO
+              END IF
             END IF
 
             ! write output in [g m-2 s-1]
@@ -1499,15 +1508,25 @@ MODULE src_dust
               END DO
             END IF
 
+            !PRINT*, 'DustInd in src is:', DustInd(n,1), n
             flux(1,j,i,DustInd(n,1))   = flux(1,j,i,DustInd(n,1)) + fluxbin(n)/dz(1,j,i)
             IF (mineralmaptype == 1) THEN
               DO mr=1,12
+                !PRINT*, 'DustInd mineral is:', DustInd(n,mr+1), n, mr
                 flux(1,j,i,DustInd(n,mr+1))   = flux(1,j,i,DustInd(n,mr+1)) + fluxbin_m(n,mr)/dz(1,j,i)
               END DO
             END IF
             !---  summarize biogenic and total emission rates
             EmiRate(EmiIndBio,j,i,DustInd(n,1)) = EmiRate(EmiIndBio,j,i,DustInd(n,1)) + fluxbin(n)
             EmiRate(EmiIndSum,j,i,DustInd(n,1)) = EmiRate(EmiIndSum,j,i,DustInd(n,1)) + fluxbin(n)
+            IF (mineralmaptype == 1) THEN
+              DO mr=1,12
+                EmiRate(EmiIndBio,j,i,DustInd(n,mr+1)) = EmiRate(EmiIndBio,j,i,DustInd(n,mr+1)) + fluxbin_m(n,mr)
+                EmiRate(EmiIndSum,j,i,DustInd(n,mr+1)) = EmiRate(EmiIndSum,j,i,DustInd(n,mr+1)) + fluxbin_m(n,mr)
+              END DO
+            END IF
+
+            !PRINT*,'DustInd at the end of src_dust', DustInd(n,1), n
             !IF (mineralmaptype == 1) THEN
             !  DO mr=1,12
             !    EmiRate_m(EmiIndBio,j,i,DustInd(n),mr) = EmiRate_m(EmiIndBio,j,i,DustInd(n),mr) + fluxbin_m(n,mr)

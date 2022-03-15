@@ -65,7 +65,36 @@ MODULE mo_dust
   INTEGER, PARAMETER :: &
     DustBins = 5, & !8  ! number of dust particle fractions
     nmin = 13       !number of possible minerals (GMINER)
-  REAL, DIMENSION(DustBins,nmin) :: DustInd          ! indices of dust particles, added nmin for the minerals
+
+  INTEGER :: bins
+
+  INTEGER, DIMENSION(DustBins,nmin) :: DustInd          ! indices of dust particles, added nmin for the minerals
+  DATA (DustInd(bins, 1), bins=1,DustBins)/ &
+    1, 2, 3, 4, 5/
+  DATA (DustInd(bins, 2), bins=1,DustBins)/ &
+    6, 18, 30, 42, 54/
+  DATA (DustInd(bins, 3), bins=1,DustBins)/ &
+    7, 19, 31, 43, 55/
+  DATA (DustInd(bins, 4), bins=1,DustBins)/ &
+    8, 20, 32, 44, 56/
+  DATA (DustInd(bins, 5), bins=1,DustBins)/ &
+    9, 21, 33, 45, 57/
+  DATA (DustInd(bins, 6), bins=1,DustBins)/ &
+    10, 22, 34, 46, 58/
+  DATA (DustInd(bins, 7), bins=1,DustBins)/ &
+    11, 23, 35, 47, 59/
+  DATA (DustInd(bins, 8), bins=1,DustBins)/ &
+    12, 24, 36, 48, 60/
+  DATA (DustInd(bins, 9), bins=1,DustBins)/ &
+    13, 25, 37, 49, 61/
+  DATA (DustInd(bins, 10), bins=1,DustBins)/ &
+    14, 26, 38, 50, 62/
+  DATA (DustInd(bins, 11), bins=1,DustBins)/ &
+    15, 27, 39, 51, 63/
+  DATA (DustInd(bins, 12), bins=1,DustBins)/ &
+    16, 28, 40, 52, 64/
+  DATA (DustInd(bins, 13), bins=1,DustBins)/ &
+    17, 29, 41, 53, 65/
 
   REAL :: dustbin_top(DustBins)
   DATA dustbin_top(1) /1.E-6/,  &
