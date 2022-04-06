@@ -167,6 +167,8 @@ MODULE mo_dust
     soilprop (:,:,:,:),   & !soil properties
     soilmap(:,:,:),       & ! sand, silt, clay map
     mineralmap(:,:,:),    & ! illite, kaolinite, smectite, feldpsar, calcite, hematite SGMA
+    mineralclay(:,:),    &
+    mineralsilt(:,:),    &
     lai (:,:,:,:),        & !leafe area index
     vegmin (:,:,:),       & !minimum of vegetation
     alpha (:,:,:),        & !ratio horiz/vertical flux
@@ -193,7 +195,11 @@ MODULE mo_dust
     srel_map(:,:,:),&          ! (j,i,nclass)
     mrel_map(:,:,:),&          ! (j,i,nclass)
     mrel_sum(:,:,:),&          ! (j,i,nclass)
-    mrel_mx(:,:,:,:)          ! (j,i,nclass,nclass)
+    mrel_mx(:,:,:,:),&          ! (j,i,nclass,nclass)
+    srel_map_m(:,:,:,:),&          ! (j,i,nclass)
+    mrel_map_m(:,:,:,:),&          ! (j,i,nclass)
+    mrel_sum_m(:,:,:,:),&          ! (j,i,nclass)
+    mrel_mx_m(:,:,:,:,:)          ! (j,i,nclass,nclass)
   END TYPE dust_subdomain
   TYPE (dust_subdomain), ALLOCATABLE, TARGET :: dust(:)
 
