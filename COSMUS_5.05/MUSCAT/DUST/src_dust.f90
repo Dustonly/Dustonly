@@ -581,11 +581,7 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%soilmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,nmode))
         ALLOCATE(dust(ib1)%mineralmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,12))              !mineralmap
-        ALLOCATE(dust(ib1)%mineralclay(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
-        ALLOCATE(dust(ib1)%mineralsilt(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,12))       !mineralmap SGMA
 
         ALLOCATE(dust(ib1)%ustar(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
@@ -596,10 +592,6 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%mrel_map(decomp(ib1)%nty,decomp(ib1)%ntx,nclass))
         ALLOCATE(dust(ib1)%mrel_sum(decomp(ib1)%nty,decomp(ib1)%ntx,nclass))
         ALLOCATE(dust(ib1)%mrel_mx(decomp(ib1)%nty,decomp(ib1)%ntx,nclass,DustBins+1))
-        ALLOCATE(dust(ib1)%srel_map_m(decomp(ib1)%nty,decomp(ib1)%ntx,nclass,12))
-        ALLOCATE(dust(ib1)%mrel_map_m(decomp(ib1)%nty,decomp(ib1)%ntx,nclass,12))
-        ALLOCATE(dust(ib1)%mrel_sum_m(decomp(ib1)%nty,decomp(ib1)%ntx,nclass,12))
-        ALLOCATE(dust(ib1)%mrel_mx_m(decomp(ib1)%nty,decomp(ib1)%ntx,nclass,DustBins+1,12))
 
         dust(ib1)%biome(:,:)=0.
         dust(ib1)%cult(:,:)=0.
@@ -619,8 +611,6 @@ MODULE src_dust
 
         dust(ib1)%soilmap = 0.
         dust(ib1)%mineralmap = 0.
-        dust(ib1)%mineralclay = 0.
-        dust(ib1)%mineralsilt = 0.
 
         dust(ib1)%ustar = 0.
 
@@ -938,52 +928,46 @@ MODULE src_dust
 
     REAL(8), POINTER ::  &
       soilmap(:,:,:),     &
-      mineralmap(:,:,:),  &
-      mineralclay(:,:),   &
-      mineralsilt(:,:)
+      mineralmap(:,:,:)
 
     soilmap => dust(subdomain%ib)%soilmap(:,:,:)
     mineralmap => dust(subdomain%ib)%mineralmap(:,:,:)
-    mineralclay => dust(subdomain%ib)%mineralclay(:,:)
-    mineralsilt => dust(subdomain%ib)%mineralsilt(:,:)
 
     IF (lddebug) PRINT*, 'Enter init_mineralmap'
 
     ! start lon-lat-loop, multiply mineral fraction content per corresponding soil type
-    DO i=1,subdomain%ntx
-      DO j=1,subdomain%nty
-        IF (soilmaptype == 1)  THEN                                     ! clay = soilmap(:,:,4), silt = soilmap(:,:,3)
-          mineralmap(j,i,1) = mineralmap(j,i,1)*soilmap(j,i,4)          !illite * clay content
-          mineralmap(j,i,2) = mineralmap(j,i,2)*soilmap(j,i,4)          !kaolinite * clay content
-          mineralmap(j,i,3) = mineralmap(j,i,3)*soilmap(j,i,4)          !smectite * clay content
-          mineralmap(j,i,4) = mineralmap(j,i,4)*soilmap(j,i,4)          ! calcite * clay content
-          mineralmap(j,i,5) = mineralmap(j,i,5)*soilmap(j,i,4)          !quartz * clay content
-          mineralmap(j,i,6) = mineralmap(j,i,6)*soilmap(j,i,4)          !hematite * clay content
-          mineralmap(j,i,7) = mineralmap(j,i,7)*soilmap(j,i,3)          !feldspar * silt content
-          mineralmap(j,i,8) = mineralmap(j,i,8)*soilmap(j,i,3)          !gypsum * silt content
-          mineralmap(j,i,9) = mineralmap(j,i,9)*soilmap(j,i,3)          !calcite * silt content
-          mineralmap(j,i,10) = mineralmap(j,i,10)*soilmap(j,i,3)        !quartz * silt content
-          mineralmap(j,i,11) = mineralmap(j,i,11)*soilmap(j,i,3)        !hematite * silt content
-          mineralmap(j,i,12) = mineralmap(j,i,12)*soilmap(j,i,3)        !phosphorus*silt content (there is no size dist for phos)
-        ELSEIF (soilmaptype == 2) THEN                                     !clay = soilmap(:,:,3), silt = soilmap(:,:,2)
-          mineralmap(j,i,1) = mineralmap(j,i,1)*soilmap(j,i,3)
-          mineralmap(j,i,2) = mineralmap(j,i,2)*soilmap(j,i,3)
-          mineralmap(j,i,3) = mineralmap(j,i,3)*soilmap(j,i,3)
-          mineralmap(j,i,4) = mineralmap(j,i,4)*soilmap(j,i,3)
-          mineralmap(j,i,5) = mineralmap(j,i,5)*soilmap(j,i,3)
-          mineralmap(j,i,6) = mineralmap(j,i,6)*soilmap(j,i,3)
-          mineralmap(j,i,7) = mineralmap(j,i,7)*soilmap(j,i,2)
-          mineralmap(j,i,8) = mineralmap(j,i,8)*soilmap(j,i,2)
-          mineralmap(j,i,9) = mineralmap(j,i,9)*soilmap(j,i,2)
-          mineralmap(j,i,10) = mineralmap(j,i,10)*soilmap(j,i,2)
-          mineralmap(j,i,11) = mineralmap(j,i,11)*soilmap(j,i,2)
-          mineralmap(j,i,12) = mineralmap(j,i,12)*soilmap(j,i,2)
-        END IF
-        mineralclay(j,i) = SUM(mineralmap(j,i,1:6))
-        mineralsilt(j,i) = SUM(mineralmap(j,i,7:12))
-      END DO
-    END DO
-    ! end lon-lat-loop
+    ! DO i=1,subdomain%ntx
+    !   DO j=1,subdomain%nty
+    !     IF (soilmaptype == 1)  THEN                                     ! clay = soilmap(:,:,4), silt = soilmap(:,:,3)
+    !       mineralmap(j,i,1) = mineralmap(j,i,1)*soilmap(j,i,4)          !illite * clay content
+    !       mineralmap(j,i,2) = mineralmap(j,i,2)*soilmap(j,i,4)          !kaolinite * clay content
+    !       mineralmap(j,i,3) = mineralmap(j,i,3)*soilmap(j,i,4)          !smectite * clay content
+    !       mineralmap(j,i,4) = mineralmap(j,i,4)*soilmap(j,i,4)          ! calcite * clay content
+    !       mineralmap(j,i,5) = mineralmap(j,i,5)*soilmap(j,i,4)          !quartz * clay content
+    !       mineralmap(j,i,6) = mineralmap(j,i,6)*soilmap(j,i,4)          !hematite * clay content
+    !       mineralmap(j,i,7) = mineralmap(j,i,7)*soilmap(j,i,3)          !feldspar * silt content
+    !       mineralmap(j,i,8) = mineralmap(j,i,8)*soilmap(j,i,3)          !gypsum * silt content
+    !       mineralmap(j,i,9) = mineralmap(j,i,9)*soilmap(j,i,3)          !calcite * silt content
+    !       mineralmap(j,i,10) = mineralmap(j,i,10)*soilmap(j,i,3)        !quartz * silt content
+    !       mineralmap(j,i,11) = mineralmap(j,i,11)*soilmap(j,i,3)        !hematite * silt content
+    !       mineralmap(j,i,12) = mineralmap(j,i,12)*soilmap(j,i,3)        !phosphorus*silt content (there is no size dist for phos)
+    !     ELSEIF (soilmaptype == 2) THEN                                     !clay = soilmap(:,:,3), silt = soilmap(:,:,2)
+    !       mineralmap(j,i,1) = mineralmap(j,i,1)*soilmap(j,i,3)
+    !       mineralmap(j,i,2) = mineralmap(j,i,2)*soilmap(j,i,3)
+    !       mineralmap(j,i,3) = mineralmap(j,i,3)*soilmap(j,i,3)
+    !       mineralmap(j,i,4) = mineralmap(j,i,4)*soilmap(j,i,3)
+    !       mineralmap(j,i,5) = mineralmap(j,i,5)*soilmap(j,i,3)
+    !       mineralmap(j,i,6) = mineralmap(j,i,6)*soilmap(j,i,3)
+    !       mineralmap(j,i,7) = mineralmap(j,i,7)*soilmap(j,i,2)
+    !       mineralmap(j,i,8) = mineralmap(j,i,8)*soilmap(j,i,2)
+    !       mineralmap(j,i,9) = mineralmap(j,i,9)*soilmap(j,i,2)
+    !       mineralmap(j,i,10) = mineralmap(j,i,10)*soilmap(j,i,2)
+    !       mineralmap(j,i,11) = mineralmap(j,i,11)*soilmap(j,i,2)
+    !       mineralmap(j,i,12) = mineralmap(j,i,12)*soilmap(j,i,2)
+    !     END IF
+    !   END DO
+    ! END DO
+    ! ! end lon-lat-loop
 
     !call quick_nc('mineral',var3d=mineralmap(:,:,:))
 
@@ -1237,14 +1221,6 @@ MODULE src_dust
       REAL(8),ALLOCATABLE :: m_rel_ar(:)
 
     REAL(8) :: &
-      dM_m(12),         &
-      stot_m(12),       &
-      mtot_m(12),       &
-      s_rel_m(12),      &
-      m_rel_m(12),      &
-      m_rel_sum_m(12),  &
-      hflux_m(12),      &
-      vflux_m(12),      &
       fluxtot (ntrace), &
       fluxbin (ntrace), &
       fluxbin_m (ntrace,12) !mineralogical flux SGMA
@@ -1254,8 +1230,6 @@ MODULE src_dust
     REAL(8), POINTER :: source(:,:)
     REAL(8), POINTER :: soilmap(:,:,:)
     REAL(8), POINTER :: mineralmap(:,:,:)
-    REAL(8), POINTER :: mineralclay(:,:)
-    REAL(8), POINTER :: mineralsilt(:,:)
     REAL(8), POINTER :: feff_z0(:,:)
     REAL(8), POINTER :: feff_veg(:,:,:)
     REAL(8), POINTER :: veff(:,:,:)
@@ -1269,10 +1243,6 @@ MODULE src_dust
     REAL(8), POINTER :: mrel_map(:,:,:)
     REAL(8), POINTER :: mrel_sum(:,:,:)
     REAL(8), POINTER :: mrel_mx(:,:,:,:)
-    REAL(8), POINTER :: srel_map_m(:,:,:,:)
-    REAL(8), POINTER :: mrel_map_m(:,:,:,:)
-    REAL(8), POINTER :: mrel_sum_m(:,:,:,:)
-    REAL(8), POINTER :: mrel_mx_m(:,:,:,:,:)
 
 #ifndef OFFLINE
     REAL(8), POINTER :: EmiRate(:,:,:,:)
@@ -1283,8 +1253,6 @@ MODULE src_dust
     source   => dust(subdomain%ib)%source(:,:)
     soilmap  => dust(subdomain%ib)%soilmap(:,:,:)
     mineralmap  => dust(subdomain%ib)%mineralmap(:,:,:)
-    mineralclay  => dust(subdomain%ib)%mineralclay(:,:)
-    mineralsilt  => dust(subdomain%ib)%mineralsilt(:,:)
     feff_z0  => dust(subdomain%ib)%feff_z0(:,:)
     feff_veg => dust(subdomain%ib)%feff_veg(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
@@ -1298,10 +1266,6 @@ MODULE src_dust
     mrel_map => dust(subdomain%ib)%mrel_map(:,:,:)
     mrel_sum => dust(subdomain%ib)%mrel_sum(:,:,:)
     mrel_mx  => dust(subdomain%ib)%mrel_mx(:,:,:,:)
-    srel_map_m => dust(subdomain%ib)%srel_map_m(:,:,:,:)
-    mrel_map_m => dust(subdomain%ib)%mrel_map_m(:,:,:,:)
-    mrel_sum_m => dust(subdomain%ib)%mrel_sum_m(:,:,:,:)
-    mrel_mx_m  => dust(subdomain%ib)%mrel_mx_m(:,:,:,:,:)
 
 
 #ifndef OFFLINE
@@ -1329,7 +1293,6 @@ MODULE src_dust
       ! ALLOCATE(mrel_mx(subdomain%nty,subdomain%ntx,nclass,DustBins+1))
 
       mrel_mx = 0.
-      mrel_mx_m = 0.
 
       ! create a gap between the outer edge of the domain and the dust emission
       ! emissions too close to the edge may are distorted by the boundary data
@@ -1353,8 +1316,6 @@ MODULE src_dust
 
           stot = 0.
           mtot = 0.
-          stot_m = 0.
-          mtot_m = 0.
           DO n = 1, nclass
             dp = dp_meter(n)
 
@@ -1364,36 +1325,10 @@ MODULE src_dust
               dM = dM + soilmap(j,i,m)/(SQRT(2. * pi) * LOG(sigma)) &
                       * EXP((LOG(dp) - LOG(median_dp(m)))**2. / (-2. * LOG(sigma)**2.))
             END DO
-            IF (mineralmaptype == 1) THEN
-              dM_m = 0.
-              DO mr=1,12
-                dM_m(mr) = dM_m(mr) + soilmap(j,i,1)/(SQRT(2. * pi) * LOG(sigma)) &  !sand dm calculation for all minerals
-                      * EXP((LOG(dp) - LOG(median_dp(1)))**2. / (-2. * LOG(sigma)**2.))
-              END DO
-              DO mr=1,6
-                dM_m(mr) = dM_m(mr) + soilmap(j,i,2)/(SQRT(2. * pi) * LOG(sigma)) &  !silt dm calculation for clay minerals
-                      * EXP((LOG(dp) - LOG(median_dp(2)))**2. / (-2. * LOG(sigma)**2.))
-                dM_m(mr) = dM_m(mr) + (soilmap(j,i,3)-mineralclay(j,i)) + mineralmap(j,i,mr)/(SQRT(2. * pi) * LOG(sigma)) &
-                          * EXP((LOG(dp) - LOG(median_dp(3)))**2. / (-2. * LOG(sigma)**2.))
-              END DO
-              DO mr=7,12
-                dM_m(mr) = dM_m(mr) + (soilmap(j,i,2)-mineralsilt(j,i)) + mineralmap(j,i,mr)/(SQRT(2. * pi) * LOG(sigma)) &
-                          * EXP((LOG(dp) - LOG(median_dp(2)))**2. / (-2. * LOG(sigma)**2.))
-                dM_m(mr) = dM_m(mr) + soilmap(j,i,3)/(SQRT(2. * pi) * LOG(sigma)) &    !clay dm calulation for silt minerals
-                          * EXP((LOG(dp) - LOG(median_dp(3)))**2. / (-2. * LOG(sigma)**2.))
-              END DO
-            END IF
 
             ! size distribution of basal surface Marticorena 95 eq(30)
             srel_map(j,i,n) = dM / (2./3. * rop * dp) * Dstep
             mrel_map(j,i,n) = dM * Dstep
-
-            IF (mineralmaptype == 1) THEN
-              DO mr=1,12
-                srel_map_m(j,i,n,mr) = dM_m(mr) / (2./3. * rop * dp) * Dstep
-                mrel_map_m(j,i,n,mr) = dM_m(mr) * Dstep
-              END DO
-            END IF
 
             ! total basal surface Marticorena 95 eq(31)
             stot = stot + srel_map(j,i,n)
@@ -1401,15 +1336,8 @@ MODULE src_dust
 
             mrel_sum(j,i,n) = mtot
 
-            IF (mineralmaptype == 1) THEN
-              DO mr=1,12
-                stot_m(mr) = stot_m(mr) + srel_map_m(j,i,n,mr)
-                mtot_m(mr) = mtot_m(mr) + mrel_map_m(j,i,n,mr)
-                mrel_sum_m(j,i,n,mr) = mtot_m(mr)
-              END DO
-            END IF
-
           END DO ! n = 1, nclass
+
 
           IF (stot > 0.) THEN
             srel_map(j,i,:) = srel_map(j,i,:)/stot
@@ -1420,18 +1348,6 @@ MODULE src_dust
             mrel_map(j,i,:) = 0.
           END IF
 
-          IF (mineralmaptype == 1) THEN
-            DO mr=1,12
-              IF (stot_m(mr) > 0.) THEN
-                srel_map_m(j,i,:,mr) = srel_map_m(j,i,:,mr)/stot_m(mr)
-                mrel_map_m(j,i,:,mr) = mrel_map_m(j,i,:,mr)/mtot_m(mr)
-                mrel_sum_m(j,i,:,mr) = mrel_sum_m(j,i,:,mr)/mtot_m(mr)
-              ELSE
-                srel_map_m(j,i,:,mr) = 0.
-                mrel_map_m(j,i,:,mr) = 0.
-              END IF
-            END DO
-          END IF
 
           DO n = 1, nclass
             dp = dp_meter(n)
@@ -1460,34 +1376,6 @@ MODULE src_dust
 
                END DO ! n_bomb
              END IF
-             IF (mineralmaptype == 1) THEN
-               DO mr=1,12
-                 IF (mrel_sum_m(j,i,n,mr) > 0.) THEN
-                   m = 1
-                    DO n_bomb = 1, n
-                      ! diameter of particles effected by soltation bombardment
-                      dp_bomb = dp_meter(n_bomb)
-
-                      ! scale horizontal flux with the relativ particle mass of dp_bomb
-                      m_rel_m(mr)     = mrel_map_m(j,i,n_bomb,mr)
-                      m_rel_sum_m(mr) = mrel_sum_m(j,i,n,mr)
-
-                       IF (m <= DustBins) THEN
-                         IF (dp_bomb > dustbin_top(m)) m = m+1
-                       END IF
-
-                       ! bin-wise integration
-                       IF (m <= DustBins) THEN
-                         mrel_mx_m(j,i,n,m,mr) = mrel_mx_m(j,i,n,m,mr) + m_rel_m(mr)/m_rel_sum_m(mr)
-                       ELSE
-                         mrel_mx_m(j,i,n,m,mr) = 1.0 - SUM(mrel_mx_m(j,i,n,1:DustBins,mr))
-                         EXIT
-                       END IF
-
-                    END DO ! n_bomb
-                  END IF
-                END DO !mr
-              END IF !mineralmaptype
           END DO ! n = 1, nclass
         END DO ! j=1,subdomain%nty
       END DO ! i=1,subdomain%ntx
@@ -1523,7 +1411,6 @@ MODULE src_dust
           feff = feff_z0(j,i) * feff_veg(j,i,tnow)
 
           hflux = 0.
-          hflux_m = 0.
           fluxbin = 0.
           fluxbin_m = 0.
 
@@ -1549,13 +1436,6 @@ MODULE src_dust
               ! Horizontal dust flux
               hflux = roa/g * ustar(j,i)**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
 
-              IF(mineralmaptype == 1) THEN
-                DO mr=1,12
-                  s_rel_m(mr) = srel_map_m(j,i,n,mr)
-                  hflux_m(mr) = roa/g * ustar(j,i)**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel_m(mr)
-                END DO
-              END IF
-
               ! soltation bombardment
               IF (hflux > 0.) THEN
 
@@ -1565,21 +1445,14 @@ MODULE src_dust
                   ! bin-wise integration
                   DO m = 1, DustBins
                     fluxbin(m) = fluxbin(m)+vflux * mrel_mx(j,i,n,m)
+                    IF (mineralmaptype == 1) THEN
+                      DO mr=1,12
+                        fluxbin_m(m,mr) = fluxbin(m)*mineral_dist(mr,m)*mineralmap(j,i,mr)
+                      END DO
+                    END IF !mineralloop SGMA
                   END DO
 
               END IF
-
-              IF (mineralmaptype == 1) THEN
-                DO mr=1,12
-                  IF (hflux_m(mr) > 0.) THEN
-                    vflux_m(mr) = hflux_m(mr) * alpha(j,i)
-                    DO m = 1, DustBins
-                      fluxbin_m(m,mr) = fluxbin_m(m,mr)+vflux_m(mr) * mrel_mx_m(j,i,n,m,mr) * mineral_dist(mr,m)
-                    END DO
-                  END IF
-                END DO
-              END IF !mineralloop SGMA
-
             END DO ! n = 1, nclass
           ENDIF
 
@@ -1640,6 +1513,7 @@ MODULE src_dust
             flux(1,j,i,DustInd(n,1))   = flux(1,j,i,DustInd(n,1)) + fluxbin(n)/dz(1,j,i)
             IF (mineralmaptype == 1) THEN
               DO mr=1,12
+                !PRINT*, 'DustInd mineral is:', DustInd(n,mr+1), n, mr
                 flux(1,j,i,DustInd(n,mr+1))   = flux(1,j,i,DustInd(n,mr+1)) + fluxbin_m(n,mr)/dz(1,j,i)
               END DO
             END IF
@@ -2516,6 +2390,10 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
          ELSE ! if cover is smaller than one plant
            feff_veg(j,i,vegnow) = 1
          ENDIF
+
+         IF(mineralmaptype == 1) THEN
+           feff_veg(j,i,vegnow) = 1.-(veg(j,i,vegnow))*1./0.5
+         END IF
 
          ! This should not happen, but just in case
          IF(feff_veg(j,i,vegnow) < 0.) feff_veg(j,i,vegnow)=0.
