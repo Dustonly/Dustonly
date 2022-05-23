@@ -2738,7 +2738,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
                    + vmoist(j,i,moist_time_step+2) * (int_time_step)/(3600/dt))
 
             ! Volumeric to gravimeric moisture
-            moist = moist * 1000/2650 * 100
+            moist = moist * 1000/1590 * 100  !using 1590kgm-3 as a standarized soil bulk density
           ELSE IF (moist_scheme == 2) THEN
 
             ! use cosmo soil moisture w_so
