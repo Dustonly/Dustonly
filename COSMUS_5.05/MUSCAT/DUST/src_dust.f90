@@ -3633,4 +3633,53 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
   END SUBROUTINE
 
 
+
+  ! ======================================================
+  ! + monin obukhov length
+  ! ------------------------------------------------------
+  PURE FUNCTION obukhov(temp,pres,qvs,shfl,ustar)
+    !------------------------------------------------------------------------------
+    !
+    ! Description:
+    !   calculate monin obukhov length
+    !------------------------------------------------------------------------------
+    USE data_constants,     ONLY : r_d,cp_d, rdocp, g
+    REAL (8) :: obukhov
+
+    REAL (8), INTENT(IN) :: &
+    temp,&     ! surface temperature
+    pres,&     ! surface pressure
+    qvs,&      ! surface specific humidity
+    shfl,&     ! sensible heat flux
+    ustar    ! friction velocity
+
+    REAL (8) :: &
+    thetav,&   ! virtual potential temperature
+    rhob,&     ! Air density
+    thetastar  ! scale temperature
+
+
+    ! virtual potential temperature
+    thetav = temp * (1.0 + 0.608 * qvs) &
+             * (100000.0 / pres )**rdocp
+    ! Air density
+    rhob = pres / (temp * r_d)
+
+    ! scale temperature
+    thetastar = -shfl/(ustar * rhob * cp_d)
+
+    IF(ABS(thetastar) .GT. 1.e-6) THEN
+      obukhov = thetav * ustar**2/(0.41 * g * thetastar)
+    ELSE
+      obukhov = 9999 ! zero heat flux
+    ENDIF
+
+    IF ( ABS(obukhov) < 0.1) THEN
+      obukhov = 0.0
+    END IF
+
+
+  END FUNCTION
+
+
 END MODULE src_dust
