@@ -2106,7 +2106,10 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
             IF (fricvelo_scheme == 1) THEN
 
               zl   = 0.5*dz(1,j,i)
-              z0l  = z0(j,i)/100.
+              ! z0l  = z0(j,i)/100.
+              ! z0l  = gz0(i+nboundlines,j+nboundlines)/9.81
+              ! IF (z0l > 0.1) z0l = 0.1
+              z0l  = 0.01
 
               ustn = (VK * tot_wind )/(log( zl/(z0l))) ! [m/s]
               u1 = ustar(j,i)
@@ -2120,7 +2123,10 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
               qvs  = qv_2m(i+nboundlines,j+nboundlines)
               shfl = lhfl_s(i+nboundlines,j+nboundlines)
               zl   = 0.5*dz(1,j,i)
-              z0l  = z0(j,i)/100.
+              ! z0l  = z0(j,i)/100.
+              ! z0l  = gz0(i+nboundlines,j+nboundlines)/9.81
+              ! IF (z0l > 0.1) z0l = 0.1
+              z0l  = 0.01
 
               ! fist guess ustar
               ustn = (VK * tot_wind )/(log( zl/(z0l))) ! [m/s]
