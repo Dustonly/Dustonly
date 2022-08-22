@@ -2016,7 +2016,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     USE sub_geo
     USE sub_met
     USE data_parallel, ONLY: nboundlines
-    USE data_fields, ONLY:  tcm,u_10m,v_10m
+    USE data_fields, ONLY:  tcm,u_10m,v_10m,u,v,gz0, ps, t_2m, lhfl_s, qv_2m
 #else
     USE offline_org
 #endif
@@ -2026,12 +2026,31 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     TYPE(rectangle), INTENT(IN) :: subdomain
 
     INTEGER :: &
-      i,j
+      i,j,c
 
     REAL(8) :: &
       uwind, &
       vwind, &
-      tot_wind
+      ustn, &
+      usto, &
+      usts, &
+      tot_wind, &
+      obk, &
+      stb, &
+      zl, &
+      z0l, &
+      x, &
+      x0, &
+      tmp, &
+      shfl, &
+      pres, &
+      qvs
+
+    REAL(8) :: &
+      u1, &
+      u2, &
+      u3, &
+      u4
 
     REAL(8), POINTER :: z0(:,:)
     REAL(8), POINTER :: ustar(:,:)
@@ -2044,6 +2063,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     REAL(8), POINTER :: vsur(:,:)
     REAL(8), POINTER :: qrsur(:,:)
     REAL(8), POINTER :: rhosur(:,:)
+    REAL(8), POINTER :: must(:,:)
 #endif
 
     REAL(8), PARAMETER :: &
@@ -2060,48 +2080,121 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     qrsur   => meteo(subdomain%ib)%QRSur(:,:,ScalCur)
     usur    => meteo(subdomain%ib)%u(1,:,:,WindCur)
     vsur    => meteo(subdomain%ib)%v(1,:,:,WindCur)
-    ustar   => dust(subdomain%ib)%ustar(:,:)
-    soilmap => dust(subdomain%ib)%soilmap(:,:,:)
+    must    => meteo(subdomain%ib)%RA(5,:,:,ScalCur)
 #endif
 
     IF (lddebug) PRINT*, 'Enter get_ustar'
 
-    IF (fricvelo_scheme == 1) THEN
+    ustar(:,:) = 0.0
+
       DO i = 1,subdomain%ntx
         DO j = 1,subdomain%nty
 
+          ! calc fric velo only for land points
+          IF (SUM(soilmap(j,i,:)) > 0.5 .AND. fricvelo_scheme /= 4) THEN
 #ifndef OFFLINE
-          !---  flux initialisations
-          uwind = usur(j,i+1)/dyK(j,i+1)+usur(j,i)/dyK(j,i)
-          uwind = 0.5E0 * uwind / dz(1,j,i)
-          vwind = vsur(j+1,i)/dxK(j+1,i)+vsur(j,i)/dxK(j,i)
-          vwind = 0.5E0 * vwind / dz(1,j,i)
-          tot_wind = SQRT(uwind**2+vwind**2)/rhosur(j,i)
+            !---  flux initialisations
+            uwind = usur(j,i+1)/dyK(j,i+1)+usur(j,i)/dyK(j,i)
+            uwind = 0.5E0 * uwind / dz(1,j,i)
+            vwind = vsur(j+1,i)/dxK(j+1,i)+vsur(j,i)/dxK(j,i)
+            vwind = 0.5E0 * vwind / dz(1,j,i)
+            tot_wind = SQRT(uwind**2+vwind**2)/rhosur(j,i)
 #else
-          tot_wind = SQRT(u(j,i,ntstep)**2+v(j,i,ntstep)**2)
+            tot_wind = SQRT(u(j,i,ntstep)**2+v(j,i,ntstep)**2)
 #endif
 
+            IF (fricvelo_scheme == 1) THEN
+
+              zl   = 0.5*dz(1,j,i)
+              z0l  = z0(j,i)/100.
+
+              ustn = (VK * tot_wind )/(log( zl/(z0l))) ! [m/s]
+              u1 = ustar(j,i)
+
+              ustar(j,i) = ustn
+
+            ELSEIF (fricvelo_scheme == 2) THEN
+
+              tmp  = t_2m(i+nboundlines,j+nboundlines)
+              pres = ps(i+nboundlines,j+nboundlines,1)
+              qvs  = qv_2m(i+nboundlines,j+nboundlines)
+              shfl = lhfl_s(i+nboundlines,j+nboundlines)
+              zl   = 0.5*dz(1,j,i)
+              z0l  = z0(j,i)/100.
+
+              ! fist guess ustar
+              ustn = (VK * tot_wind )/(log( zl/(z0l))) ! [m/s]
+              usto = 99
+              usts = 0
+
+              c = 0
+              DO WHILE ( ABS(ustn-usto) > 1e-3 )
+                usto = ustn
+                obk  = obukhov(tmp,pres,qvs,shfl,usto)
+                IF (obk == 0.0) THEN
+                  stb = 1.0
+                ELSEIF (obk > 0) THEN
+                  stb = 4.7 * (zl/obk - z0l/obk)
+                ELSEIF (obk < 0) THEN
+                  x  = (1 - 15 *  zl/obk)**0.25
+                  x0 = (1 - 15 * z0l/obk)**0.25
+                  stb = -2 * log((1+x)/(1+x0)) - log((1+x**2)/(1+x0**2)) + 2 * atan(x) - 2 * atan(x0)
+                END IF
 
 
-          ustar(j,i) = (VK * tot_wind )/(log( dz(1,j,i)/(z0(j,i)/100.))) ! [m/s]
-        END DO
-      END DO
-    ELSEIF (fricvelo_scheme == 2) THEN
-#ifdef OFFLINE
-      ustar(:,:) = ust(:,:,ntstep)
-#else
-      DO i=1,subdomain%ntx
-        DO j=1,subdomain%nty
+                ustn = (VK * tot_wind )/(log( zl/(z0l)) + stb) ! [m/s]
+                usts = usts + ustn
 
-          ! calc fric velo only for land points
-          IF (SUM(soilmap(j,i,:)) > 0.5) THEN
-            tot_wind   = SQRT (u_10m(i+nboundlines,j+nboundlines) **2 + v_10m(i+nboundlines,j+nboundlines)**2 )
-            ustar(j,i) = tot_wind*SQRT(tcm(i+nboundlines,j+nboundlines))
-          END IF
+                c = c + 1
+                IF (c > 10) THEN
+                  ustn = usts/c
+                  ! if (c>15) exit
+                  exit
+                END IF
+              END DO
+              ustar(j,i) = ustn
+
+
+              u2 = ustar(j,i)
+
+            ELSEIF (fricvelo_scheme == 3) THEN
+              tot_wind   = SQRT (u_10m(i+nboundlines,j+nboundlines) **2 + v_10m(i+nboundlines,j+nboundlines)**2 )
+              ustar(j,i) = tot_wind*SQRT(tcm(i+nboundlines,j+nboundlines))
+              u3 = ustar(j,i)
+
+            END IF ! fricvelo_scheme
+                ! IF (obk == 0.0) THEN
+                !   ! print*,'N', u1,u2,u3,c
+                ! ELSEIF (obk > 0) THEN
+                !   ! print*,'S', u1,u2,u3,c
+                ! ELSEIF (obk < 0) THEN
+                !   print*,'L', u1,u2,u3,stb,c
+                ! END IF
+                ! u4 = must(j,i)
+                  ! print*, u1,u2,u3,u4
+          END IF ! soilmap
+
+
         END DO ! j
       END DO ! i
+
+      IF (fricvelo_scheme == 4) THEN
+#ifdef OFFLINE
+        ustar(:,:) = ust(:,:,ntstep)
+#else
+        PRINT*, 'fricvelo_scheme only for offline simulations'
+        CALL EXIT
 #endif
-    END IF
+      END IF
+
+#ifdef OFFLINE
+      IF (ustconst /= 999.0) THEN
+        ustar(:,:) = ustconst
+      END IF
+#endif
+
+      ! call quick_nc('wind2',var2d=ustar)
+      ! call quick_nc('ust2',var2d=ustar)
 
 
 
