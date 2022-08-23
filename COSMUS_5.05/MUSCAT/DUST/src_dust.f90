@@ -1276,7 +1276,7 @@ MODULE src_dust
 
           ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
-          feff = feff_z0(j,i) * feff_veg(j,i,tnow)
+          feff = MIN(feff_z0(j,i) , feff_veg(j,i,tnow))
 
           hflux = 0.
           fluxbin = 0.
@@ -2479,6 +2479,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     REAL(8) ::  &
       local_feff,        &  ! feff inside the loop
       z0s,               &  ! small scale roughness length
+      z0l,               &  ! local roughness length
       AAA,               &
       BB,                &
       CCC,               &  ! dummys
@@ -2507,11 +2508,13 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       ! z0 and efficient fraction feff
       ! partition of energy between the surface and the elements of rugosity, these pp 111-112
 
-      IF (z0(j,i) <= 0.) THEN
+      z0l = z0(j,i)
+
+      IF (z0l <= 0.) THEN
        z0(j,i) = 0.
        local_feff = 1.
       ELSE
-       AAA = log(z0(j,i)/z0s)
+       AAA = log(z0l/z0s)
        BB = log(aeff*(xeff/z0s)**0.8)
        CCC = 1.- AAA/BB
 
