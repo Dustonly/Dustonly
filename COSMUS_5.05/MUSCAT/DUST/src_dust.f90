@@ -250,7 +250,7 @@ MODULE src_dust
 
 
       ! psrcType need right values
-      IF (psrcType < 0 .OR. psrcType > 2) THEN
+      IF (psrcType < 0 .OR. psrcType > 3) THEN
         ierr = 100003
         yerr = 'wrong value for psrcType'
         PRINT*,'ERROR    src_dust "init" '
@@ -1319,14 +1319,12 @@ MODULE src_dust
           ENDIF
 
           DO n=1,ntrace
-            ! fluxtot: g/cm2/sec --> kg/m2/sec
-            !
 
             ! Mask Effective area determined by preferential source fraction:
             ! only for psrcType = 2
-            ! IF (psrcType == 1) THEN
-            !   fluxbin(n) = fluxbin(n) * source(j,i)
-            ! END IF
+            IF (psrcType == 3) THEN
+              fluxbin(n) = fluxbin(n) * source(j,i)
+            END IF
 
             ! Mask Effective area determined by vegetation fraction:
             ! only for veg_scheme = 2
