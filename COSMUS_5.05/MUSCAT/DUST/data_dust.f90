@@ -141,11 +141,13 @@ MODULE tegen02_param
     roa         = 1.227E0,                & ! air density (kg.m-3)
     g           = 9.81E0,                 & ! gravitational constant (m s-2)
 
-    Dmin        = 2.0E-7,                 & ! minimum particules diameter (cm)
-    Dmax        = 1.55E-3,                & ! maximum particules diameter (cm)
+    Dmin        = 2.0E-7,                 & ! minimum particules diameter (m)
+    Dmax        = 1.55E-3,                & ! maximum particules diameter (m)
     Dstep       = 4.6E-2,                 & ! diameter increment (-)
     !Dstep       = 2.3E-2,                 & ! diameter increment (-)
     ! Dstep       = 64.4E-2,                 & ! diameter increment (-)
+
+    u1fac       = 1.0E0,                 &
 
     median_dp_csand = 707.0E-6,           & ! median diameter of coarse sand [m]
     median_dp_sand  = 158.0E-6,           & ! median diameter of sand [m]
@@ -246,7 +248,7 @@ MODULE dust_tegen_param
     rop         = 2.65E0,                     & !particules density (g.cm-3) Sahara; 1.5g/cm3 for Diatomite
     rop_bod     = 2.1E0,                      & !particules density (g.cm-3) Bodele (Diatomite)
 
-    u1fac       = 0.89E0,                     & !0.66; 1.0
+    u1fac       = 1.0E0,                      & !0.66; 1.0
 
     umin        = 13.75E0,                    & !minimum threshold friction windspeed (cm/s) 18.06/13.75/21.0
     Ustar_min   = 5.E0,                       & !minimum friction windspeed (cm/s)
@@ -1058,7 +1060,7 @@ REAL, DIMENSION(nmin,DustBins) :: mineral_dist
       data (mineral_dist(11,bins), bins=1,DustBins)/ &
         0., 0.5, 1. , 1. , 0.5/
       data (mineral_dist(12,bins), bins=1,DustBins)/ &
-        1., 1.0, 1. , 1. , 1.0/
+        0., 0.5, 1. , 1. , 0.5/
 
 END MODULE dust_tegen_data
 

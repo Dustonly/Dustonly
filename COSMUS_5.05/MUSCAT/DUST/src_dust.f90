@@ -1048,6 +1048,9 @@ MODULE src_dust
               alpha(j,i) = soilmap(j,i,1) * 1.E-6 &
                     + soilmap(j,i,2) * 1.E-5 &
                     + soilmap(j,i,3) * 1.E-7
+            !ELSEIF ((soilmap(j,i,3) <= 0.2) .AND. (mineralmaptype == 1)) THEN
+            !  alpha(j,i) = 10**((0.134*(soilmap(j,i,3)*100)) - 6)
+              !PRINT*, 'clay is less than 20% at:', j,i, soilmap(j,i,3)*100, 'multiplication is:', (0.134*(soilmap(j,i,3)*100)) - 6
             END IF
           ENDIF
 
@@ -1055,7 +1058,7 @@ MODULE src_dust
         !ELSEIF (alpha_type == 3) THEN
 
         END IF
-
+        !PRINT*, 'alpha is:', alpha(j,i), 'at:', j,i, ''//NEW_LINE('')
       END DO
     END DO
     ! end lon-lat-loop
@@ -1409,6 +1412,8 @@ MODULE src_dust
           ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
           feff = feff_z0(j,i) * feff_veg(j,i,tnow)
+          !PRINT*, 'feff multiplied is:', feff_z0(j,i) * feff_veg(j,i,tnow),''//NEW_LINE('')
+          !PRINT*, 'feff is:', feff,''//NEW_LINE('')
 
           hflux = 0.
           fluxbin = 0.
@@ -1422,7 +1427,7 @@ MODULE src_dust
               ! from the particle thr. fric. velo.,
               ! the drag partition from soil roughness and vegetation
               ! and the moisture factor
-              uthp = uth(n)/feff * mfac(j,i)
+              uthp = (uth(n)*u1fac)/feff * mfac(j,i)
               s_rel = srel_map(j,i,n)
 
 
@@ -1440,7 +1445,7 @@ MODULE src_dust
               IF (hflux > 0.) THEN
 
                   ! Vertical dust flux
-                  vflux = hflux * alpha(j,i)
+                  vflux = hflux * alpha(j,i) !1e-3 cause is in meters !
 
                   ! bin-wise integration
                   DO m = 1, DustBins
@@ -1474,10 +1479,11 @@ MODULE src_dust
             ! Mask Effective area determined by vegetation fraction:
             ! only for veg_scheme = 2
             IF (veg_scheme == 2) THEN
-              fluxbin(n) = fluxbin(n) * veff(j,i,tnow)
+              !PRINT*, 'veg reduction'
+              fluxbin(n) = fluxbin(n) * feff_veg(j,i,tnow)
               IF (mineralmaptype == 1) THEN
                 DO mr=1,12
-                  fluxbin_m(n,mr) = fluxbin_m(n,mr) * veff(j,i,tnow)
+                  fluxbin_m(n,mr) = fluxbin_m(n,mr) * feff_veg(j,i,tnow)
                 END DO
               END IF
             END IF
@@ -1546,6 +1552,10 @@ MODULE src_dust
     END IF ! yaction
 
     IF (lddebug) PRINT*, 'Leave tegen02, yaction=',yaction,''//NEW_LINE('')
+    IF (lddebug) PRINT*, 'u1fac is:', u1fac,''//NEW_LINE('')
+    !IF (lddebug) PRINT*, 'min,max feff_z0', MINVAL(feff_z0(:,:)), MAXVAL(feff_z0(:,:)),''//NEW_LINE('')
+    !IF (lddebug) PRINT*, 'min,max feff_veg', MINVAL(feff_veg(:,:,:)), MAXVAL(feff_veg(:,:,:)), ''//NEW_LINE('')
+    !IF (lddebug) PRINT*, 'min,max ustar', MINVAL(ustar(:,:)), MAXVAL(ustar(:,:)),''//NEW_LINE('')
 
   END SUBROUTINE tegen02
 
@@ -2216,7 +2226,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     REAL(8) :: &
       uwind, &
       vwind, &
-      tot_wind
+      tot_wind, &
+      tot_wind_d
 
     REAL(8), POINTER :: z0(:,:)
     REAL(8), POINTER :: ustar(:,:)
@@ -2262,13 +2273,14 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
           vwind = vsur(j+1,i)/dxK(j+1,i)+vsur(j,i)/dxK(j,i)
           vwind = 0.5E0 * vwind / dz(1,j,i)
           tot_wind = SQRT(uwind**2+vwind**2)/rhosur(j,i)
+          tot_wind_d = SQRT (u_10m(i+nboundlines,j+nboundlines) **2 + v_10m(i+nboundlines,j+nboundlines)**2 )
 #else
           tot_wind = SQRT(u(j,i,ntstep)**2+v(j,i,ntstep)**2)
 #endif
 
+          ustar(j,i) = (VK * tot_wind_d )/(log(0.5E0 * dz(1,j,i)/(1/100.))) ! [m/s] 1cm based on Darmenova et al 2009
 
-
-          ustar(j,i) = (VK * tot_wind )/(log( dz(1,j,i)/(z0(j,i)/100.))) ! [m/s]
+          !ustar(j,i) = (VK * tot_wind_d )/(log(0.5E0 * dz(1,j,i)/(z0(j,i)/100.))) ! [m/s]
         END DO
       END DO
     ELSEIF (fricvelo_scheme == 2) THEN
@@ -2281,7 +2293,9 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
           ! calc fric velo only for land points
           IF (SUM(soilmap(j,i,:)) > 0.5) THEN
             tot_wind   = SQRT (u_10m(i+nboundlines,j+nboundlines) **2 + v_10m(i+nboundlines,j+nboundlines)**2 )
-            ustar(j,i) = tot_wind*SQRT(tcm(i+nboundlines,j+nboundlines))
+            ustar(j,i) = tot_wind*SQRT(tcm(i+nboundlines,j+nboundlines))!*0.66
+            !PRINT*, 'tot_wind', tot_wind, 'tcm', tcm(i+nboundlines,j+nboundlines),''//NEW_LINE('')
+            !PRINT*, 'dz', dz(1,j,i), 'z0', z0(j,i), 'at j,i:',j,i,''//NEW_LINE('')
           END IF
         END DO ! j
       END DO ! i
@@ -2291,6 +2305,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
 
     IF (lddebug) PRINT*, 'Leave get_ustar',''//NEW_LINE('')
+    !IF (lddebug) PRINT*, 'tot_wind', tot_wind_d,''//NEW_LINE('')
+    !IF (lddebug) PRINT*, 'dz, z0', tot_wind_d,''//NEW_LINE('')
 
   END SUBROUTINE get_ustar
 
@@ -2393,6 +2409,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
          IF(mineralmaptype == 1) THEN
            feff_veg(j,i,vegnow) = 1.-(veg(j,i,vegnow))*1./0.5
+           !PRINT*, 'feff_veg in mineralmap loop is', feff_veg(j,i,1), 'at (j,i)', j,i, 'veg values is', veg(j,i,1)
          END IF
 
          ! This should not happen, but just in case
