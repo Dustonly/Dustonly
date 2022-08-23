@@ -2631,10 +2631,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
           IF (moist_scheme == 1) THEN
 
-            ! calculate gravimeric soil moisture from the volumeric soil moisture
-            ! moist_g = moist_v * rho_water / rho_soil * 100%   -> [kg_water/m3_soil / kg_soil/m3_soil] = [%]
 #ifdef OFFLINE
-            moist = vmoist(j,i,timestep_now) * 1000/2650 * 100
+            moist = vmoist(j,i,timestep_now)
 
 #else
             ! moist_new = vmoist(j,i,timestep_now)
@@ -2645,8 +2643,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
             moist = (vmoist(j,i,moist_time_step+1) * (3600/dt - int_time_step)/(3600/dt) &
                    + vmoist(j,i,moist_time_step+2) * (int_time_step)/(3600/dt))
 
-            ! Volumeric to gravimeric moisture
-            moist = moist * 1000/2650 * 100
+
           ELSE IF (moist_scheme == 2) THEN
 
             ! use cosmo soil moisture w_so
@@ -2654,9 +2651,13 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
             ! to get the volumeric soil moisture w_so has to be devided by the layer thickness
             ! wich is in cosmo 0.01 m for the first layer
 
-            moist = w_so(i+nboundlines,j+nboundlines,1,1) / (czhls(2) - czhls(1)) * 1000/2650 * 100
+            moist = w_so(i+nboundlines,j+nboundlines,1,1) / (czhls(2) - czhls(1))
 #endif
           END IF
+
+          ! calculate gravimeric soil moisture from the volumeric soil moisture
+          ! moist_g = moist_v * rho_water / rho_soil * 100%   -> [kg_water/m3_soil / kg_soil/m3_soil] = [%]
+          moist = moist * 1000.0/1590.0 * 100.0
 
 
           IF (moist <= w_str(j,i)) THEN
