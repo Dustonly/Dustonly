@@ -403,7 +403,8 @@ MODULE src_dust
 #ifdef OFFLINE
           ifile_dim(ifile_num) = lasttstep+1-firsttstep
 #else
-          ifile_dim(ifile_num) = (hstop - hstart) * moistinc + 2
+          ! ifile_dim(ifile_num) = (hstop - hstart) * moistinc + 2
+          ifile_dim(ifile_num) = hstop / moistinc + 2
 #endif
         END IF
       ELSE
@@ -511,7 +512,8 @@ MODULE src_dust
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:lasttstep+1-firsttstep))
 #else
         ALLOCATE(dust(ib1)%vmoist(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
-                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:(hstop - hstart) * moistinc + 2))
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:hstop  / moistinc + 2))
+                ! decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:(hstop - hstart) * moistinc + 2))
 #endif
         ALLOCATE(dust(ib1)%vegmin2(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
@@ -1260,7 +1262,6 @@ MODULE src_dust
         IF (lvegdaily) THEN
           ! find the exact day and set "tnow" with the number of the actually day
           READ(ydate_ini(9:10),*) time_start
-          time_start=time_start + hstart
           time_now=time_start+ntstep*dt/3600.
           tnow=time_now/24 + 1 ! convert to integer
         ELSE ! if the drag partition has monthly values "tnow" is the number of the month
