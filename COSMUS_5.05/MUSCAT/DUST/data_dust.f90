@@ -1050,17 +1050,17 @@ REAL, DIMENSION(nmin,DustBins) :: mineral_dist
       data (mineral_dist(6,bins), bins=1,DustBins)/ &
         1., 0.5, 0. , 0. , 0./
       data (mineral_dist(7,bins), bins=1,DustBins)/ &
-        0., 0.5, 1. , 1. , 0.5/
+        0., 0.5, 1. , 1. , 0.05/
       data (mineral_dist(8,bins), bins=1,DustBins)/ &
-        0., 0.5, 1. , 1. , 0.5/
+        0., 0.5, 1. , 1. , 0.05/
       data (mineral_dist(9,bins), bins=1,DustBins)/ &
-        0., 0.5, 1. , 1. , 0.5/
+        0., 0.5, 1. , 1. , 0.05/
       data (mineral_dist(10,bins), bins=1,DustBins)/ &
-        0., 0.5, 1. , 1. , 0.5/
+        0., 0.5, 1. , 1. , 0.05/
       data (mineral_dist(11,bins), bins=1,DustBins)/ &
-        0., 0.5, 1. , 1. , 0.5/
+        0., 0.5, 1. , 1. , 0.05/
       data (mineral_dist(12,bins), bins=1,DustBins)/ &
-        0., 0.5, 1. , 1. , 0.5/
+        0., 0.5, 1. , 1. , 0.05/
 
 END MODULE dust_tegen_data
 
