@@ -1110,10 +1110,12 @@ MODULE src_dust
 
     REAL(8), POINTER ::  &
       psrc(:,:),     &
-      soilmap(:,:,:)
+      soilmap(:,:,:), &
+      mineralmap(:,:,:)
 
     psrc => dust(subdomain%ib)%source(:,:)
     soilmap => dust(subdomain%ib)%soilmap(:,:,:)
+    mineralmap => dust(subdomain%ib)%mineralmap(:,:,:)
 
     IF (lddebug) PRINT*, 'Enter init_psrc'
 
@@ -1127,9 +1129,13 @@ MODULE src_dust
             soilmap(j,i,nmode-1) = 1.
           END IF
         ELSEIF (psrcType == 2) THEN ! MSG source scheme by schepanski08
-          IF (psrc(j,i) >= 2 .AND. sum(soilmap(j,i,:)) > 0.0) THEN
+          !IF (psrc(j,i) >= 2 .AND. sum(soilmap(j,i,:)) > 0.0) THEN
+          !  soilmap(j,i,:) = 0.0
+          !  soilmap(j,i,nmode-1) = 1. !all soil is converted to silt size
+          !END IF
+          IF (psrc(j,i) < 2 .AND. sum(soilmap(j,i,:)) > 0.0) THEN !if lower than 2 in the MSG file then 0 emissions
             soilmap(j,i,:) = 0.0
-            soilmap(j,i,nmode-1) = 1.
+            mineralmap(j,i,:) = 0.0
           END IF
         END IF
 
@@ -2305,6 +2311,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
 
     IF (lddebug) PRINT*, 'Leave get_ustar',''//NEW_LINE('')
+    !call quick_nc('ustar',var2d=ustar)
     !IF (lddebug) PRINT*, 'tot_wind', tot_wind_d,''//NEW_LINE('')
     !IF (lddebug) PRINT*, 'dz, z0', tot_wind_d,''//NEW_LINE('')
 
