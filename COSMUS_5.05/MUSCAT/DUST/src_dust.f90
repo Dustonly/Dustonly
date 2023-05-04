@@ -1041,13 +1041,13 @@ MODULE src_dust
                     + soilmap(j,i,4) * 1.E-7
             END IF
           ELSEIF (soilmaptype == 2) THEN
-            alpha(j,i) = soilmap(j,i,1) * 1.E-6 &
-                  + soilmap(j,i,2) * 1.E-5 &
-                  + soilmap(j,i,3) * 1.E-6
+            alpha(j,i) = EXP(soilmap(j,i,1) * LOG(1.E-6) &
+                  + soilmap(j,i,2) * LOG(1.E-5) &
+                  + soilmap(j,i,3) * LOG(1.E-6))
             IF (soilmap(j,i,3) > 0.45) THEN
-              alpha(j,i) = soilmap(j,i,1) * 1.E-6 &
-                    + soilmap(j,i,2) * 1.E-5 &
-                    + soilmap(j,i,3) * 1.E-7
+              alpha(j,i) = EXP(soilmap(j,i,1) * LOG(1.E-6) &
+                    + soilmap(j,i,2) * LOG(1.E-5) &
+                    + soilmap(j,i,3) * LOG(1.E-7))
             !ELSEIF ((soilmap(j,i,3) <= 0.2) .AND. (mineralmaptype == 1)) THEN
             !  alpha(j,i) = 10**((0.134*(soilmap(j,i,3)*100)) - 6)
               !PRINT*, 'clay is less than 20% at:', j,i, soilmap(j,i,3)*100, 'multiplication is:', (0.134*(soilmap(j,i,3)*100)) - 6
