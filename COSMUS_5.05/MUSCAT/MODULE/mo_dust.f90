@@ -39,6 +39,7 @@ MODULE mo_dust
     psrcType,     & ! Flag for type of potential dust source
                     ! 0 : off, 1 : psrc, 2 : msgsrc
     soilmaptype,      & ! 1 : solspe table, 2 : soilgrids
+    mineralmaptype, &   !0: none, 1:GMINER data  SGMA
     threshold_scheme   ! 0 : Marticorena, 1 : Shao  !
 
   REAL :: &
@@ -49,6 +50,7 @@ MODULE mo_dust
   !-- Files with soil data
   CHARACTER(120) ::     &
     soiltypeFile,       & ! Filename of Soil Type Data
+    mineraltypeFile,    & ! Filename of Mineralogical data SGMA
     psrcFile,           & ! Filename of preferential Dust Sources
     cultFile,           & ! Filename of Cultivation Class
     vegmonFile,         & ! Filename of monthly vegitation cover
@@ -60,8 +62,39 @@ MODULE mo_dust
 
 
   ! description of dust particles for external use
-  INTEGER, PARAMETER :: DustBins = 5  !8  ! number of dust particle fractions
-  INTEGER :: DustInd(DustBins)            ! indices of dust particles
+  INTEGER, PARAMETER :: &
+    DustBins = 5, & !8  ! number of dust particle fractions
+    nmin = 13       !number of possible minerals (GMINER)
+
+  INTEGER :: bins
+
+  INTEGER, DIMENSION(DustBins,nmin) :: DustInd          ! indices of dust particles, added nmin for the minerals
+  DATA (DustInd(bins, 1), bins=1,DustBins)/ &
+    1, 2, 3, 4, 5/
+  DATA (DustInd(bins, 2), bins=1,DustBins)/ &
+    6, 18, 30, 42, 54/
+  DATA (DustInd(bins, 3), bins=1,DustBins)/ &
+    7, 19, 31, 43, 55/
+  DATA (DustInd(bins, 4), bins=1,DustBins)/ &
+    8, 20, 32, 44, 56/
+  DATA (DustInd(bins, 5), bins=1,DustBins)/ &
+    9, 21, 33, 45, 57/
+  DATA (DustInd(bins, 6), bins=1,DustBins)/ &
+    10, 22, 34, 46, 58/
+  DATA (DustInd(bins, 7), bins=1,DustBins)/ &
+    11, 23, 35, 47, 59/
+  DATA (DustInd(bins, 8), bins=1,DustBins)/ &
+    12, 24, 36, 48, 60/
+  DATA (DustInd(bins, 9), bins=1,DustBins)/ &
+    13, 25, 37, 49, 61/
+  DATA (DustInd(bins, 10), bins=1,DustBins)/ &
+    14, 26, 38, 50, 62/
+  DATA (DustInd(bins, 11), bins=1,DustBins)/ &
+    15, 27, 39, 51, 63/
+  DATA (DustInd(bins, 12), bins=1,DustBins)/ &
+    16, 28, 40, 52, 64/
+  DATA (DustInd(bins, 13), bins=1,DustBins)/ &
+    17, 29, 41, 53, 65/
 
   REAL :: dustbin_top(DustBins)
   DATA dustbin_top(1) /1.E-6/,  &
@@ -70,15 +103,52 @@ MODULE mo_dust
        dustbin_top(4) /26.E-6/, &
        dustbin_top(5) /80.E-6/
 
-  CHARACTER(20) :: DustName(DustBins)
-  DATA  DustName(1) /'DP_01'/,     &
-        DustName(2) /'DP_03'/,     &
-        DustName(3) /'DP_09'/,     &
-        DustName(4) /'DP_26'/,     &
-        DustName(5) /'DP_80'/!,     &
+  CHARACTER(20), DIMENSION(DustBins,nmin) :: DustName  !the position 1 is for non mineral bins
+    DATA (DustName(1,minerals), minerals=1,nmin) / &
+      'DP_01', 'DP_01_illi', 'DP_01_kaol', 'DP_01_smec',      &
+      'DP_01_cal', 'DP_01_qua', 'DP_01_hem', 'DP_01_feld',    &
+      'DP_01_gyps', 'DP_01_calc', 'DP_01_quar', 'DP_01_hema', &
+      'DP_01_phos'/
+    DATA (DustName(2,minerals), minerals=1,nmin) / &
+      'DP_03', 'DP_03_illi', 'DP_03_kaol', 'DP_03_smec',      &
+      'DP_03_cal', 'DP_03_qua', 'DP_03_hem', 'DP_03_feld',    &
+      'DP_03_gyps', 'DP_03_calc', 'DP_03_quar', 'DP_03_hema', &
+      'DP_03_phos'/
+    DATA (DustName(3,minerals), minerals=1,nmin) / &
+      'DP_09', 'DP_09_illi', 'DP_09_kaol', 'DP_09_smec',      &
+      'DP_09_cal', 'DP_09_qua', 'DP_09_hem', 'DP_09_feld',    &
+      'DP_09_gyps', 'DP_09_calc', 'DP_09_quar', 'DP_09_hema', &
+      'DP_09_phos'/
+    DATA (DustName(4,minerals), minerals=1,nmin) / &
+      'DP_26', 'DP_26_illi', 'DP_26_kaol', 'DP_26_smec',      &
+      'DP_26_cal', 'DP_26_qua', 'DP_26_hem', 'DP_26_feld',    &
+      'DP_26_gyps', 'DP_26_calc', 'DP_26_quar', 'DP_26_hema', &
+      'DP_26_phos'/
+    DATA (DustName(5,minerals), minerals=1,nmin) / &
+      'DP_80', 'DP_80_illi', 'DP_80_kaol', 'DP_80_smec',      &
+      'DP_80_cal', 'DP_80_qua', 'DP_80_hem', 'DP_80_feld',    &
+      'DP_80_gyps', 'DP_80_calc', 'DP_80_quar', 'DP_80_hema', &
+      'DP_80_phos'/
         ! DustName(6) /'DP_240'/,    &
         ! DustName(7) /'DP_720'/,    &
         ! DustName(8) /'DP_2200'/
+  !INTEGER, PARAMETER :: DustBins_m = 5  !8  ! number of dust particle fractions
+  !INTEGER :: DustInd_m(DustBins_m)            ! indices of dust particles
+
+!  REAL :: dustbin_top_m(DustBins_m)    !for the mineralogy DustBins
+!  DATA dustbin_top_m(1) /1.E-6/,  &
+!       dustbin_top_m(2) /3.E-6/,  &
+!       dustbin_top_m(3) /9.E-6/,  &
+!       dustbin_top_m(4) /26.E-6/, &
+!       dustbin_top_m(5) /80.E-6/
+
+!  CHARACTER(20) :: DustName_m(DustBins_m)
+!  DATA  DustName_m(1) /'DP_M_01'/,     &
+!        DustName_m(2) /'DP_M_03'/,     &
+!        DustName_m(3) /'DP_M_09'/,     &
+!        DustName_m(4) /'DP_M_26'/,     &
+!        DustName_m(5) /'DP_M_80'/
+
 
   ! TYPE dust_fx
   ! REAL(8), POINTER ::   &
@@ -96,6 +166,9 @@ MODULE mo_dust
   REAL(8), POINTER ::     &
     soilprop (:,:,:,:),   & !soil properties
     soilmap(:,:,:),       & ! sand, silt, clay map
+    mineralmap(:,:,:),    & ! illite, kaolinite, smectite, feldpsar, calcite, hematite SGMA
+    mineralclay(:,:),    &
+    mineralsilt(:,:),    &
     lai (:,:,:,:),        & !leafe area index
     vegmin (:,:,:),       & !minimum of vegetation
     alpha (:,:,:),        & !ratio horiz/vertical flux
@@ -104,6 +177,7 @@ MODULE mo_dust
     w_str (:,:),        & !threshold soil moisture w' (Fecan, F. et al., 1999)
     umin2(:,:,:),         &
     d_emis(:,:,:),         & !dust emission
+    d_emis_m(:,:,:,:),     & !dust mineralogical emission SGMA
     biome(:,:),         &
     cult(:,:),          &
     veg (:,:,:),        & !leafe area index
@@ -121,7 +195,11 @@ MODULE mo_dust
     srel_map(:,:,:),&          ! (j,i,nclass)
     mrel_map(:,:,:),&          ! (j,i,nclass)
     mrel_sum(:,:,:),&          ! (j,i,nclass)
-    mrel_mx(:,:,:,:)          ! (j,i,nclass,nclass)
+    mrel_mx(:,:,:,:),&          ! (j,i,nclass,nclass)
+    srel_map_m(:,:,:,:),&          ! (j,i,nclass)
+    mrel_map_m(:,:,:,:),&          ! (j,i,nclass)
+    mrel_sum_m(:,:,:,:),&          ! (j,i,nclass)
+    mrel_mx_m(:,:,:,:,:)          ! (j,i,nclass,nclass)
   END TYPE dust_subdomain
   TYPE (dust_subdomain), ALLOCATABLE, TARGET :: dust(:)
 
