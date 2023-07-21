@@ -132,22 +132,23 @@ MODULE mo_dust
         ! DustName(6) /'DP_240'/,    &
         ! DustName(7) /'DP_720'/,    &
         ! DustName(8) /'DP_2200'/
-  !INTEGER, PARAMETER :: DustBins_m = 5  !8  ! number of dust particle fractions
-  !INTEGER :: DustInd_m(DustBins_m)            ! indices of dust particles
 
-!  REAL :: dustbin_top_m(DustBins_m)    !for the mineralogy DustBins
-!  DATA dustbin_top_m(1) /1.E-6/,  &
-!       dustbin_top_m(2) /3.E-6/,  &
-!       dustbin_top_m(3) /9.E-6/,  &
-!       dustbin_top_m(4) /26.E-6/, &
-!       dustbin_top_m(5) /80.E-6/
+  INTEGER, PARAMETER :: DustBins_m = 5  !8  ! number of dust particle fractions
+  INTEGER :: DustInd_m(DustBins_m)            ! indices of dust particles
 
-!  CHARACTER(20) :: DustName_m(DustBins_m)
-!  DATA  DustName_m(1) /'DP_M_01'/,     &
-!        DustName_m(2) /'DP_M_03'/,     &
-!        DustName_m(3) /'DP_M_09'/,     &
-!        DustName_m(4) /'DP_M_26'/,     &
-!        DustName_m(5) /'DP_M_80'/
+  REAL :: dustbin_top_m(DustBins_m)    !for the mineralogy DustBins
+  DATA dustbin_top_m(1) /1.E-6/,  &
+       dustbin_top_m(2) /3.E-6/,  &
+       dustbin_top_m(3) /9.E-6/,  &
+       dustbin_top_m(4) /26.E-6/, &
+       dustbin_top_m(5) /80.E-6/
+
+  CHARACTER(20) :: DustName_m(DustBins_m)
+  DATA  DustName_m(1) /'DP_M_01'/,     &
+        DustName_m(2) /'DP_M_03'/,     &
+        DustName_m(3) /'DP_M_09'/,     &
+        DustName_m(4) /'DP_M_26'/,     &
+        DustName_m(5) /'DP_M_80'/
 
 
   ! TYPE dust_fx
