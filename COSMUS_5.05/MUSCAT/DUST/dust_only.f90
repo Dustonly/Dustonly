@@ -846,6 +846,8 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
       rlat
 
     CHARACTER (LEN=40) :: ydate
+    CHARACTER(20)  :: &
+      string
     CHARACTER(120) :: yerrmsg
 
     IF (lddebug) PRINT*, 'Enter netcdf_out, status=',status
