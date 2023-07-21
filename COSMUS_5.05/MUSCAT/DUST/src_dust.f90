@@ -2313,11 +2313,12 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
               z0l  = 0.01
 
               ustn = (VK * tot_wind )/(log( zl/(z0l))) ! [m/s]
-              ustn = (VK * tot_wind_d )/(log( zl/(z0l))) ! [m/s] ?
+              ! ustn = (VK * tot_wind_d )/(log( zl/(z0l))) ! [m/s] ?
               u1 = ustar(j,i)
 
               ustar(j,i) = ustn
 
+#ifndef OFFLINE
             ELSEIF (fricvelo_scheme == 2) THEN
 
               tmp  = t_2m(i+nboundlines,j+nboundlines)
@@ -2369,6 +2370,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
               tot_wind   = SQRT (u_10m(i+nboundlines,j+nboundlines) **2 + v_10m(i+nboundlines,j+nboundlines)**2 )
               ustar(j,i) = tot_wind*SQRT(tcm(i+nboundlines,j+nboundlines))
               u3 = ustar(j,i)
+#endif
 
             END IF ! fricvelo_scheme
                 ! IF (obk == 0.0) THEN
@@ -3961,6 +3963,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
   END SUBROUTINE
 
 
+#ifndef OFFLINE
 
   ! ======================================================
   ! + monin obukhov length
@@ -4009,5 +4012,6 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
   END FUNCTION
 
+#endif
 
 END MODULE src_dust
