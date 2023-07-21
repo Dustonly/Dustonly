@@ -12,7 +12,7 @@ PROGRAM dust_only
   implicit none
 
   INTEGER        :: &
-    ierr
+    ierr,mr
   CHARACTER(120) :: &
     yerr
 
