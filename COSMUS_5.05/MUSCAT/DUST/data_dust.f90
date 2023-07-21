@@ -1154,18 +1154,34 @@ MODULE offline_org
     rlatID,      &
     lonID,       &
     latID,       &
-    DE01ID,      &
-    DE03ID,      &
-    DE09ID,      &
-    DE26ID,      &
-    DE80ID,      &
+!    DE01ID,      &
+!    DE01MID,      &
+!    DE03ID,      &
+!    DE03MID,      &
+!    DE09ID,      &
+!    DE09MID,      &
+!    DE26ID,      &
+!    DE26MID,      &
+!    DE80ID,      &
+!    DE80MID,      &
     DETOTID,     &
-    DEPM25ID,    &
-    DEPM10ID,    &
+!    DE1MID,     &
+!    DE2MID,     &
+!    DE3MID,     &
+!    DE4MID,     &
+!    DE5MID,     &
+!    DE6MID,     &
+!    DE7MID,     &
+!    DE8MID,     &
+!    DEPM25ID,    &
+!    DEPM10ID,    &
     timeDim,     &
     rlonDim,     &
     rlatDim
 
+  INTEGER ::        &
+    Dust_e_ID(5),   &
+    Dust_em_ID(5,12)
 
 END MODULE offline_org
 #endif
