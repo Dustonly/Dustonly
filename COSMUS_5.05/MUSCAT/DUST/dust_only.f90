@@ -401,6 +401,8 @@ SUBROUTINE read_namelist(ierr)
     psrcType,          & ! Flag for type of potential dust source ! 0 : psrc, 1 : msgsrc, 2 : acDust
     soilmaptype,       &
     soiltypeFile,      & ! Filename of Soil Type Data
+    mineralmaptype,       &
+    mineraltypeFile,      & ! Filename of Minerl Type Data
     psrcFile,          & ! Filename of preferential Dust Sources
     cultFile,          & ! Filename of Cultivation Class
     vegmonFile,        & ! Filename of monthly vegitation cover
@@ -435,6 +437,8 @@ SUBROUTINE read_namelist(ierr)
   vegmonFile      = 'without'   ! Leafe Area Index Data
   vegdayFile      = 'without'   ! Leafe Area Index Data   MF
   vegminFile      = 'without'   ! Leafe Area Index Data   MF
+  mineralmaptype  = 0
+  mineraltypeFile = 'without'
   lwithz0         = .FALSE.
   lwithbiom       = .FALSE.
   uconst          = 999.0
