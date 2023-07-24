@@ -252,10 +252,14 @@ SUBROUTINE def_grid(ierr)
 
 
   ALLOCATE(dust_flux(ntz,je_tot,ie_tot,nt))
+  ALLOCATE(dust_flux_m(ntz,je_tot,ie_tot,nt,miner))
   dust_flux=0.
+  dust_flux_m=0.
 
   AllOCATE(dust_em_accum(je_tot,ie_tot,nt))
   dust_em_accum=0
+  AllOCATE(dust_em_accum_m(je_tot,ie_tot,nt,miner))
+  dust_em_accum_m=0
 
   IF (lddebug) PRINT*, 'Leave def_grid, ierr=',ierr,''//NEW_LINE('')
 
