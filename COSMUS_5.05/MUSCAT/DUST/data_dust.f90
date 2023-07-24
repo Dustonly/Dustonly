@@ -1074,6 +1074,7 @@ MODULE offline_org
     ust(:,:,:), &      ! friction velocity
     dz(:,:,:), &
     dust_flux(:,:,:,:), & !
+    dust_flux_m(:,:,:,:,:), &
     dust_em_accum(:,:,:), &
     dust_em_accum_m(:,:,:,:)   !dust accumulation for mineral bins
 
