@@ -12,7 +12,7 @@ PROGRAM dust_only
   implicit none
 
   INTEGER        :: &
-    ierr
+    ierr,mr
   CHARACTER(120) :: &
     yerr
 
@@ -158,6 +158,16 @@ PROGRAM dust_only
     ! print*, maxval(dust(1)%d_emis*1.E-3)
 
     ! print*, dust(1)%d_emis(:,:,:)
+    IF (mineralmaptype == 1) THEN
+      DO mr=1,11
+        IF (laccumulation) THEN
+          dust_em_accum_m(:,:,:,mr) = dust_em_accum_m(:,:,:,mr) + dust(1)%d_emis_m(:,:,:,mr)*dt*1.E-3
+        ! call quick_ascii('dust',sum(dust_em_accum,dim=3),pmin=0.,pmax=1.e-2)
+        ELSE
+          dust_em_accum_m(:,:,:,mr) = dust(1)%d_emis_m(:,:,:,mr)*dt*1.E-3
+        END IF
+      END DO
+    END IF
 
     CALL netcdf_out('appand',TRIM(ofilename),ntstep,ierr)
 
@@ -242,10 +252,14 @@ SUBROUTINE def_grid(ierr)
 
 
   ALLOCATE(dust_flux(ntz,je_tot,ie_tot,nt))
+  ALLOCATE(dust_flux_m(ntz,je_tot,ie_tot,nt,miner))
   dust_flux=0.
+  dust_flux_m=0.
 
   AllOCATE(dust_em_accum(je_tot,ie_tot,nt))
   dust_em_accum=0
+  AllOCATE(dust_em_accum_m(je_tot,ie_tot,nt,miner))
+  dust_em_accum_m=0
 
   IF (lddebug) PRINT*, 'Leave def_grid, ierr=',ierr,''//NEW_LINE('')
 
@@ -401,6 +415,8 @@ SUBROUTINE read_namelist(ierr)
     psrcType,          & ! Flag for type of potential dust source ! 0 : psrc, 1 : msgsrc, 2 : acDust
     soilmaptype,       &
     soiltypeFile,      & ! Filename of Soil Type Data
+    mineralmaptype,    &
+    mineraltypeFile,   & ! Filename of Minerl Type Data
     psrcFile,          & ! Filename of preferential Dust Sources
     cultFile,          & ! Filename of Cultivation Class
     vegmonFile,        & ! Filename of monthly vegitation cover
@@ -435,6 +451,8 @@ SUBROUTINE read_namelist(ierr)
   vegmonFile      = 'without'   ! Leafe Area Index Data
   vegdayFile      = 'without'   ! Leafe Area Index Data   MF
   vegminFile      = 'without'   ! Leafe Area Index Data   MF
+  mineralmaptype  = 0
+  mineraltypeFile = 'without'
   lwithz0         = .FALSE.
   lwithbiom       = .FALSE.
   uconst          = 999.0
@@ -785,6 +803,8 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
     INTEGER ::     &
       i,j,         &
       istat,       & ! netcdf status variable
+      js, mr,      &
+      ID,          &   !for the writing output loops
       ! ncdfID,        & ! id Var for the nc file
       ! timeID,      &
       ! rlonID,      &
@@ -804,6 +824,24 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
       ! rlatDim,     &
       iztime_tmp!,  & ! tmp variable to hold time information
 
+  CHARACTER(20) :: Dust_e_Name(DustBins)  !names for dust emission
+   DATA  Dust_e_Name(1) /'DE_01'/,     &
+         Dust_e_Name(2) /'DE_03'/,     &
+         Dust_e_Name(3) /'DE_09'/,     &
+         Dust_e_Name(4) /'DE_26'/,     &
+         Dust_e_Name(5) /'DE_80'/
+
+
+  CHARACTER(20) :: Dust_em_Name(DustBins_m)  !names for mineralogy dust emission
+   DATA  Dust_em_Name(1) /'DE_M_01'/,     &
+         Dust_em_Name(2) /'DE_M_03'/,     &
+         Dust_em_Name(3) /'DE_M_09'/,     &
+         Dust_em_Name(4) /'DE_M_26'/,     &
+         Dust_em_Name(5) /'DE_M_80'/
+
+  CHARACTER(9) :: &
+    str_bin
+
     REAL(8) :: &
       pi,      &
       geolon,  &
@@ -812,6 +850,8 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
       rlat
 
     CHARACTER (LEN=40) :: ydate
+    CHARACTER(20)  :: &
+      string
     CHARACTER(120) :: yerrmsg
 
     IF (lddebug) PRINT*, 'Enter netcdf_out, status=',status
@@ -1064,135 +1104,78 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         RETURN
       ENDIF
 
-      ! DE_01
-      istat = nf90_def_var(ncdfID, "DE_01", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE01ID)
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10237
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE01ID, "standard_name", "DE_01")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10238
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE01ID, "long_name", "Dust emisson < 1 µm")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10239
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE01ID, "units", "kg/m-2")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
 
-      ! DE_03
-      istat = nf90_def_var(ncdfID, "DE_03", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE03ID)
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10237
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE03ID, "standard_name", "DE_03")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10238
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE03ID, "long_name", "Dust emisson < 3 µm")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10239
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE03ID, "units", "kg/m-2")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
 
-      ! DE_09
-      istat = nf90_def_var(ncdfID, "DE_09", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE09ID)
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10237
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE09ID, "standard_name", "DE_09")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10238
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE09ID, "long_name", "Dust emisson < 9 µm")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10239
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE09ID, "units", "kg/m-2")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
+!Define the attributes of the dust bins based on the dust bin names
+      DO js=1,DustBins
+        !PRINT*, 'enters the define attributes loop'
+      !  js = 1
+        string = TRIM(Dust_e_Name(js))
+        !PRINT*, 'name', string
+        !PRINT*, 'ID', Dust_e_ID(js)
+        istat = nf90_def_var(ncdfID, string, nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), Dust_e_ID(js))
+      !  istat = nf90_def_var(ncdfID, "DE_01", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE01ID)
+        IF (istat /= nf90_noerr) THEN
+          ierr  = 10237
+          yerrmsg = TRIM(nf90_strerror(ierr))
+          RETURN
+        ENDIF
+        istat=nf90_put_att(ncdfID, Dust_e_ID(js), "standard_name", string)
+        IF (istat /= nf90_noerr) THEN
+          ierr  = 10238
+          yerrmsg = TRIM(nf90_strerror(ierr))
+          RETURN
+        ENDIF
+        istat=nf90_put_att(ncdfID, Dust_e_ID(js), "long_name", "Dust emisson <")
+        IF (istat /= nf90_noerr) THEN
+          ierr  = 10239
+          yerrmsg = TRIM(nf90_strerror(ierr))
+          RETURN
+        ENDIF
+        istat=nf90_put_att(ncdfID, Dust_e_ID(js), "units", "kg/m-2")
+        IF (istat /= nf90_noerr) THEN
+          ierr  = 10240
+          yerrmsg = TRIM(nf90_strerror(ierr))
+          RETURN
+        ENDIF
+      END DO
 
-      ! DE_26
-      istat = nf90_def_var(ncdfID, "DE_26", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE26ID)
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10237
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE26ID, "standard_name", "DE_26")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10238
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE26ID, "long_name", "Dust emisson < 26 µm")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10239
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE26ID, "units", "kg/m-2")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-
-      ! DE_80
-      istat = nf90_def_var(ncdfID, "DE_80", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE80ID)
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10237
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE80ID, "standard_name", "DE_80")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10238
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE80ID, "long_name", "Dust emisson < 80 µm")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10239
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE80ID, "units", "kg/m-2")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
+      IF (mineralmaptype == 1) THEN
+        DO js = 1,DustBins_m
+          !PRINT*, 'current dustbin', js, 'total number', DustBins_m
+          DO mr = 1,11
+            !PRINT*, 'enters the define attributes mineral loop, mr:', mr
+            string = TRIM(Dust_em_Name(js))
+            WRITE(str_bin,'(I2)') mr
+            !PRINT*, TRIM(string//'_'//str_bin)
+            !PRINT*, 'ID',Dust_em_ID(js,mr)
+            istat = nf90_def_var(ncdfID, TRIM(string//'_'//str_bin), nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), Dust_em_ID(js,mr))
+            IF (istat /= nf90_noerr) THEN
+              ierr  = 10237
+              yerrmsg = TRIM(nf90_strerror(ierr))
+              RETURN
+            ENDIF
+            istat=nf90_put_att(ncdfID, Dust_em_ID(js,mr), "standard_name", TRIM(string//'_'//str_bin))
+            IF (istat /= nf90_noerr) THEN
+              ierr  = 10238
+              yerrmsg = TRIM(nf90_strerror(ierr))
+              RETURN
+            ENDIF
+            istat=nf90_put_att(ncdfID, Dust_em_ID(js,mr), "long_name", "Dust emisson <")
+            IF (istat /= nf90_noerr) THEN
+              ierr  = 10239
+              yerrmsg = TRIM(nf90_strerror(ierr))
+              RETURN
+            ENDIF
+            istat=nf90_put_att(ncdfID, Dust_em_ID(js,mr), "units", "kg/m-2")
+            IF (istat /= nf90_noerr) THEN
+              ierr  = 10240
+              yerrmsg = TRIM(nf90_strerror(ierr))
+              RETURN
+            ENDIF
+          END DO
+        END DO
+      END IF
 
       ! DE_TOT
       istat = nf90_def_var(ncdfID, "DE_TOT", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DETOTID)
@@ -1220,60 +1203,6 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         RETURN
       ENDIF
 
-      ! DE_PM_2.5
-      istat = nf90_def_var(ncdfID, "DE_PM_2.5", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DEPM25ID)
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10237
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DEPM25ID, "standard_name", "DE_PM_2.5")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10238
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DEPM25ID, "long_name", "Dust emisson < 2.5 µm")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10239
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DEPM25ID, "units", "kg/m-2")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-
-      ! DE_PM_10
-      istat = nf90_def_var(ncdfID, "DE_PM_10", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DEPM10ID)
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10237
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DEPM10ID, "standard_name", "DE_PM_10")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10238
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DEPM10ID, "long_name", "Dust emisson < 10 µm")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10239
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DEPM10ID, "units", "kg/m-2")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-
-
-
       istat=nf90_enddef(ncdfID)
 
 
@@ -1293,15 +1222,12 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         DO j = 0, je_tot-1
           rlon = (i*dlon)+startlon_tot
           rlat = (j*dlat)+startlat_tot
-
           geolon=180./pi * atan((cos(pi/180.*rlat)*sin(pi/180.*rlon))/  &
                                 (sin(pi/180.*pollat)*cos(pi/180.*rlat)* &
                                  cos(pi/180.*rlon)-sin(pi/180.*rlat)*   &
                                  cos(pi/180.*pollat))) + pollon + 180.
-
           geolat=180./pi * asin(sin(pi/180.*rlat)*sin(pi/180.*pollat) + &
                                 cos(pi/180.*rlat)*cos(pi/180.*rlon)*cos(pi/180.*pollat))
-
           istat = NF90_PUT_VAR(ncdfID,lonID, geolon, start=(/i+1,j+1/) )
           IF (istat /= nf90_noerr) THEN
             ierr  = 10220
@@ -1320,59 +1246,45 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
 
       istat=nf90_close(ncdfID)
 
-    ELSEIF (status == 'appand') THEN
+      ELSEIF (status == 'appand') THEN
 
-      istat=nf90_open(Filename, NF90_WRITE, ncdfID)
+        istat=nf90_open(Filename, NF90_WRITE, ncdfID)
 
-      ! write time
-      istat = NF90_put_var(ncdfID,timeID,step*dt,start=(/step+1/))
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10220
-        yerrmsg = TRIM(nf90_strerror(istat))
-        print*, yerrmsg
-        RETURN
-      ENDIF
+        ! write time
+        istat = NF90_put_var(ncdfID,timeID,step*dt,start=(/step+1/))
+        IF (istat /= nf90_noerr) THEN
+          ierr  = 10220
+          yerrmsg = TRIM(nf90_strerror(istat))
+          print*, yerrmsg
+          RETURN
+        ENDIF
 
-      ! write DE_01
-      istat = nf90_put_var(ncdfID,DE01ID, transpose(dust_em_accum(:,:,1)), start=(/1,1,step+1/) )
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10220
-        yerrmsg = TRIM(nf90_strerror(istat))
-        RETURN
-      ENDIF
+!write the writing in a loop !
+      DO js=1,DustBins
+        !PRINT*, 'enters the writing out loop, dustbin:', js
+        !PRINT*, 'ID', Dust_e_ID(js)
+        istat = nf90_put_var(ncdfID,Dust_e_ID(js), transpose(dust_em_accum(:,:,js)), start=(/1,1,step+1/) )
+        IF (istat /= nf90_noerr) THEN
+          ierr  = 10220
+          yerrmsg = TRIM(nf90_strerror(istat))
+          RETURN
+        ENDIF
+      END DO
 
-      ! write DE_03
-      istat = nf90_put_var(ncdfID,DE03ID, transpose(dust_em_accum(:,:,2)), start=(/1,1,step+1/) )
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10220
-        yerrmsg = TRIM(nf90_strerror(istat))
-        RETURN
-      ENDIF
-
-      ! write DE_09
-      istat = nf90_put_var(ncdfID,DE09ID, transpose(dust_em_accum(:,:,3)), start=(/1,1,step+1/) )
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10220
-        yerrmsg = TRIM(nf90_strerror(istat))
-        RETURN
-      ENDIF
-
-      ! write DE_26
-      istat = nf90_put_var(ncdfID,DE26ID, transpose(dust_em_accum(:,:,4)), start=(/1,1,step+1/) )
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10220
-        yerrmsg = TRIM(nf90_strerror(istat))
-        RETURN
-      ENDIF
-
-      ! write DE_80
-      istat = nf90_put_var(ncdfID,DE80ID, transpose(dust_em_accum(:,:,5)), start=(/1,1,step+1/) )
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10220
-        yerrmsg = TRIM(nf90_strerror(istat))
-        RETURN
-      ENDIF
-
+      IF(mineralmaptype == 1) THEN
+        DO js=1,DustBins_m
+          DO mr=1,11
+            !PRINT*, 'enters the mineral writing out loop'
+            !PRINT*, 'ID', Dust_em_ID(js,mr)
+            istat = nf90_put_var(ncdfID,Dust_em_ID(js,mr), transpose(dust_em_accum_m(:,:,js,mr)), start=(/1,1,step+1/) )
+            IF (istat /= nf90_noerr) THEN
+              ierr  = 10220
+              yerrmsg = TRIM(nf90_strerror(istat))
+              RETURN
+            ENDIF
+          END DO
+        END DO
+      END IF
 
       ! write DE_TOT
       istat = nf90_put_var(ncdfID,DETOTID, transpose(sum(dust_em_accum(:,:,:5), dim=3 )), start=(/1,1,step+1/) )
