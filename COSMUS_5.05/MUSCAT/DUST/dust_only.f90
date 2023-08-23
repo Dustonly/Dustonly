@@ -88,7 +88,7 @@ PROGRAM dust_only
         STOP
       END IF
     END IF
-  ELSEIF (fricvelo_scheme == 2) THEN
+  ELSEIF (fricvelo_scheme == 4) THEN
     ! read in ustar
     print*, 'Read wind data'
     print*, TRIM(ust_var_name)
@@ -245,7 +245,7 @@ SUBROUTINE def_grid(ierr)
     IF (vconst  /= 999.0) v  = vconst
     IF (dzconst /= 999.0) dz = dzconst
 
-  ELSEIF (fricvelo_scheme == 2) THEN
+  ELSEIF (fricvelo_scheme == 4) THEN
     ALLOCATE(ust(je_tot,ie_tot,lasttstep-firsttstep))
     ust=0.
   END IF
