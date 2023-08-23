@@ -261,7 +261,7 @@ MODULE src_dust
         ifile(ifile_num) = 'mineral'
         ifile_dim(ifile_num) = 12
       ELSE
-       PRINT*, 'No mineral file'
+       ! PRINT*, 'No mineral file'
      END IF
 
 
@@ -444,7 +444,7 @@ MODULE src_dust
           WRITE(*,8010)  string
           STOP  '1stloop_Dust_Init: Error in Input Data !!'
         END IF
-        PRINT*,'Dust Bin name + number:', string, js, 'DustInd:', DustInd(js,1)
+        ! PRINT*,'Dust Bin name + number:', string, js, 'DustInd:', DustInd(js,1)
       END DO
 
       !if the mineralogy map is included then get the mineralogy DustBins
@@ -461,7 +461,7 @@ MODULE src_dust
               WRITE(*,8010)  string
               STOP  '2ndloop-Dust_Init: Error in Input Data !!'
             END IF
-            PRINT*,'Dust Bin mr name + number:', string, js
+            ! PRINT*,'Dust Bin mr name + number:', string, js
           END DO
         END DO
       END IF
@@ -623,16 +623,16 @@ MODULE src_dust
 
         ! only prozess #0 open files
         IF (my_cart_id == 0) THEN
-          print*,ifile(i)
+          ! print*,ifile(i)
           CALL read_infile(ifile(i),read_input,ierr,yerr)
 
 
           IF (ierr /= 0) THEN
-          print*, ierr
+            print*, ierr
             ierr = 100009
             PRINT*,'ERROR    src_dust "init" '
             PRINT*,'         #',ierr
-            PRINT*,'         ERROR reading',TRIM(ifile(i))
+            PRINT*,'         ERROR reading ',TRIM(ifile(i))
             PRINT*,'         ',yerr
             STOP
           END IF
@@ -1391,7 +1391,7 @@ MODULE src_dust
 
       call cpu_time(T2)
 
-      print*, 'init time:',T2-T1
+      IF (lddebug) print*, 'init time:',T2-T1
 
     ELSEIF (yaction == 'calc') THEN
       ! +-+-+- Sec 1 Set the actually date -+-+-+
@@ -3550,7 +3550,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     INTEGER :: i,j,k,jx,jy,in,jn,RefLoc  ! loops and
     INTEGER :: igx0,igy0,SurfLoc         ! helping integers
 
-    IF (lddebug) PRINT*, 'Enter copy2block'
+    ! IF (lddebug) PRINT*, 'Enter copy2block'
 
  !----------------------------------------------------------------
  !---  Fine Grid
@@ -3596,7 +3596,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       END DO
     END IF
 
-    IF (lddebug) PRINT*, 'Leave copy2block',''//NEW_LINE('')
+    ! IF (lddebug) PRINT*, 'Leave copy2block',''//NEW_LINE('')
 
   END SUBROUTINE copy2block
 
