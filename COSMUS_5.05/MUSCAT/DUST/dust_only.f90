@@ -566,6 +566,9 @@ SUBROUTINE netcdf_in(infile,varname,outvar,ntimes,timecheck,ierror,yerrmsg)
   ! ---------------------------------------------------------
 
   IF (lddebug) PRINT*, 'Enter netcdf_in'
+    istart = 0
+    istat = nf90_noerr
+    ierror = 0
 
   ! Print short status
   PRINT*,'read_nc ', infile

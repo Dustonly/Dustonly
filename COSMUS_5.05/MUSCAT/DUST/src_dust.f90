@@ -3205,6 +3205,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     varnum = 1
     ntimes = 0
     istart = 0
+    istat = nf90_noerr
+    ierror = 0
 
     IF (infile == 'soil') THEN
       filename = TRIM(soiltypeFile)
@@ -3264,6 +3266,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     istat = nf90_open(filename, nf90_nowrite, ncid)
     IF (istat /= nf90_noerr) THEN
       ierror  = 10001
+      PRINT*,'ERROR reading ', TRIM(filename)
+      PRINT*,ierror
       yerrmsg = TRIM(nf90_strerror(istat))
       RETURN
     ENDIF
@@ -3275,6 +3279,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     END DO
     IF (istat /= nf90_noerr) THEN
       ierror  = 10002
+      PRINT*,ierror
+      PRINT*,'ERROR reading ', TRIM(filename)
       PRINT*,''
       PRINT*,'ERROR'
       PRINT*,'  No latitude dimension was found in ',infile
@@ -3289,6 +3295,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     istat = nf90_inquire_dimension(ncID, dimID, len = dimlen)
     IF (istat /= nf90_noerr) THEN
       ierror  = 10003
+      PRINT*,ierror
+      PRINT*,'ERROR reading ', TRIM(filename)
       yerrmsg = TRIM(nf90_strerror(istat))
       RETURN
     ENDIF
@@ -3296,6 +3304,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     ! Check the Size
     IF (dimlen /= je_tot) THEN
       ierror = 10004
+      PRINT*,ierror
       yerrmsg = 'Error reading '//TRIM(infile)//' file: wrong lat dimension'
       RETURN
     END IF
@@ -3307,6 +3316,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     END DO
     IF (istat /= nf90_noerr) THEN
       ierror  = 10005
+      PRINT*,'ERROR reading ', TRIM(filename)
+      PRINT*,ierror
       PRINT*,''
       PRINT*,'ERROR'
       PRINT*,'  No longitude dimension was found in ',infile
@@ -3321,13 +3332,18 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
      istat = nf90_inquire_dimension(ncID, dimID, len = dimlen)
      IF (istat /= nf90_noerr) THEN
        ierror  = 10006
+       PRINT*,'ERROR reading ', TRIM(filename)
+       PRINT*,ierror
        yerrmsg = TRIM(nf90_strerror(istat))
        RETURN
      ENDIF
+      ! PRINT*,ierror
 
      ! Check the Size
      IF (dimlen /= ie_tot) THEN
        ierror = 10007
+       PRINT*,'ERROR reading ', TRIM(filename)
+       PRINT*,ierror
        yerrmsg = 'Error reading '//TRIM(infile)//' file: wrong lon dimension'
        RETURN
      END IF
@@ -3337,6 +3353,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       istat = nf90_inq_dimid(ncID, 'time', dimID)
       IF (istat /= nf90_noerr) THEN
         ierror  = 10008
+        PRINT*,'ERROR reading ', TRIM(filename)
+        PRINT*,ierror
         yerrmsg = TRIM(nf90_strerror(istat))
         RETURN
       ENDIF
@@ -3345,15 +3363,20 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       istat = nf90_inquire_dimension(ncID, dimID, len = dimlen)
       IF (istat /= nf90_noerr) THEN
         ierror  = 10009
+        PRINT*,'ERROR reading ', TRIM(filename)
+        PRINT*,ierror
         yerrmsg = TRIM(nf90_strerror(istat))
         RETURN
       ENDIF
+
 
       ! allocate the var ( times ) that hold the available dates in the nc file
       istat = 0
       ALLOCATE (times(dimlen), STAT=istat)
       IF (istat /= 0) THEN
         ierror = 10010
+        PRINT*,'ERROR reading ', TRIM(filename)
+        PRINT*,ierror
         yerrmsg = 'allocation of times failed'
         RETURN
       ENDIF
@@ -3362,6 +3385,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       istat = nf90_inq_varid(ncID, 'time', timeID)
       IF (istat /= nf90_noerr) THEN
         ierror  = 10005
+        PRINT*,'ERROR reading ', TRIM(filename)
+        PRINT*,ierror
         yerrmsg = TRIM(nf90_strerror(istat))
         RETURN
       ENDIF
@@ -3370,6 +3395,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       istat = nf90_get_var(ncid, timeID, times)
       IF (istat /= nf90_noerr) THEN
         ierror  = 10011
+        PRINT*,'ERROR reading ', TRIM(filename)
+        PRINT*,ierror
         yerrmsg = TRIM(nf90_strerror(istat))
         RETURN
       ENDIF
@@ -3389,11 +3416,15 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
           END DO
           IF (istart + ntimes - 1 > size(times)) THEN
             ierror  = 10012
+            PRINT*,'ERROR reading ', TRIM(filename)
+            PRINT*,ierror
             yerrmsg = 'Error reading '//TRIM(infile)//' file: not enough dates in the file'
             RETURN
           END IF
         ELSE
           ierror  = 10013
+          PRINT*,ierror
+          PRINT*,'ERROR reading ', TRIM(filename)
           yerrmsg = 'Error reading '//TRIM(infile)//' file: model start date is not in the file'
           RETURN
         END IF
@@ -3410,6 +3441,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     ALLOCATE (var_read(ie_tot,je_tot,ary_size), STAT=istat)
     IF (istat /= 0) THEN
       ierror = 10014
+      PRINT*,'ERROR reading ', TRIM(filename)
+      PRINT*,ierror
       yerrmsg = 'allocation of var_read failed'
       RETURN
     ENDIF
@@ -3420,6 +3453,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       istat = nf90_inq_varid(ncID, varname(iv) , varID)
       IF (istat /= nf90_noerr) THEN
         ierror  = 10015
+        PRINT*,'ERROR reading ', TRIM(filename)
+        PRINT*,ierror
         yerrmsg = TRIM(nf90_strerror(istat))
         RETURN
       ENDIF
@@ -3448,6 +3483,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       istat = nf90_get_var(ncid, varID, var_read(:,:,iv),start= (/1,1,istart/),count=(/ie_tot,je_tot,ntimes/))
       IF (istat /= nf90_noerr) THEN
         ierror  = 10017
+        PRINT*,'ERROR reading ', TRIM(filename)
+        PRINT*,ierror
         yerrmsg = TRIM(nf90_strerror(istat))
         RETURN
       ENDIF
