@@ -129,9 +129,7 @@ MODULE mo_dust
       'DP_80_cal', 'DP_80_qua', 'DP_80_hem', 'DP_80_feld',    &
       'DP_80_gyps', 'DP_80_calc', 'DP_80_quar', 'DP_80_hema', &
       'DP_80_phos'/
-        ! DustName(6) /'DP_240'/,    &
-        ! DustName(7) /'DP_720'/,    &
-        ! DustName(8) /'DP_2200'/
+
 
   INTEGER, PARAMETER :: DustBins_m = 5  !8  ! number of dust particle fractions
   INTEGER :: DustInd_m(DustBins_m)            ! indices of dust particles
@@ -150,18 +148,6 @@ MODULE mo_dust
         DustName_m(4) /'DP_M_26'/,     &
         DustName_m(5) /'DP_M_80'/
 
-
-  ! TYPE dust_fx
-  ! REAL(8), POINTER ::   &
-  !   soiltype(:,:),      & ! soil properties
-  !   z0  (:,:),          & ! roughness length
-  !   source  (:,:),      & ! preferential dust source
-  !   alpha   (:,:),      & ! ratio horiz/vertical flux
-  !   feff    (:,:,:),    & ! drag partition
-  !   veff    (:,:,:),    & ! effective vegetation
-  !   d_emis  (:,:,:)       ! dust emission
-  ! END TYPE dust_fx
-  ! TYPE (dust_fx), ALLOCATABLE, TARGET :: dust_flux(:)
 
   TYPE dust_subdomain
   REAL(8), POINTER ::     &
@@ -231,17 +217,9 @@ MODULE mo_dust
   REAL(8), ALLOCATABLE ::  &
     read_input(:,:,:)       ! (j,i,time)
 
-  ! REAL(8), ALLOCATABLE ::  &
-  !   srel_map(:,:,:),&          ! (j,i,nclass)
-  !   mrel_map(:,:,:),&          ! (j,i,nclass)
-  !   mrel_sum(:,:,:),&          ! (j,i,nclass)
-  !   mrel_mx(:,:,:,:)          ! (j,i,nclass,nclass)
-
   REAL (8)   :: &
     dp_meter(nclass) ! particle diameter [m]
 
-  ! REAL(8), ALLOCATABLE ::  &
-  !   ustar(:,:)          ! (j,i,nclass)
 
   REAL (8)   :: &
     Uth(Nclass)!,              & ! threshold friction velocity

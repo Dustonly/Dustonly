@@ -16,25 +16,6 @@ PROGRAM dust_only
   CHARACTER(120) :: &
     yerr
 
-  ! INTEGER :: &
-  !   ncdfID,        & ! id Var for the nc file
-  !   timeID,      &
-  !   rlonID,      &
-  !   rlatID,      &
-  !   lonID,       &
-  !   latID,       &
-  !   DE01ID,      &
-  !   DE03ID,      &
-  !   DE09ID,      &
-  !   DE26ID,      &
-  !   DE80ID,      &
-  !   DETOTID,     &
-  !   DEPM25ID,    &
-  !   DEPM10ID,    &
-  !   timeDim,     &
-  !   rlonDim,     &
-  !   rlatDim
-
 
   ierr = 0
   nDust = 1
@@ -123,11 +104,6 @@ PROGRAM dust_only
     STOP
   END IF
 
-  ! init of the OUTPUT
-
-  ! def Filename
-  ! WRITE (ofilename,"(A6,I6.6,A2,I3.3,A3)") 'part_t',               &
-  !        INT(nstart_part_gp*dt_part/60._wp,KIND=iintegers) ,'_p',k,'.nc'
 
 
   WRITE (ofilename,'(6A)') TRIM(youtdir),'/dust_emis_',ydate_ini,'-',ydate_end,'.nc'
@@ -162,7 +138,6 @@ PROGRAM dust_only
       DO mr=1,11
         IF (laccumulation) THEN
           dust_em_accum_m(:,:,:,mr) = dust_em_accum_m(:,:,:,mr) + dust(1)%d_emis_m(:,:,:,mr)*dt*1.E-3
-        ! call quick_ascii('dust',sum(dust_em_accum,dim=3),pmin=0.,pmax=1.e-2)
         ELSE
           dust_em_accum_m(:,:,:,mr) = dust(1)%d_emis_m(:,:,:,mr)*dt*1.E-3
         END IF
@@ -808,23 +783,6 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
       istat,       & ! netcdf status variable
       js, mr,      &
       ID,          &   !for the writing output loops
-      ! ncdfID,        & ! id Var for the nc file
-      ! timeID,      &
-      ! rlonID,      &
-      ! rlatID,      &
-      ! lonID,       &
-      ! latID,       &
-      ! DE01ID,      &
-      ! DE03ID,      &
-      ! DE09ID,      &
-      ! DE26ID,      &
-      ! DE80ID,      &
-      ! DETOTID,      &
-      ! DEPM25ID,      &
-      ! DEPM10ID,      &
-      ! timeDim,     &
-      ! rlonDim,     &
-      ! rlatDim,     &
       iztime_tmp!,  & ! tmp variable to hold time information
 
   CHARACTER(20) :: Dust_e_Name(DustBins)  !names for dust emission
@@ -900,20 +858,7 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         yerrmsg = TRIM(nf90_strerror(istat))
         RETURN
       ENDIF
-      ! READ(ydate_ini(11:12),'(i2)') iztime_tmp
-      ! istat = nf90_put_att(ncdfID, nf90_GLOBAL, 'ref_min', iztime_tmp)
-      ! IF (istat /= nf90_noerr) THEN
-      !   ierr  = 10212
-      !   yerrmsg = TRIM(nf90_strerror(istat))
-      !   RETURN
-      ! ENDIF
-      ! READ(ydate_ini(13:14),'(i2)') iztime_tmp
-      ! istat = nf90_put_att(ncdfID, nf90_GLOBAL, 'ref_sec', iztime_tmp)
-      ! IF (istat /= nf90_noerr) THEN
-      !   ierr  = 10213
-      !   yerrmsg = TRIM(nf90_strerror(istat))
-      !   RETURN
-      ! ENDIF
+
       istat = nf90_put_att(ncdfID, nf90_GLOBAL, 'pollon', pollon)
       IF (istat /= nf90_noerr) THEN
         ierr  = 10214
@@ -926,14 +871,6 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         yerrmsg = TRIM(nf90_strerror(istat))
         RETURN
       ENDIF
-      ! istat = nf90_put_att(ncdfID, nf90_GLOBAL, 'output_time_step_in_sec', &
-      !                       NINT(hout_con*3600,iintegers))
-      ! IF (istat /= nf90_noerr) THEN
-      !   ierr  = 10216
-      !   yerrmsg = TRIM(nf90_strerror(istat))
-      !   RETURN
-      ! ENDIF
-
 
 
       ! Define dimensions
@@ -1111,13 +1048,8 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
 
 !Define the attributes of the dust bins based on the dust bin names
       DO js=1,DustBins
-        !PRINT*, 'enters the define attributes loop'
-      !  js = 1
         string = TRIM(Dust_e_Name(js))
-        !PRINT*, 'name', string
-        !PRINT*, 'ID', Dust_e_ID(js)
         istat = nf90_def_var(ncdfID, string, nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), Dust_e_ID(js))
-      !  istat = nf90_def_var(ncdfID, "DE_01", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE01ID)
         IF (istat /= nf90_noerr) THEN
           ierr  = 10237
           yerrmsg = TRIM(nf90_strerror(ierr))
@@ -1145,13 +1077,9 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
 
       IF (mineralmaptype == 1) THEN
         DO js = 1,DustBins_m
-          !PRINT*, 'current dustbin', js, 'total number', DustBins_m
           DO mr = 1,11
-            !PRINT*, 'enters the define attributes mineral loop, mr:', mr
             string = TRIM(Dust_em_Name(js))
             WRITE(str_bin,'(I2)') mr
-            !PRINT*, TRIM(string//'_'//str_bin)
-            !PRINT*, 'ID',Dust_em_ID(js,mr)
             istat = nf90_def_var(ncdfID, TRIM(string//'_'//str_bin), nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), Dust_em_ID(js,mr))
             IF (istat /= nf90_noerr) THEN
               ierr  = 10237
@@ -1264,8 +1192,6 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
 
 !write the writing in a loop !
       DO js=1,DustBins
-        !PRINT*, 'enters the writing out loop, dustbin:', js
-        !PRINT*, 'ID', Dust_e_ID(js)
         istat = nf90_put_var(ncdfID,Dust_e_ID(js), transpose(dust_em_accum(:,:,js)), start=(/1,1,step+1/) )
         IF (istat /= nf90_noerr) THEN
           ierr  = 10220
@@ -1277,8 +1203,6 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
       IF(mineralmaptype == 1) THEN
         DO js=1,DustBins_m
           DO mr=1,11
-            !PRINT*, 'enters the mineral writing out loop'
-            !PRINT*, 'ID', Dust_em_ID(js,mr)
             istat = nf90_put_var(ncdfID,Dust_em_ID(js,mr), transpose(dust_em_accum_m(:,:,js,mr)), start=(/1,1,step+1/) )
             IF (istat /= nf90_noerr) THEN
               ierr  = 10220
