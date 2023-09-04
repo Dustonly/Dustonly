@@ -140,8 +140,8 @@ MODULE tegen02_param
     roa         = 1.227E0,                & ! air density (kg.m-3)
     g           = 9.81E0,                 & ! gravitational constant (m s-2)
 
-    Dmin        = 2.0E-7,                 & ! minimum particules diameter (cm)
-    Dmax        = 1.55E-3,                & ! maximum particules diameter (cm)
+    Dmin        = 2.0E-7,                 & ! minimum particules diameter (m)
+    Dmax        = 1.55E-3,                & ! maximum particules diameter (m)
     Dstep       = 4.6E-2,                 & ! diameter increment (-)
     !Dstep       = 2.3E-2,                 & ! diameter increment (-)
     ! Dstep       = 64.4E-2,                 & ! diameter increment (-)
@@ -255,6 +255,7 @@ MODULE dust_tegen_param
     xnu         = 0.146E0,                    & !cinematic viscosity (cm2.s-1)
     x_rnolds    = 1.561228E0,                 & !Reynolds constant
     xeff        = 10.E0,                      & !efficient fraction
+    ! xeff        = 12255.E0,                      & !efficient fraction
     ZZ          = 1000.E0                       !wind measurment height (cm)
 
   REAL(8), PARAMETER ::                       &
@@ -1116,6 +1117,7 @@ MODULE offline_org
     timeID,      &
     rlonID,      &
     rlatID,      &
+    rotpolID,    &
     lonID,       &
     latID,       &
     DE01ID,      &

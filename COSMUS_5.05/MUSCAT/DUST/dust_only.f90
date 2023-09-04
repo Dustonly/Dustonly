@@ -88,11 +88,11 @@ PROGRAM dust_only
         STOP
       END IF
     END IF
-  ELSEIF (fricvelo_scheme == 2) THEN
+  ELSEIF (fricvelo_scheme == 4) THEN
     ! read in ustar
     print*, 'Read wind data'
     print*, TRIM(ust_var_name)
-    IF (uconst == 999.0) THEN
+    IF (ustconst == 999.0) THEN
       CALL netcdf_in(TRIM(windFile),TRIM(ust_var_name),ust,lasttstep,.TRUE.,ierr,yerr)
       IF (ierr /= 0) THEN
         print*, 'ERROR netcdf in'
@@ -235,7 +235,7 @@ SUBROUTINE def_grid(ierr)
     IF (vconst  /= 999.0) v  = vconst
     IF (dzconst /= 999.0) dz = dzconst
 
-  ELSEIF (fricvelo_scheme == 2) THEN
+  ELSEIF (fricvelo_scheme == 4) THEN
     ALLOCATE(ust(je_tot,ie_tot,lasttstep-firsttstep))
     ust=0.
   END IF
@@ -359,6 +359,7 @@ FUNCTION get_hstop(date_start,date_end)
     IF (eday  == sday ) lday =.TRUE.
     IF (ehour == shour) lhour=.TRUE.
 
+
   END DO
 
   IF (lddebug) PRINT*, 'Leave get_hstop',''//NEW_LINE('')
@@ -406,6 +407,7 @@ SUBROUTINE read_namelist(ierr)
     vegmonFile,        & ! Filename of monthly vegitation cover
     vegdayFile,        & ! Filename of daily vegetation cover
     vegminFile,        & ! Filename of min vegetation cover MF
+    SSR_min,           & !
     z0File,            & ! Filename of Roughness Length
     biomeFile,         & ! Filename of Vegetation Cover/Type Data
     moistFile,         &
@@ -435,6 +437,7 @@ SUBROUTINE read_namelist(ierr)
   vegmonFile      = 'without'   ! Leafe Area Index Data
   vegdayFile      = 'without'   ! Leafe Area Index Data   MF
   vegminFile      = 'without'   ! Leafe Area Index Data   MF
+  SSR_min         =  0.0
   lwithz0         = .FALSE.
   lwithbiom       = .FALSE.
   uconst          = 999.0
@@ -959,57 +962,6 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         RETURN
       ENDIF
 
-      ! rlon
-      istat = nf90_def_var(ncdfID, 'rlon', nf90_FLOAT, (/rlonDim/), rlonID )
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10225
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, rlonID, "standard_name", "grid_longitude")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10226
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, rlonID, "long_name", "rotated longitude")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10227
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, rlonID, "units", "degrees")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10228
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-
-      ! rlat
-      istat = nf90_def_var(ncdfID, 'rlat', nf90_FLOAT, (/rlatDim/), rlatID )
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10229
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, rlatID, "standard_name", "grid_latitude")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10230
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, rlatID, "long_name", "rotated latitude")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10231
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, rlatID, "units", "degrees")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10232
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
 
       ! lon
       istat = nf90_def_var(ncdfID, "lon", nf90_FLOAT,(/rlonDim, rlatDim/), lonID)
@@ -1031,6 +983,12 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         RETURN
       ENDIF
       istat=nf90_put_att(ncdfID, lonID, "units", "degrees_east")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10240
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, lonID, "_CoordinateAxisType", "Lon")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10240
         yerrmsg = TRIM(nf90_strerror(ierr))
@@ -1063,6 +1021,108 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
+      istat=nf90_put_att(ncdfID, latID, "_CoordinateAxisType", "Lat")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10240
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+
+      ! rlon
+      istat = nf90_def_var(ncdfID, 'rlon', nf90_FLOAT, (/rlonDim/), rlonID )
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10225
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, rlonID, "standard_name", "projection_x_coordinate")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10226
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, rlonID, "long_name", "rotated longitude")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10227
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, rlonID, "units", "degrees")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10228
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, rlonID, "axis", "X")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10228
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+
+      ! rlat
+      istat = nf90_def_var(ncdfID, 'rlat', nf90_FLOAT, (/rlatDim/), rlatID )
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10229
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, rlatID, "standard_name", "projection_y_coordinate")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10230
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, rlatID, "long_name", "rotated latitude")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10231
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, rlatID, "units", "degrees")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10232
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, rlatID, "axis", "Y")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10232
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+
+      ! rotpole
+      istat = nf90_def_var(ncdfID, 'rotated_pole', nf90_CHAR,  rotpolID )
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10229
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, rotpolID, "long_name", "coordinates of the rotated North Pole")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10230
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, rotpolID, "grid_mapping_name", "rotated_latitude_longitude")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10230
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, rotpolID, "grid_north_pole_latitude",pollat)
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10230
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, rotpolID, "grid_north_pole_longitude",pollon)
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10230
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
 
       ! DE_01
       istat = nf90_def_var(ncdfID, "DE_01", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE01ID)
@@ -1084,6 +1144,18 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         RETURN
       ENDIF
       istat=nf90_put_att(ncdfID, DE01ID, "units", "kg/m-2")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10240
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, DE01ID, "grid_mapping", "rotated_pole")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10240
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, DE01ID, "coordinates", "lat lon")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10240
         yerrmsg = TRIM(nf90_strerror(ierr))
@@ -1115,6 +1187,18 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
+      istat=nf90_put_att(ncdfID, DE03ID, "grid_mapping", "rotated_pole")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10240
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, DE03ID, "coordinates", "lat lon")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10240
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
 
       ! DE_09
       istat = nf90_def_var(ncdfID, "DE_09", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE09ID)
@@ -1136,6 +1220,18 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         RETURN
       ENDIF
       istat=nf90_put_att(ncdfID, DE09ID, "units", "kg/m-2")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10240
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, DE09ID, "grid_mapping", "rotated_pole")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10240
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, DE09ID, "coordinates", "lat lon")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10240
         yerrmsg = TRIM(nf90_strerror(ierr))
@@ -1167,6 +1263,18 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
+      istat=nf90_put_att(ncdfID, DE26ID, "grid_mapping", "rotated_pole")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10240
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, DE26ID, "coordinates", "lat lon")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10240
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
 
       ! DE_80
       istat = nf90_def_var(ncdfID, "DE_80", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE80ID)
@@ -1188,6 +1296,18 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         RETURN
       ENDIF
       istat=nf90_put_att(ncdfID, DE80ID, "units", "kg/m-2")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10240
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, DE80ID, "grid_mapping", "rotated_pole")
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10240
+        yerrmsg = TRIM(nf90_strerror(ierr))
+        RETURN
+      ENDIF
+      istat=nf90_put_att(ncdfID, DE80ID, "coordinates", "lat lon")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10240
         yerrmsg = TRIM(nf90_strerror(ierr))
@@ -1219,58 +1339,70 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
-
-      ! DE_PM_2.5
-      istat = nf90_def_var(ncdfID, "DE_PM_2.5", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DEPM25ID)
+      istat=nf90_put_att(ncdfID, DETOTID, "grid_mapping", "rotated_pole")
       IF (istat /= nf90_noerr) THEN
-        ierr  = 10237
+        ierr  = 10240
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
-      istat=nf90_put_att(ncdfID, DEPM25ID, "standard_name", "DE_PM_2.5")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10238
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DEPM25ID, "long_name", "Dust emisson < 2.5 µm")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10239
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DEPM25ID, "units", "kg/m-2")
+      istat=nf90_put_att(ncdfID, DETOTID, "coordinates", "lat lon")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10240
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
 
-      ! DE_PM_10
-      istat = nf90_def_var(ncdfID, "DE_PM_10", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DEPM10ID)
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10237
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DEPM10ID, "standard_name", "DE_PM_10")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10238
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DEPM10ID, "long_name", "Dust emisson < 10 µm")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10239
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DEPM10ID, "units", "kg/m-2")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
+      ! ! DE_PM_2.5
+      ! istat = nf90_def_var(ncdfID, "DE_PM_2.5", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DEPM25ID)
+      ! IF (istat /= nf90_noerr) THEN
+      !   ierr  = 10237
+      !   yerrmsg = TRIM(nf90_strerror(ierr))
+      !   RETURN
+      ! ENDIF
+      ! istat=nf90_put_att(ncdfID, DEPM25ID, "standard_name", "DE_PM_2.5")
+      ! IF (istat /= nf90_noerr) THEN
+      !   ierr  = 10238
+      !   yerrmsg = TRIM(nf90_strerror(ierr))
+      !   RETURN
+      ! ENDIF
+      ! istat=nf90_put_att(ncdfID, DEPM25ID, "long_name", "Dust emisson < 2.5 µm")
+      ! IF (istat /= nf90_noerr) THEN
+      !   ierr  = 10239
+      !   yerrmsg = TRIM(nf90_strerror(ierr))
+      !   RETURN
+      ! ENDIF
+      ! istat=nf90_put_att(ncdfID, DEPM25ID, "units", "kg/m-2")
+      ! IF (istat /= nf90_noerr) THEN
+      !   ierr  = 10240
+      !   yerrmsg = TRIM(nf90_strerror(ierr))
+      !   RETURN
+      ! ENDIF
+
+      ! ! DE_PM_10
+      ! istat = nf90_def_var(ncdfID, "DE_PM_10", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DEPM10ID)
+      ! IF (istat /= nf90_noerr) THEN
+      !   ierr  = 10237
+      !   yerrmsg = TRIM(nf90_strerror(ierr))
+      !   RETURN
+      ! ENDIF
+      ! istat=nf90_put_att(ncdfID, DEPM10ID, "standard_name", "DE_PM_10")
+      ! IF (istat /= nf90_noerr) THEN
+      !   ierr  = 10238
+      !   yerrmsg = TRIM(nf90_strerror(ierr))
+      !   RETURN
+      ! ENDIF
+      ! istat=nf90_put_att(ncdfID, DEPM10ID, "long_name", "Dust emisson < 10 µm")
+      ! IF (istat /= nf90_noerr) THEN
+      !   ierr  = 10239
+      !   yerrmsg = TRIM(nf90_strerror(ierr))
+      !   RETURN
+      ! ENDIF
+      ! istat=nf90_put_att(ncdfID, DEPM10ID, "units", "kg/m-2")
+      ! IF (istat /= nf90_noerr) THEN
+      !   ierr  = 10240
+      !   yerrmsg = TRIM(nf90_strerror(ierr))
+      !   RETURN
+      ! ENDIF
 
 
 
