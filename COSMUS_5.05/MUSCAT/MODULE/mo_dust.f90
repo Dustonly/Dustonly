@@ -231,17 +231,8 @@ MODULE mo_dust
   REAL(8), ALLOCATABLE ::  &
     read_input(:,:,:)       ! (j,i,time)
 
-  ! REAL(8), ALLOCATABLE ::  &
-  !   srel_map(:,:,:),&          ! (j,i,nclass)
-  !   mrel_map(:,:,:),&          ! (j,i,nclass)
-  !   mrel_sum(:,:,:),&          ! (j,i,nclass)
-  !   mrel_mx(:,:,:,:)          ! (j,i,nclass,nclass)
-
   REAL (8)   :: &
     dp_meter(nclass) ! particle diameter [m]
-
-  ! REAL(8), ALLOCATABLE ::  &
-  !   ustar(:,:)          ! (j,i,nclass)
 
   REAL (8)   :: &
     Uth(Nclass)!,              & ! threshold friction velocity
@@ -266,18 +257,6 @@ MODULE mo_dust
   &              SG_lai (:,:,:,:),          & ! leafe area  index
   &              SG_vegmin (:,:,:)             ! minimum of vegetation
 
-
-
-
-  !---------------------------------------------------------------------
-  ! !-- soil class properties
-  !       INTEGER, PARAMETER :: nats   = 45     & ! amount of soil types, originally "nats = 12", "nats = 14"
-  ! &                          ,nClass = 196      ! amount of particule classes
-  !       REAL(8) :: srel(nats,Nclass)          & !
-  ! &               ,srelV(nats,Nclass)         & !
-  ! &               ,su_srelV(nats,nclass)      & !
-  ! 	&               ,Uth(Nclass)                & ! threshold friction velocity
-  ! 	&               ,Uth_bod(Nclass)              ! threshold friction velocity
 
   ! additional namelist variables for the offline model
 #ifdef OFFLINE

@@ -13,104 +13,16 @@
 !
 !---------------------------------------------------------------------
 ! Description:
-! New module for dust emissions in muscat
-! The aim is to simplify the dust Code
-! create a simple structur: 1 Modul, 1 organizes routine, logical subroutines called in organize
-! remove outdated dependencies and unused input
-! rename unlogical named vars
-! translate into more modern Fortran
+! This file contains lookup tables and parametres for the dust emission scheme
 !---------------------------------------------------------------------
 !
-! Current Code Owner:Institut für Troposphärenforschung e.V. Leipzig, Matthias Faust
+! Code Owner:Institut für Troposphärenforschung e.V. Leipzig, 
 ! email:  faust@tropos.de
-! History:
-! Version      Date       Name
-! ----------   ---------- ----
-! V0           2018-11-08 Start Coding
-! V0.1         2018-11-08 add modules: dust_param_tegen
-! V0.2         2018-11-16 add modules: dust_org, dust_tegen_data
-!
 !
 ! Code Description:
 ! Language: Fortran 90.
 ! Software Standards: COSMO Standards for Source Code Development
 !---------------------------------------------------------------------
-!
-! MODULE dust_org
-! !---------------------------------------------------------------------
-! ! Description:
-! ! This module contains general parameters for dust emisson
-! !---------------------------------------------------------------------
-! USE mo_dust, ONLY: &
-!   DustBins  ! number of dust particle fractions
-!
-!
-!   IMPLICIT NONE
-!
-!   ! fixed dimensions for soil data
-!   INTEGER, PARAMETER :: &
-!     SoilNumb = 5,       & ! number of soil properties
-!     SoilFrac = 1          ! number of soil fraction
-!
-!   ! ! MUSCAT grid structure
-!   ! TYPE dust_subdomain
-!   !   REAL(8), POINTER ::     &
-!   !     soilprop (:,:,:,:),   & !soil properties
-!   !     lai (:,:,:,:),        & !fraction of vegetation
-!   !     vegmin (:,:,:),       & !minimum of vegetation
-!   !     alpha (:,:,:),        & !ratio horiz/vertical flux
-!   !     c_eff (:,:,:),        & !fraction efficace
-!   !     lai_eff (:,:,:,:),    & !effective surface for dust deflation from LAI condition
-!   !     w_str (:,:,:),        & !threshold soil moisture w' (Fecan, F. et al., 1999)
-!   !     umin2(:,:,:),         &
-!   !     d_emis(:,:,:)          !dust emission
-!   ! END TYPE dust_subdomain
-!   ! TYPE (dust_subdomain), ALLOCATABLE, TARGET :: dust(:)
-!
-!   ! ! LM grid arrays
-!   ! REAL(8), POINTER ::   &
-!   !   SG_soilprop (:,:,:,:),     & ! soil properties
-!   !   SG_veg (:,:,:,:),          & ! leafe area index
-!   !   SG_vegmin (:,:,:)            ! minimum of vegetation
-!
-!   ! soil class properties
-!   INTEGER, PARAMETER :: &
-!     nats   = 45,        & ! amount of soil types
-!     nclass = 196          ! amount of particule classes
-!
-!   ! dummy variable for input, allocate new when switch from 2d to 3d
-!   REAL(8), ALLOCATABLE ::  &
-!     read_input(:,:,:)       ! (j,i,time)
-!
-!   REAL (8)   :: &
-!     Uth(Nclass)!,              & ! threshold friction velocity
-!
-!   ! 2D Arrays
-!   REAL(8) ::                  &
-!     srel(nats,nclass),        & !
-!     srelV(nats,nclass),       & !
-!     su_srelV(nats,nclass)!,    & !
-!
-!   ! new dust datatype with less in it.
-!   TYPE dust_it
-!   REAL(8), POINTER ::   &
-!     biome(:,:),         &
-!     cult(:,:),          &
-!     veg (:,:,:),        & !leafe area index
-!     vegmin(:,:)
-!   END TYPE dust_it
-!   TYPE (dust_it), ALLOCATABLE, TARGET :: dust_ini(:)
-!
-!
-!
-!   ! internal switches
-!   LOGICAL     :: &
-!     lvegdaily,     &   ! daily or monthly input of lai
-!     laidaily,    & ! daily or monthly input of lai     MF
-!     lvegmin        ! daily or monthly input of lai     MF
-!
-! END MODULE dust_org
-
 
 
 MODULE tegen02_param
@@ -162,43 +74,6 @@ MODULE tegen02_param
     VK          = 0.4E0  !Von Karman constant: 0.4 (0.35 <--> 0.42 see Stull)
 
 
-  !   a_rnolds    = 1331.647E0,                 & !Reynolds constant
-  !   aeff        = 0.35E0,                     & !efficient fraction
-  !   aw          = 1.121E0,                    & !soil moisture parameter
-  !   abs_density = 2600.0E0,                   & !absolute density of the soil (2.6 kg/m3)
-  !   b_rnolds    = 0.38194E0,                  & !Reynolds constant
-  !   bw          = 0.68E0,                     & !soil moisture parameter
-  !   Cd          = 1.2507E-06,                 & !flux dimensioning parameter,1.00*roa/g !!BERND
-  !   d_thrsld    = 0.00000231E0,               & !thresold value
-  !   Dmin        = 0.00002E0,                  & !minimum particules diameter (cm)
-  !   Dmax        = 0.155E0,                    & !maximum particules diameter (cm)
-  !   Dstep       = 0.0460517018598807E0,       & !diameter increment (cm)
-  !   e           = 2.7182818285E0,             & !
-  !   g           = 9.81E0,                     & !gravitational constant (m s-2)
-  !   pi2         = 3.141592654E0,              & !pi=3.141592654
-  !   porosity    = 0.4E0,                      & !porosity of the soil (40%)
-  !   roa         = 0.001.227E0,                 & !air density (kg.m-3)
-  !
-  !   rop         = 2650.0E0,                     & !particules density (kg.m-3) Sahara; 1.5g/cm3 for Diatomite
-  !   rop_bod     = 2100.0E0,                     & !particules density (kg.cm-3) Bodele (Diatomite)
-  !
-  !   u1fac       = 0.89E0,                     & !0.66; 1.0
-  !
-  !   umin        = 13.75E0,                    & !minimum threshold friction windspeed (cm/s) 18.06/13.75/21.0
-  !   Ustar_min   = 5.E0,                       & !minimum friction windspeed (cm/s)
-  !   Ustar_max   = 150.E0,                     & !maximum friction windspeed (cm/s)
-  !   Ustar_step  = 2.2674-02,                  & !friction windspeed increment
-  !   VK          = 0.4E0,                      & !Von Karman constant: 0.4 (0.35 <--> 0.42 see Stull)
-  !   w0          = 99.E0,                      & !soil layer water content threshold
-  !   xnu         = 0.146E0,                    & !cinematic viscosity (cm2.s-1)
-  !   x_rnolds    = 1.561228E0,                 & !Reynolds constant
-  !   xeff        = 10.E0,                      & !efficient fraction
-  !   ZZ          = 1000.E0                       !wind measurment height (cm)
-  !
-  ! REAL(8), PARAMETER ::                       &
-  !   veg_lim     = 0.6E0,                      & !lai limit for deflation !orgi 0.25 MF
-  !   veg_lim2    = 0.5E0                         !lai limit to determine shrub or grass for tropical or temperate shrubland
-  !  ----------------------------------------------------------
 END MODULE tegen02_param
 
 
@@ -1093,25 +968,6 @@ MODULE offline_org
   TYPE (rectangle), ALLOCATABLE :: decomp(:)
 
 
-  ! TYPE geo_subdomain
-  !   REAL(8), POINTER :: dxK(:,:)
-  !   REAL(8), POINTER :: dyK(:,:)
-  !   REAL(8), POINTER :: dz(:,:,:)
-  ! END TYPE geo_subdomain
-  ! TYPE (geo_subdomain), ALLOCATABLE, TARGET :: geo(:)
-  !
-  !
-  ! TYPE c_submet
-  !   REAL(8), POINTER :: rho(:,:,:,:)
-  !   REAL(8), POINTER :: u(:,:,:,:)
-  !   REAL(8), POINTER :: v(:,:,:,:)
-  !   ! REAL(8), POINTER :: w(:,:,:,:)
-  !   REAL(8), POINTER :: QRSur(:,:,:)       ! relative humidity
-  ! END TYPE c_submet
-  ! TYPE (c_submet), ALLOCATABLE, TARGET :: meteo(:)
-
-
-
   INTEGER, PARAMETER :: &
     num_compute = 1,    &
     my_cart_id  = 0,    &
@@ -1155,27 +1011,7 @@ MODULE offline_org
     rlatID,      &
     lonID,       &
     latID,       &
-!    DE01ID,      &
-!    DE01MID,      &
-!    DE03ID,      &
-!    DE03MID,      &
-!    DE09ID,      &
-!    DE09MID,      &
-!    DE26ID,      &
-!    DE26MID,      &
-!    DE80ID,      &
-!    DE80MID,      &
     DETOTID,     &
-!    DE1MID,     &
-!    DE2MID,     &
-!    DE3MID,     &
-!    DE4MID,     &
-!    DE5MID,     &
-!    DE6MID,     &
-!    DE7MID,     &
-!    DE8MID,     &
-!    DEPM25ID,    &
-!    DEPM10ID,    &
     timeDim,     &
     rlonDim,     &
     rlatDim

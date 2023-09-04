@@ -14,24 +14,11 @@
 MODULE src_dust
 !---------------------------------------------------------------------
 ! Description:
-! New module for dust emissions in muscat
-! The aim is to simplify the dust Code
-! create a simple structur: 1 Modul containing a organizes routine, logical subroutines called in organize
-! remove outdated dependencies and unused input
-! rename unlogical named vars
-! translate into more modern Fortran
+! Module for dust emissions in muscat
 !---------------------------------------------------------------------
 !
-! Current Code Owner:Institut für Troposphärenforschung e.V. Leipzig, Matthias Faust
+! Code Owner:Institut für Troposphärenforschung e.V. Leipzig 
 ! email:  faust@tropos.de
-! History:
-! Version      Date       Name
-! ----------   ---------- ----
-! V0           2018-06-29 Start Coding
-! V0.1         2018-07-12 add read_ascii
-! V0.2         2018_07_16 add copy2block
-! V0.3         2018_07_17 add read_nc for Vegetation
-!
 !
 ! Code Description:
 ! Language: Fortran 90.
@@ -724,7 +711,7 @@ MODULE src_dust
         END IF
 
 
-        ! +-+-+- Sec 1.4.6 Vegetation -+-+-+
+        ! +-+-+- Sec 1.4.7 Vegetation -+-+-+
         IF (veg_scheme == 1) THEN
           CALL okin_vegetation(decomp(ib1),dimveg)
         ELSE IF (veg_scheme == 2) THEN
@@ -732,7 +719,7 @@ MODULE src_dust
         END IF
 
 
-        ! +-+-+- Sec 1.4.7 Surface Roughness -+-+-+
+        ! +-+-+- Sec 1.4.8 Surface Roughness -+-+-+
         IF (lwithz0) THEN
           ! Drag partition
           CALL roughness(decomp(ib1),dimveg)
@@ -782,14 +769,6 @@ MODULE src_dust
   !---------------------------------------------------------------------
   SUBROUTINE init_thresold()
   !---------------------------------------------------------------------
-  ! Description:
-
-  ! psrcType == 1
-  ! Preferential Sources = Potential lakes
-  !   If a grid box is identified as dust source then the soiltype switches to
-  !   best emission properties (100% silt).
-  !
-  !
   !--------------------------------------------------------------------
 
     USE mo_dust
@@ -857,8 +836,6 @@ MODULE src_dust
   !---------------------------------------------------------------------
   SUBROUTINE init_soilmap(subdomain)
   !---------------------------------------------------------------------
-  ! Description:
-
   !--------------------------------------------------------------------
 
     USE mo_dust
@@ -983,8 +960,6 @@ MODULE src_dust
   !---------------------------------------------------------------------
   SUBROUTINE init_alpha(subdomain,alpha_type)
   !---------------------------------------------------------------------
-  ! Description:
-
   !--------------------------------------------------------------------
 
     USE mo_dust
@@ -1085,14 +1060,6 @@ MODULE src_dust
   !---------------------------------------------------------------------
   SUBROUTINE init_psrc(subdomain)
   !---------------------------------------------------------------------
-  ! Description:
-
-  ! psrcType == 1
-  ! Preferential Sources = Potential lakes
-  !   If a grid box is identified as dust source then the soiltype switches to
-  !   best emission properties (100% silt).
-  !
-  !
   !--------------------------------------------------------------------
 
     USE mo_dust
@@ -1782,37 +1749,6 @@ MODULE src_dust
         IF (z0(j,i) == 0.0) z0(j,i)=1.E-9
 
 
-
-
-
-
-    !
-    !     !---------------------------------------------------------------------------------------
-    !     !       Factors according to dsf increase seen in data **
-    !     !---------------------------------------------------------------------------------------
-    !    umin2(j,i,1)=umin
-    !    IF (sp(j,i,1,3).EQ.2.) THEN      !rivm !
-    !
-    !     ! 0.96(rx1.5) 0.89(sx2) 0.72(rx3) 0.89(rx2)   rx1.5 for umin=18: 0.93
-    !     !---------------------------------------------------------------------------------------
-    !      IF ((sp(j,i,1,5).EQ.21..OR.sp(j,i,1,5).EQ.27)       &
-    !         .OR.(sp(j,i,1,5).EQ.13.OR.sp(j,i,1,5).EQ.14))    &
-    !          umin2(j,i,1) = umin*0.93
-    !         ! 0.97(rx1.5) 0.95(sx2) 0.73(rx3) 0.93(rx2)rx1.5 for umin=18: 0.99
-    !         !---------------------------------------------------------------------------------------
-    !      IF ((sp(j,i,1,5).EQ.19.OR.sp(j,i,1,5).EQ.20))       &
-    !           umin2(j,i,1) = umin*0.99
-    !    END IF !cult=2
-    !
-    !     !  crop 0.5 (rivm/sage x10), 0.58 (rivmx5) 0.68 rivm x 3.5, 0.77 rivm x 2.5, 0.86 rivm x 2
-    !     !---------------------------------------------------------------------------------------
-    !    IF (sp(j,i,1,3).eq.1.) THEN      !rivm !
-    !      IF ((sp(j,i,1,5).EQ.21.OR.sp(j,i,1,5).EQ.27)     &
-    !      .OR.(sp(j,i,1,5).EQ.13.OR.sp(j,i,1,5).EQ.14))    &
-    !       umin2(j,i,1)=umin*0.73                         !&
-    !       !             umin2(j,i,1)=umin*0.5
-    !    END IF !cult=1
-
       END DO
     END DO
     ! end lon-lat-loop
@@ -1828,7 +1764,7 @@ MODULE src_dust
   SUBROUTINE emission_tegen(subdomain,flux)
   !---------------------------------------------------------------------
   ! Description:
-  !   This subroutine performes the dust flux calculation for
+  !   Original subroutine for
   !   the dust emisson scheme by Tegen et al. 2002
   !   https://doi.org/10.1029/2001JD000963
   !
@@ -2206,8 +2142,11 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
   ! Methode 1:
   !   Calculate ustar with the wind profile method using the 10 m wind
   !   or the wind of the lowes model layer and the roughness length.
-  !
   ! Methode 2:
+  !   Same as 1 but with a corrertion for not neutral stratification
+  ! Methode 3:
+  !   Get Ustar for the COSMO turbulence scheme
+  ! Methode 4:
   !   Use pre-calculated data of ustar.
   !--------------------------------------------------------------------
 
@@ -2759,12 +2698,9 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
   END SUBROUTINE roughness
 
 
-  !+ roughness
   !---------------------------------------------------------------------
   SUBROUTINE fecan(yaction,subdomain,timestep_now)
   !---------------------------------------------------------------------
-  ! Description:
-  !
   !--------------------------------------------------------------------
 
     USE dust_tegen_param
