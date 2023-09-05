@@ -1104,219 +1104,122 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
         RETURN
       ENDIF
 
+      ! Def all variables
+
       ! DE_01
-      istat = nf90_def_var(ncdfID, "DE_01", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE01ID)
+      istat = nf90_def_var(ncdfID, "DE_01", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), Dust_e_ID(1))
       IF (istat /= nf90_noerr) THEN
         ierr  = 10237
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
-      istat=nf90_put_att(ncdfID, DE01ID, "standard_name", "DE_01")
+      istat=nf90_put_att(ncdfID, Dust_e_ID(1), "standard_name", "DE_01")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10238
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
-      istat=nf90_put_att(ncdfID, DE01ID, "long_name", "Dust emisson < 1 µm")
+      istat=nf90_put_att(ncdfID, Dust_e_ID(1), "long_name", "Dust emisson < 1 µm")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10239
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE01ID, "units", "kg/m-2")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE01ID, "grid_mapping", "rotated_pole")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE01ID, "coordinates", "lat lon")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
 
       ! DE_03
-      istat = nf90_def_var(ncdfID, "DE_03", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE03ID)
+      istat = nf90_def_var(ncdfID, "DE_03", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), Dust_e_ID(2))
       IF (istat /= nf90_noerr) THEN
         ierr  = 10237
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
-      istat=nf90_put_att(ncdfID, DE03ID, "standard_name", "DE_03")
+      istat=nf90_put_att(ncdfID, Dust_e_ID(2), "standard_name", "DE_03")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10238
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
-      istat=nf90_put_att(ncdfID, DE03ID, "long_name", "Dust emisson < 3 µm")
+      istat=nf90_put_att(ncdfID, Dust_e_ID(2), "long_name", "Dust emisson < 3 µm")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10239
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE03ID, "units", "kg/m-2")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE03ID, "grid_mapping", "rotated_pole")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE03ID, "coordinates", "lat lon")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
 
       ! DE_09
-      istat = nf90_def_var(ncdfID, "DE_09", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE09ID)
+      istat = nf90_def_var(ncdfID, "DE_09", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), Dust_e_ID(3))
       IF (istat /= nf90_noerr) THEN
         ierr  = 10237
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
-      istat=nf90_put_att(ncdfID, DE09ID, "standard_name", "DE_09")
+      istat=nf90_put_att(ncdfID, Dust_e_ID(3), "standard_name", "DE_09")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10238
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
-      istat=nf90_put_att(ncdfID, DE09ID, "long_name", "Dust emisson < 9 µm")
+      istat=nf90_put_att(ncdfID, Dust_e_ID(3), "long_name", "Dust emisson < 9 µm")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10239
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE09ID, "units", "kg/m-2")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE09ID, "grid_mapping", "rotated_pole")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE09ID, "coordinates", "lat lon")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
 
       ! DE_26
-      istat = nf90_def_var(ncdfID, "DE_26", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE26ID)
+      istat = nf90_def_var(ncdfID, "DE_26", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), Dust_e_ID(4))
       IF (istat /= nf90_noerr) THEN
         ierr  = 10237
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
-      istat=nf90_put_att(ncdfID, DE26ID, "standard_name", "DE_26")
+      istat=nf90_put_att(ncdfID, Dust_e_ID(4), "standard_name", "DE_26")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10238
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
-      istat=nf90_put_att(ncdfID, DE26ID, "long_name", "Dust emisson < 26 µm")
+      istat=nf90_put_att(ncdfID, Dust_e_ID(4), "long_name", "Dust emisson < 26 µm")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10239
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE26ID, "units", "kg/m-2")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE26ID, "grid_mapping", "rotated_pole")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE26ID, "coordinates", "lat lon")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
 
       ! DE_80
-      istat = nf90_def_var(ncdfID, "DE_80", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), DE80ID)
+      istat = nf90_def_var(ncdfID, "DE_80", nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), Dust_e_ID(5))
       IF (istat /= nf90_noerr) THEN
         ierr  = 10237
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
-      istat=nf90_put_att(ncdfID, DE80ID, "standard_name", "DE_80")
+      istat=nf90_put_att(ncdfID, Dust_e_ID(5), "standard_name", "DE_80")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10238
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
-      istat=nf90_put_att(ncdfID, DE80ID, "long_name", "Dust emisson < 80 µm")
+      istat=nf90_put_att(ncdfID, Dust_e_ID(5), "long_name", "Dust emisson < 80 µm")
       IF (istat /= nf90_noerr) THEN
         ierr  = 10239
         yerrmsg = TRIM(nf90_strerror(ierr))
         RETURN
       ENDIF
-      istat=nf90_put_att(ncdfID, DE80ID, "units", "kg/m-2")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE80ID, "grid_mapping", "rotated_pole")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
-      istat=nf90_put_att(ncdfID, DE80ID, "coordinates", "lat lon")
-      IF (istat /= nf90_noerr) THEN
-        ierr  = 10240
-        yerrmsg = TRIM(nf90_strerror(ierr))
-        RETURN
-      ENDIF
 
-
-!Define the attributes of the dust bins based on the dust bin names
       DO js=1,DustBins
-        string = TRIM(Dust_e_Name(js))
-        istat = nf90_def_var(ncdfID, string, nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), Dust_e_ID(js))
-        IF (istat /= nf90_noerr) THEN
-          ierr  = 10237
-          yerrmsg = TRIM(nf90_strerror(ierr))
-          RETURN
-        ENDIF
-        istat=nf90_put_att(ncdfID, Dust_e_ID(js), "standard_name", string)
-        IF (istat /= nf90_noerr) THEN
-          ierr  = 10238
-          yerrmsg = TRIM(nf90_strerror(ierr))
-          RETURN
-        ENDIF
-        istat=nf90_put_att(ncdfID, Dust_e_ID(js), "long_name", "Dust emisson <")
-        IF (istat /= nf90_noerr) THEN
-          ierr  = 10239
-          yerrmsg = TRIM(nf90_strerror(ierr))
-          RETURN
-        ENDIF
         istat=nf90_put_att(ncdfID, Dust_e_ID(js), "units", "kg/m-2")
+        IF (istat /= nf90_noerr) THEN
+          ierr  = 10240
+          yerrmsg = TRIM(nf90_strerror(ierr))
+          RETURN
+        ENDIF
+        istat=nf90_put_att(ncdfID, Dust_e_ID(js), "grid_mapping", "rotated_pole")
+        IF (istat /= nf90_noerr) THEN
+          ierr  = 10240
+          yerrmsg = TRIM(nf90_strerror(ierr))
+          RETURN
+        ENDIF
+        istat=nf90_put_att(ncdfID, Dust_e_ID(js), "coordinates", "lat lon")
         IF (istat /= nf90_noerr) THEN
           ierr  = 10240
           yerrmsg = TRIM(nf90_strerror(ierr))
@@ -1471,7 +1374,9 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
           geolon=180./pi * atan((cos(pi/180.*rlat)*sin(pi/180.*rlon))/  &
                                 (sin(pi/180.*pollat)*cos(pi/180.*rlat)* &
                                  cos(pi/180.*rlon)-sin(pi/180.*rlat)*   &
-                                 cos(pi/180.*pollat))) + pollon + 180.
+                                 cos(pi/180.*pollat))) + pollon 
+          IF (pollon < 0.) geolon = geolon + 180.
+          IF (pollon > 0.) geolon = geolon - 180.
           geolat=180./pi * asin(sin(pi/180.*rlat)*sin(pi/180.*pollat) + &
                                 cos(pi/180.*rlat)*cos(pi/180.*rlon)*cos(pi/180.*pollat))
           istat = NF90_PUT_VAR(ncdfID,lonID, geolon, start=(/i+1,j+1/) )
