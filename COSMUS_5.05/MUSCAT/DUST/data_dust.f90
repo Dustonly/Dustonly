@@ -134,6 +134,7 @@ MODULE dust_tegen_param
     xnu         = 0.146E0,                    & !cinematic viscosity (cm2.s-1)
     x_rnolds    = 1.561228E0,                 & !Reynolds constant
     xeff        = 10.E0,                      & !efficient fraction
+    ! xeff        = 12255.E0,                      & !efficient fraction
     ZZ          = 1000.E0                       !wind measurment height (cm)
 
   REAL(8), PARAMETER ::                       &
@@ -1009,6 +1010,7 @@ MODULE offline_org
     timeID,      &
     rlonID,      &
     rlatID,      &
+    rotpolID,    &
     lonID,       &
     latID,       &
     DETOTID,     &

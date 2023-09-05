@@ -406,7 +406,8 @@ MODULE src_dust
 #ifdef OFFLINE
           ifile_dim(ifile_num) = lasttstep+1-firsttstep
 #else
-          ifile_dim(ifile_num) = (hstop - hstart) * moistinc + 2
+          ! ifile_dim(ifile_num) = (hstop - hstart) * moistinc + 2
+          ifile_dim(ifile_num) = hstop / moistinc + 2
 #endif
         END IF
       ELSE
@@ -537,7 +538,8 @@ MODULE src_dust
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:lasttstep+1-firsttstep))
 #else
         ALLOCATE(dust(ib1)%vmoist(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
-                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:(hstop - hstart) * moistinc + 2))
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:hstop  / moistinc + 2))
+                ! decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:(hstop - hstart) * moistinc + 2))
 #endif
         ALLOCATE(dust(ib1)%vegmin2(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
@@ -1368,7 +1370,6 @@ MODULE src_dust
         IF (lvegdaily) THEN
           ! find the exact day and set "tnow" with the number of the actually day
           READ(ydate_ini(9:10),*) time_start
-          time_start=time_start + hstart
           time_now=time_start+ntstep*dt/3600.
           tnow=time_now/24 + 1 ! convert to integer
         ELSE ! if the drag partition has monthly values "tnow" is the number of the month
@@ -1384,6 +1385,7 @@ MODULE src_dust
 
           ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
+          ! feff = MIN(feff_z0(j,i) , feff_veg(j,i,tnow))
           feff = feff_z0(j,i) * feff_veg(j,i,tnow)
           !PRINT*, 'feff multiplied is:', feff_z0(j,i) * feff_veg(j,i,tnow),''//NEW_LINE('')
           !PRINT*, 'feff is:', feff,''//NEW_LINE('')
@@ -2632,6 +2634,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     REAL(8) ::  &
       local_feff,        &  ! feff inside the loop
       z0s,               &  ! small scale roughness length
+      z0l,               &  ! local roughness length
       AAA,               &
       BB,                &
       CCC,               &  ! dummys
@@ -2660,11 +2663,13 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       ! z0 and efficient fraction feff
       ! partition of energy between the surface and the elements of rugosity, these pp 111-112
 
-      IF (z0(j,i) <= 0.) THEN
+      z0l = z0(j,i)
+
+      IF (z0l <= 0.) THEN
        z0(j,i) = 0.
        local_feff = 1.
       ELSE
-       AAA = log(z0(j,i)/z0s)
+       AAA = log(z0l/z0s)
        BB = log(aeff*(xeff/z0s)**0.8)
        CCC = 1.- AAA/BB
 
