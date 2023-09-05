@@ -1,0 +1,4 @@
+dustonly
+objs/
+*.o
+*.mod
