@@ -405,6 +405,8 @@ SUBROUTINE read_namelist(ierr)
     uconst,            &
     vconst,            &
     ustconst,          &
+    z0const,           &
+    z0synop,           &
     dzconst,           &
     u_var_name,        & ! Name of u variable in Input file
     v_var_name,        & ! Name of v variable in Input file
@@ -437,6 +439,8 @@ SUBROUTINE read_namelist(ierr)
   vconst          = 999.0
   ustconst        = 999.0
   dzconst         = 999.0
+  z0const         = 999.0
+  z0synop         = 0.01
   u_var_name      = 'u10'
   v_var_name      = 'v10'
   ust_var_name    = 'zust'
@@ -1226,6 +1230,7 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
           RETURN
         ENDIF
       END DO
+
 
       IF (mineralmaptype == 1) THEN
         DO js = 1,DustBins_m

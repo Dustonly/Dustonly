@@ -280,14 +280,14 @@ MODULE src_dust
 
       ! z0File maybe necessary
       IF (lwithz0) THEN
-        IF (TRIM(z0File) == 'without') THEN
+        IF (z0const == 999.0 .AND. TRIM(z0File) == 'without') THEN
           ierr = 100005
           yerr = 'z0File is missing'
           PRINT*,'ERROR    src_dust "init" '
           PRINT*,'         #',ierr
           PRINT*,'         ',yerr
           STOP
-        ELSE
+        ELSEIF (TRIM(z0File) /= 'without') THEN
           ifile_num = ifile_num + 1
           ifile(ifile_num) = 'z0'
           ifile_dim(ifile_num) = 1
@@ -602,6 +602,10 @@ MODULE src_dust
         dust(ib1)%mineralmap = 0.
 
         dust(ib1)%ustar = 0.
+
+        IF (z0const /= 999.0) dust(ib1)%z0(:,:)=z0const
+        
+
 
       END DO
 
@@ -2174,7 +2178,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
               ! z0l  = z0(j,i)/100.
               ! z0l  = gz0(i+nboundlines,j+nboundlines)/9.81
               ! IF (z0l > 0.1) z0l = 0.1
-              z0l  = 0.01
+              z0l  = z0synop
 
               ustn = (VK * tot_wind )/(log( zl/(z0l))) ! [m/s]
               ! ustn = (VK * tot_wind_d )/(log( zl/(z0l))) ! [m/s] ?
@@ -2193,7 +2197,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
               ! z0l  = z0(j,i)/100.
               ! z0l  = gz0(i+nboundlines,j+nboundlines)/9.81
               ! IF (z0l > 0.1) z0l = 0.1
-              z0l  = 0.01
+              z0l  = z0synop
 
               ! fist guess ustar
               ustn = (VK * tot_wind )/(log( zl/(z0l))) ! [m/s]
@@ -2570,7 +2574,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       ! z0 and efficient fraction feff
       ! partition of energy between the surface and the elements of rugosity, these pp 111-112
 
-      z0l = z0(j,i)
+        z0l = z0(j,i)
+
 
       IF (z0l <= 0.) THEN
        z0(j,i) = 0.

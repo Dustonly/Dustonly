@@ -261,6 +261,8 @@ MODULE mo_dust
     uconst,    &
     vconst,    &
     ustconst,  &
+    z0const,  &
+    z0synop,  &
     dzconst
 
 
