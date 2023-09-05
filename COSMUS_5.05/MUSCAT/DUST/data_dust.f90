@@ -128,7 +128,8 @@ MODULE tegen02_param
     nbin = 24,               & !max number of bins
     ! nmode = 4,               &
     nspe = 14,               & !Nmode*3+2
-    ntrace = DustBins          !max number of bins
+    ntrace = DustBins,       &   !max number of bins
+    nmin = 12
 
 
   REAL(8), PARAMETER ::                   &
@@ -145,6 +146,8 @@ MODULE tegen02_param
     Dstep       = 4.6E-2,                 & ! diameter increment (-)
     !Dstep       = 2.3E-2,                 & ! diameter increment (-)
     ! Dstep       = 64.4E-2,                 & ! diameter increment (-)
+
+    u1fac       = 1.0E0,                 &
 
     median_dp_csand = 707.0E-6,           & ! median diameter of coarse sand [m]
     median_dp_sand  = 158.0E-6,           & ! median diameter of sand [m]
@@ -217,7 +220,8 @@ MODULE dust_tegen_param
     nbin = 24,               & !max number of bins
     ! nmode = 4,               &
     nspe = 14,               & !Nmode*3+2
-    ntrace = DustBins          !max number of bins
+    ntrace = DustBins,       &   !max number of bins
+    nmin = 12
 
 
   REAL(8), PARAMETER ::                       &
@@ -244,7 +248,7 @@ MODULE dust_tegen_param
     rop         = 2.65E0,                     & !particules density (g.cm-3) Sahara; 1.5g/cm3 for Diatomite
     rop_bod     = 2.1E0,                      & !particules density (g.cm-3) Bodele (Diatomite)
 
-    u1fac       = 0.89E0,                     & !0.66; 1.0
+    u1fac       = 1.0E0,                      & !0.66; 1.0
 
     umin        = 13.75E0,                    & !minimum threshold friction windspeed (cm/s) 18.06/13.75/21.0
     Ustar_min   = 5.E0,                       & !minimum friction windspeed (cm/s)
@@ -278,9 +282,9 @@ MODULE dust_tegen_data
 ! This module contains parameters for the Tegen dust emisson scheme
 !---------------------------------------------------------------------
   USE mo_dust, ONLY: &
-    nats
+    nats, DustBins
   USE dust_tegen_param, ONLY: &
-  combimax,nspe
+  combimax,nspe, nmin
 
 
   ! ------------
@@ -327,7 +331,7 @@ MODULE dust_tegen_data
 
    IMPLICIT NONE
 
-   INTEGER :: jspe
+   INTEGER :: jspe, bins
 
    INTEGER, DIMENSION(combimax) :: active
 
@@ -1028,6 +1032,37 @@ MODULE dust_tegen_data
              0.0002E0, 2.E0, 0.3298E0 ,        &
              3.98E-06,  0.2E0/
 
+!----------------------------------------------------------------
+!mineral_dist --> fractions of the dustbin emission that corresponds to the mineral size distribution
+!----------------------------------------------------------------
+
+REAL, DIMENSION(nmin,DustBins) :: mineral_dist
+!the fractions are temporary, more analysis is needed
+      data (mineral_dist(1,bins), bins=1,DustBins)/ &
+        1., 0.5, 0. , 0. , 0./
+      data (mineral_dist(2,bins), bins=1,DustBins)/ &
+        1., 0.5, 0. , 0. , 0./
+      data (mineral_dist(3,bins), bins=1,DustBins)/ &
+        1., 0.5, 0. , 0. , 0./
+      data (mineral_dist(4,bins), bins=1,DustBins)/ &
+        1., 0.5, 0. , 0. , 0./
+      data (mineral_dist(5,bins), bins=1,DustBins)/ &
+        1., 0.5, 0. , 0. , 0./
+      data (mineral_dist(6,bins), bins=1,DustBins)/ &
+        1., 0.5, 0. , 0. , 0./
+      data (mineral_dist(7,bins), bins=1,DustBins)/ &
+        0., 0.5, 1. , 1. , 0.05/
+      data (mineral_dist(8,bins), bins=1,DustBins)/ &
+        0., 0.5, 1. , 1. , 0.05/
+      data (mineral_dist(9,bins), bins=1,DustBins)/ &
+        0., 0.5, 1. , 1. , 0.05/
+      data (mineral_dist(10,bins), bins=1,DustBins)/ &
+        0., 0.5, 1. , 1. , 0.05/
+      data (mineral_dist(11,bins), bins=1,DustBins)/ &
+        0., 0.5, 1. , 1. , 0.05/
+      data (mineral_dist(12,bins), bins=1,DustBins)/ &
+        0., 0.5, 1. , 1. , 0.05/
+
 END MODULE dust_tegen_data
 
 #ifdef OFFLINE
@@ -1040,7 +1075,9 @@ MODULE offline_org
     ust(:,:,:), &      ! friction velocity
     dz(:,:,:), &
     dust_flux(:,:,:,:), & !
-    dust_em_accum(:,:,:)
+    dust_flux_m(:,:,:,:,:), &
+    dust_em_accum(:,:,:), &
+    dust_em_accum_m(:,:,:,:)   !dust accumulation for mineral bins
 
 
   ! data type for muscat subdomain
@@ -1086,8 +1123,8 @@ MODULE offline_org
     ConvPart    = 1,    &
     nt          = 8,    &
     ntz         = 1,    &
-    ScalCur     = 1!,    &
-    ! WindCur     = 1
+    ScalCur     = 1,    &
+    miner       = 12     !minerals number
 
   INTEGER :: &
     SurfRef, &
@@ -1120,18 +1157,34 @@ MODULE offline_org
     rotpolID,    &
     lonID,       &
     latID,       &
-    DE01ID,      &
-    DE03ID,      &
-    DE09ID,      &
-    DE26ID,      &
-    DE80ID,      &
+!    DE01ID,      &
+!    DE01MID,      &
+!    DE03ID,      &
+!    DE03MID,      &
+!    DE09ID,      &
+!    DE09MID,      &
+!    DE26ID,      &
+!    DE26MID,      &
+!    DE80ID,      &
+!    DE80MID,      &
     DETOTID,     &
-    DEPM25ID,    &
-    DEPM10ID,    &
+!    DE1MID,     &
+!    DE2MID,     &
+!    DE3MID,     &
+!    DE4MID,     &
+!    DE5MID,     &
+!    DE6MID,     &
+!    DE7MID,     &
+!    DE8MID,     &
+!    DEPM25ID,    &
+!    DEPM10ID,    &
     timeDim,     &
     rlonDim,     &
     rlatDim
 
+  INTEGER ::        &
+    Dust_e_ID(5),   &
+    Dust_em_ID(5,12)
 
 END MODULE offline_org
 #endif
