@@ -16,7 +16,7 @@
 ! This file contains lookup tables and parametres for the dust emission scheme
 !---------------------------------------------------------------------
 !
-! Code Owner:Institut für Troposphärenforschung e.V. Leipzig, 
+! Code Owner:Institut für Troposphärenforschung e.V. Leipzig,
 ! email:  faust@tropos.de
 !
 ! Code Description:
@@ -72,8 +72,7 @@ MODULE tegen02_param
     pi         = 3.141592654E0,&
 #endif
     VK          = 0.4E0  !Von Karman constant: 0.4 (0.35 <--> 0.42 see Stull)
-
-
+  !  ----------------------------------------------------------
 END MODULE tegen02_param
 
 
@@ -142,13 +141,6 @@ MODULE dust_tegen_param
     veg_lim2    = 0.5E0                         !lai limit to determine shrub or grass for tropical or temperate shrubland
   !  ----------------------------------------------------------
 END MODULE dust_tegen_param
-
-
-
-
-
-
-
 
 
 MODULE dust_tegen_data

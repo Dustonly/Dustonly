@@ -913,46 +913,8 @@ MODULE src_dust
     mineralmap => dust(subdomain%ib)%mineralmap(:,:,:)
 
     IF (lddebug) PRINT*, 'Enter init_mineralmap'
-
-    ! start lon-lat-loop, multiply mineral fraction content per corresponding soil type
-    ! DO i=1,subdomain%ntx
-    !   DO j=1,subdomain%nty
-    !     IF (soilmaptype == 1)  THEN                                     ! clay = soilmap(:,:,4), silt = soilmap(:,:,3)
-    !       mineralmap(j,i,1) = mineralmap(j,i,1)*soilmap(j,i,4)          !illite * clay content
-    !       mineralmap(j,i,2) = mineralmap(j,i,2)*soilmap(j,i,4)          !kaolinite * clay content
-    !       mineralmap(j,i,3) = mineralmap(j,i,3)*soilmap(j,i,4)          !smectite * clay content
-    !       mineralmap(j,i,4) = mineralmap(j,i,4)*soilmap(j,i,4)          ! calcite * clay content
-    !       mineralmap(j,i,5) = mineralmap(j,i,5)*soilmap(j,i,4)          !quartz * clay content
-    !       mineralmap(j,i,6) = mineralmap(j,i,6)*soilmap(j,i,4)          !hematite * clay content
-    !       mineralmap(j,i,7) = mineralmap(j,i,7)*soilmap(j,i,3)          !feldspar * silt content
-    !       mineralmap(j,i,8) = mineralmap(j,i,8)*soilmap(j,i,3)          !gypsum * silt content
-    !       mineralmap(j,i,9) = mineralmap(j,i,9)*soilmap(j,i,3)          !calcite * silt content
-    !       mineralmap(j,i,10) = mineralmap(j,i,10)*soilmap(j,i,3)        !quartz * silt content
-    !       mineralmap(j,i,11) = mineralmap(j,i,11)*soilmap(j,i,3)        !hematite * silt content
-    !       mineralmap(j,i,12) = mineralmap(j,i,12)*soilmap(j,i,3)        !phosphorus*silt content (there is no size dist for phos)
-    !     ELSEIF (soilmaptype == 2) THEN                                     !clay = soilmap(:,:,3), silt = soilmap(:,:,2)
-    !       mineralmap(j,i,1) = mineralmap(j,i,1)*soilmap(j,i,3)
-    !       mineralmap(j,i,2) = mineralmap(j,i,2)*soilmap(j,i,3)
-    !       mineralmap(j,i,3) = mineralmap(j,i,3)*soilmap(j,i,3)
-    !       mineralmap(j,i,4) = mineralmap(j,i,4)*soilmap(j,i,3)
-    !       mineralmap(j,i,5) = mineralmap(j,i,5)*soilmap(j,i,3)
-    !       mineralmap(j,i,6) = mineralmap(j,i,6)*soilmap(j,i,3)
-    !       mineralmap(j,i,7) = mineralmap(j,i,7)*soilmap(j,i,2)
-    !       mineralmap(j,i,8) = mineralmap(j,i,8)*soilmap(j,i,2)
-    !       mineralmap(j,i,9) = mineralmap(j,i,9)*soilmap(j,i,2)
-    !       mineralmap(j,i,10) = mineralmap(j,i,10)*soilmap(j,i,2)
-    !       mineralmap(j,i,11) = mineralmap(j,i,11)*soilmap(j,i,2)
-    !       mineralmap(j,i,12) = mineralmap(j,i,12)*soilmap(j,i,2)
-    !     END IF
-    !   END DO
-    ! END DO
-    ! ! end lon-lat-loop
-
-    !call quick_nc('mineral',var3d=mineralmap(:,:,:))
-
-    !call quick_ascii('illite',mineralmap(:,:,1),pmin=0.,pmax=1.)
-    !call quick_ascii('feldspar',mineralmap(:,:,7),pmin=0.,pmax=1.)
-
+    !before the mineralmap fractions were mutiplied by the pertinent soilmap components but
+    !we find out it is redundant.
   IF (lddebug) PRINT*, 'Leave init_mineralmap',''//NEW_LINE('')
 
   END SUBROUTINE init_mineralmap
@@ -1025,9 +987,6 @@ MODULE src_dust
               alpha(j,i) = EXP(soilmap(j,i,1) * LOG(1.E-6) &
                     + soilmap(j,i,2) * LOG(1.E-5) &
                     + soilmap(j,i,3) * LOG(1.E-7))
-            !ELSEIF ((soilmap(j,i,3) <= 0.2) .AND. (mineralmaptype == 1)) THEN
-            !  alpha(j,i) = 10**((0.134*(soilmap(j,i,3)*100)) - 6)
-              !PRINT*, 'clay is less than 20% at:', j,i, soilmap(j,i,3)*100, 'multiplication is:', (0.134*(soilmap(j,i,3)*100)) - 6
             END IF
           ENDIF
 
@@ -1035,7 +994,6 @@ MODULE src_dust
         !ELSEIF (alpha_type == 3) THEN
 
         END IF
-        !PRINT*, 'alpha is:', alpha(j,i), 'at:', j,i, ''//NEW_LINE('')
       END DO
     END DO
     ! end lon-lat-loop
@@ -1044,14 +1002,6 @@ MODULE src_dust
     IF (dust_scheme == 2)  THEN
       alpha = alpha*100. !  [cm-1] = 100 [m-1]
     END IF
-
-  !  call quick_nc('alpha',var2d=alpha)
-  !  call quick_nc('soil',var3d=soilmap)
-
-  ! call quick_ascii('alpha',alpha)
-  ! call quick_ascii('sand',soilmap(:,:,1),pmin=0.,pmax=1.)
-  ! call quick_ascii('silt',soilmap(:,:,2),pmin=0.,pmax=1.)
-  ! call quick_ascii('clay',soilmap(:,:,3),pmin=0.,pmax=1.)
 
   IF (lddebug) PRINT*, 'Leave init_alpha',''//NEW_LINE('')
 
@@ -1110,9 +1060,6 @@ MODULE src_dust
 
       END DO
     END DO
-    ! end lon-lat-loop
-    ! call quick_nc('source',var2d=psrc)
-    ! call quick_ascii('source',psrc,pmin=0.,pmax=1.)
 
     IF (lddebug) PRINT*, 'Leave init_psrc',''//NEW_LINE('')
 
@@ -1257,18 +1204,11 @@ MODULE src_dust
     IF (yaction == 'init') THEN
       call cpu_time(T1)
 
-
-      ! ALLOCATE(median_dp(nmode))
-
       median_dp(nmode)   = median_dp_clay
       median_dp(nmode-1) = median_dp_silt
       median_dp(nmode-2) = median_dp_sand
       IF (nmode == 4) median_dp(nmode-3) = median_dp_csand
 
-      ! ALLOCATE(srel_map(subdomain%nty,subdomain%ntx,nclass))
-      ! ALLOCATE(mrel_map(subdomain%nty,subdomain%ntx,nclass))
-      ! ALLOCATE(mrel_sum(subdomain%nty,subdomain%ntx,nclass))
-      ! ALLOCATE(mrel_mx(subdomain%nty,subdomain%ntx,nclass,DustBins+1))
 
       mrel_mx = 0.
 
@@ -1387,8 +1327,6 @@ MODULE src_dust
 
           ! feff = MIN(feff_z0(j,i) , feff_veg(j,i,tnow))
           feff = feff_z0(j,i) * feff_veg(j,i,tnow)
-          !PRINT*, 'feff multiplied is:', feff_z0(j,i) * feff_veg(j,i,tnow),''//NEW_LINE('')
-          !PRINT*, 'feff is:', feff,''//NEW_LINE('')
 
           hflux = 0.
           fluxbin = 0.
@@ -1452,7 +1390,6 @@ MODULE src_dust
             ! Mask Effective area determined by vegetation fraction:
             ! only for veg_scheme = 2
             IF (veg_scheme == 2) THEN
-              !PRINT*, 'veg reduction'
               fluxbin(n) = fluxbin(n) * feff_veg(j,i,tnow)
               IF (mineralmaptype == 1) THEN
                 DO mr=1,12
@@ -1488,11 +1425,9 @@ MODULE src_dust
               END DO
             END IF
 
-            !PRINT*, 'DustInd in src is:', DustInd(n,1), n
             flux(1,j,i,DustInd(n,1))   = flux(1,j,i,DustInd(n,1)) + fluxbin(n)/dz(1,j,i)
             IF (mineralmaptype == 1) THEN
               DO mr=1,12
-                !PRINT*, 'DustInd mineral is:', DustInd(n,mr+1), n, mr
                 flux(1,j,i,DustInd(n,mr+1))   = flux(1,j,i,DustInd(n,mr+1)) + fluxbin_m(n,mr)/dz(1,j,i)
               END DO
             END IF
@@ -1506,29 +1441,17 @@ MODULE src_dust
               END DO
             END IF
 
-            !PRINT*,'DustInd at the end of src_dust', DustInd(n,1), n
-            !IF (mineralmaptype == 1) THEN
-            !  DO mr=1,12
-            !    EmiRate_m(EmiIndBio,j,i,DustInd(n),mr) = EmiRate_m(EmiIndBio,j,i,DustInd(n),mr) + fluxbin_m(n,mr)
-            !    EmiRate_m(EmiIndSum,j,i,DustInd(n),mr) = EmiRate_m(EmiIndSum,j,i,DustInd(n),mr) + fluxbin_m(n,mr)
-            !  END DO
-            !END IF
 #endif
           END DO
 
 
           call cpu_time(T2)
-          !print*, 'calc time step:',T2-T1
         END DO ! j
       END DO ! i
-      ! call quick_ascii('Dust',SUM(DustEmis,dim=3))
     END IF ! yaction
 
     IF (lddebug) PRINT*, 'Leave tegen02, yaction=',yaction,''//NEW_LINE('')
     IF (lddebug) PRINT*, 'u1fac is:', u1fac,''//NEW_LINE('')
-    !IF (lddebug) PRINT*, 'min,max feff_z0', MINVAL(feff_z0(:,:)), MAXVAL(feff_z0(:,:)),''//NEW_LINE('')
-    !IF (lddebug) PRINT*, 'min,max feff_veg', MINVAL(feff_veg(:,:,:)), MAXVAL(feff_veg(:,:,:)), ''//NEW_LINE('')
-    !IF (lddebug) PRINT*, 'min,max ustar', MINVAL(ustar(:,:)), MAXVAL(ustar(:,:)),''//NEW_LINE('')
 
   END SUBROUTINE tegen02
 
@@ -2313,16 +2236,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
               u3 = ustar(j,i)
 #endif
 
-            END IF ! fricvelo_scheme
-                ! IF (obk == 0.0) THEN
-                !   ! print*,'N', u1,u2,u3,c
-                ! ELSEIF (obk > 0) THEN
-                !   ! print*,'S', u1,u2,u3,c
-                ! ELSEIF (obk < 0) THEN
-                !   print*,'L', u1,u2,u3,stb,c
-                ! END IF
-                ! u4 = must(j,i)
-                  ! print*, u1,u2,u3,u4
+            END IF
+
           END IF ! soilmap
 
 
@@ -2344,15 +2259,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       END IF
 #endif
 
-      ! call quick_nc('wind2',var2d=ustar)
-      ! call quick_nc('ust2',var2d=ustar)
-
-
-
     IF (lddebug) PRINT*, 'Leave get_ustar',''//NEW_LINE('')
-    !call quick_nc('ustar',var2d=ustar)
-    !IF (lddebug) PRINT*, 'tot_wind', tot_wind_d,''//NEW_LINE('')
-    !IF (lddebug) PRINT*, 'dz, z0', tot_wind_d,''//NEW_LINE('')
 
   END SUBROUTINE get_ustar
 
