@@ -109,6 +109,12 @@ PROGRAM dust_only
   WRITE (ofilename,'(6A)') TRIM(youtdir),'/dust_emis_',ydate_ini,'-',ydate_end,'.nc'
 
   CALL netcdf_out('create',TRIM(ofilename),0,ierr)
+  IF (ierr /= 0) THEN
+    print*, 'ERROR netcdfout'
+    ierr =  400 + ierr
+    print*, ierr
+    STOP
+  END IF
 
   ! Time loop
   DO ntstep=firsttstep,lasttstep
@@ -117,17 +123,17 @@ PROGRAM dust_only
     IF (ntstep > firsttstep) THEN
       CALL organize_dust('calc',domain,flux=dust_flux)
     ENDIF
-    IF (ierr /= 0) THEN
-      print*, 'ERROR organize_dust:calc'
-      ierr =  400 + ierr
-      print*, ierr
-      STOP
-    END IF
+    !IF (ierr /= 0) THEN
+    !  print*, 'ERROR organize_dust:calc'
+    !  ierr =  400 + ierr
+    !  print*, ierr
+    !  STOP
+    !END IF
 
     ! accumulate dust emisson g m-2 s-1 -> kg m-2
     IF (laccumulation) THEN
       dust_em_accum = dust_em_accum + dust(1)%d_emis*dt*1.E-3
-      ! call quick_ascii('dust',sum(dust_em_accum,dim=3),pmin=0.,pmax=1.e-2)
+      !call quick_ascii('dust',sum(dust_em_accum,dim=3),pmin=0.,pmax=1.e-2)
     ELSE
       dust_em_accum = dust(1)%d_emis*dt*1.E-3
     END IF
@@ -135,9 +141,10 @@ PROGRAM dust_only
 
     ! print*, dust(1)%d_emis(:,:,:)
     IF (mineralmaptype == 1) THEN
-      DO mr=1,11
+      DO mr=1,17
         IF (laccumulation) THEN
           dust_em_accum_m(:,:,:,mr) = dust_em_accum_m(:,:,:,mr) + dust(1)%d_emis_m(:,:,:,mr)*dt*1.E-3
+          !call quick_ascii('dust',sum(dust_em_accum_m(:,:,:,3),dim=3),pmin=0.,pmax=1.e-2)
         ELSE
           dust_em_accum_m(:,:,:,mr) = dust(1)%d_emis_m(:,:,:,mr)*dt*1.E-3
         END IF
@@ -145,6 +152,12 @@ PROGRAM dust_only
     END IF
 
     CALL netcdf_out('appand',TRIM(ofilename),ntstep,ierr)
+    IF (ierr /= 0) THEN
+      print*, 'ERROR netcdfout-2ndcall'
+      ierr =  500 + ierr
+      print*, ierr
+      STOP
+    END IF
 
 
   END DO
@@ -232,9 +245,9 @@ SUBROUTINE def_grid(ierr)
   dust_flux_m=0.
 
   AllOCATE(dust_em_accum(je_tot,ie_tot,nt))
-  dust_em_accum=0
+  dust_em_accum=0.
   AllOCATE(dust_em_accum_m(je_tot,ie_tot,nt,miner))
-  dust_em_accum_m=0
+  dust_em_accum_m=0.
 
   IF (lddebug) PRINT*, 'Leave def_grid, ierr=',ierr,''//NEW_LINE('')
 
@@ -391,8 +404,8 @@ SUBROUTINE read_namelist(ierr)
     psrcType,          & ! Flag for type of potential dust source ! 0 : psrc, 1 : msgsrc, 2 : acDust
     soilmaptype,       &
     soiltypeFile,      & ! Filename of Soil Type Data
-    mineralmaptype,    &
-    mineraltypeFile,   & ! Filename of Minerl Type Data
+    mineralmaptype,    & ! 1: there is mineralogical data, 0: there is none
+    mineraltypeFile,   & ! Filename of Mienralogical Data
     psrcFile,          & ! Filename of preferential Dust Sources
     cultFile,          & ! Filename of Cultivation Class
     vegmonFile,        & ! Filename of monthly vegitation cover
@@ -422,6 +435,8 @@ SUBROUTINE read_namelist(ierr)
   threshold_scheme= 1
   veg_scheme      = 0           ! 0=no vegetation, 1=okin scheme, 2=linear (Tegen02)
   soilmaptype     = 1
+  mineralmaptype  = 0
+  mineraltypeFile = 'without'
   psrcFile        = 'without'   ! Potential Sources Data
   cultFile        = 'without'   ! Landuse Data
   z0File          = 'without'   ! Z0 Data
@@ -792,23 +807,27 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
       ID,          &   !for the writing output loops
       iztime_tmp!,  & ! tmp variable to hold time information
 
+!  INTEGER ::        &
+!    Dust_e_ID(5),   &
+!    Dust_em_ID(5,12)
+
   CHARACTER(20) :: Dust_e_Name(DustBins)  !names for dust emission
-   DATA  Dust_e_Name(1) /'DE_01'/,     &
-         Dust_e_Name(2) /'DE_03'/,     &
-         Dust_e_Name(3) /'DE_09'/,     &
-         Dust_e_Name(4) /'DE_26'/,     &
-         Dust_e_Name(5) /'DE_80'/
+    DATA  Dust_e_Name(1) /'DE_01'/,     &
+          Dust_e_Name(2) /'DE_03'/,     &
+          Dust_e_Name(3) /'DE_09'/,     &
+          Dust_e_Name(4) /'DE_26'/,     &
+          Dust_e_Name(5) /'DE_80'/
 
 
   CHARACTER(20) :: Dust_em_Name(DustBins_m)  !names for mineralogy dust emission
-   DATA  Dust_em_Name(1) /'DE_M_01'/,     &
-         Dust_em_Name(2) /'DE_M_03'/,     &
-         Dust_em_Name(3) /'DE_M_09'/,     &
-         Dust_em_Name(4) /'DE_M_26'/,     &
-         Dust_em_Name(5) /'DE_M_80'/
+    DATA  Dust_em_Name(1) /'DE_M_01'/,     &
+          Dust_em_Name(2) /'DE_M_03'/,     &
+          Dust_em_Name(3) /'DE_M_09'/,     &
+          Dust_em_Name(4) /'DE_M_26'/,     &
+          Dust_em_Name(5) /'DE_M_80'/
 
-  CHARACTER(9) :: &
-    str_bin
+    CHARACTER(9) :: &
+      str_bin
 
     REAL(8) :: &
       pi,      &
@@ -1046,6 +1065,7 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
 
       ! rlat
       istat = nf90_def_var(ncdfID, 'rlat', nf90_FLOAT, (/rlatDim/), rlatID )
+      !PRINT*, 'latID', rlatID
       IF (istat /= nf90_noerr) THEN
         ierr  = 10229
         yerrmsg = TRIM(nf90_strerror(ierr))
@@ -1234,7 +1254,9 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
 
       IF (mineralmaptype == 1) THEN
         DO js = 1,DustBins_m
-          DO mr = 1,11
+          !PRINT*, 'current dustbin', js, 'total number', DustBins_m
+          DO mr = 1,17
+            !PRINT*, 'enters the define attributes mineral loop, mr:', mr
             string = TRIM(Dust_em_Name(js))
             WRITE(str_bin,'(I2)') mr
             istat = nf90_def_var(ncdfID, TRIM(string//'_'//str_bin), nf90_FLOAT,(/rlonDim, rlatDim, timeDim/), Dust_em_ID(js,mr))
@@ -1379,7 +1401,7 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
           geolon=180./pi * atan((cos(pi/180.*rlat)*sin(pi/180.*rlon))/  &
                                 (sin(pi/180.*pollat)*cos(pi/180.*rlat)* &
                                  cos(pi/180.*rlon)-sin(pi/180.*rlat)*   &
-                                 cos(pi/180.*pollat))) + pollon 
+                                 cos(pi/180.*pollat))) + pollon
           IF (pollon < 0.) geolon = geolon + 180.
           IF (pollon > 0.) geolon = geolon - 180.
           geolat=180./pi * asin(sin(pi/180.*rlat)*sin(pi/180.*pollat) + &
@@ -1402,18 +1424,18 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
 
       istat=nf90_close(ncdfID)
 
-      ELSEIF (status == 'appand') THEN
+    ELSEIF (status == 'appand') THEN
 
-        istat=nf90_open(Filename, NF90_WRITE, ncdfID)
+      istat=nf90_open(Filename, NF90_WRITE, ncdfID)
 
-        ! write time
-        istat = NF90_put_var(ncdfID,timeID,step*dt,start=(/step+1/))
-        IF (istat /= nf90_noerr) THEN
-          ierr  = 10220
-          yerrmsg = TRIM(nf90_strerror(istat))
-          print*, yerrmsg
-          RETURN
-        ENDIF
+      ! write time
+      istat = NF90_put_var(ncdfID,timeID,step*dt,start=(/step+1/))
+      IF (istat /= nf90_noerr) THEN
+        ierr  = 10220
+        yerrmsg = TRIM(nf90_strerror(istat))
+        print*, yerrmsg
+        RETURN
+      ENDIF
 
 !write the writing in a loop !
       DO js=1,DustBins
@@ -1427,11 +1449,16 @@ SUBROUTINE netcdf_out(status,Filename,step,ierr)!,FileID,Var,ierr)
 
       IF(mineralmaptype == 1) THEN
         DO js=1,DustBins_m
-          DO mr=1,11
+          DO mr=1,17
+            !IF (mr == 3) CYCLE
+            !PRINT*, 'enters the mineral writing out loop'
+            !PRINT*, 'ID', Dust_em_ID(js,mr)
+            !dust_em_accum_m = 1.
             istat = nf90_put_var(ncdfID,Dust_em_ID(js,mr), transpose(dust_em_accum_m(:,:,js,mr)), start=(/1,1,step+1/) )
             IF (istat /= nf90_noerr) THEN
               ierr  = 10220
               yerrmsg = TRIM(nf90_strerror(istat))
+              print*, yerrmsg, 'failing at mineral:', mr
               RETURN
             ENDIF
           END DO

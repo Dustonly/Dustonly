@@ -17,7 +17,7 @@ MODULE src_dust
 ! Module for dust emissions in muscat
 !---------------------------------------------------------------------
 !
-! Code Owner:Institut für Troposphärenforschung e.V. Leipzig 
+! Code Owner:Institut für Troposphärenforschung e.V. Leipzig
 ! email:  faust@tropos.de
 !
 ! Code Description:
@@ -94,7 +94,7 @@ MODULE src_dust
 
   !+ organize dust
   !---------------------------------------------------------------------
-  SUBROUTINE organize_dust(yaction,subdomain,flux)
+  SUBROUTINE organize_dust(yaction,subdomain,flux,flux_m)
   !---------------------------------------------------------------------
   ! Description:
   !   This subroutine organize the dust emission sheme in muscat
@@ -119,12 +119,13 @@ MODULE src_dust
       subdomain
 
     REAL(8), OPTIONAL, INTENT(INOUT)        :: &
-        flux(ntz,subdomain%nty,subdomain%ntx,nt)
+        flux(ntz,subdomain%nty,subdomain%ntx,nt), &
+        flux_m(ntz,subdomain%nty,subdomain%ntx,nt,17)  !for minerals
 
     ! Variables vor Initialization
     INTEGER        :: &
       ib1,            &
-      js, mr,         &   !mr is for the mineralogy DustBins
+      js,js_m, mr,       &    !js_m is for the mineralogy DustBins
       igx0, igx1,     &
       igy0, igy1,     &
       ix0,  ix1,      &
@@ -235,7 +236,7 @@ MODULE src_dust
         STOP
       END IF
 
-      ! mineraltypeFile SGMA
+      ! mineraltypeFile need right values
       IF (mineralmaptype < 0 .OR. mineralmaptype > 1) THEN
         ierr = 100005
         yerr = 'wrong value for mineralmaptype'
@@ -248,7 +249,7 @@ MODULE src_dust
         ifile(ifile_num) = 'mineral'
         ifile_dim(ifile_num) = 12
       ELSE
-       ! PRINT*, 'No mineral file'
+        PRINT*, 'No mineral file'
      END IF
 
 
@@ -364,7 +365,7 @@ MODULE src_dust
         ! If there is no daily data monthly data will be used
         dimveg = 12
         ! when daily data is available calc max number of days in the simulation
-        IF (lvegdaily) dimveg = CEILING(hstop/24) + 1 ! hardcoding at this point my be helpfull for some tests 366 370!1096!1858!366!
+        IF (lvegdaily) dimveg = CEILING(hstop/24) + 1 ! hardcoding at this point my be helpful for some tests 366 370!1096!1858!366!
       ELSE
         ! if no vegetation scheme is used then dimveg = 1
         dimveg = 1
@@ -438,14 +439,14 @@ MODULE src_dust
       !if the mineralogy map is included then get the mineralogy DustBins
       IF(mineralmaptype == 1) THEN
         DO js=1,DustBins
-          DO mr=2,13
+          DO mr=1,17
 #ifndef OFFLINE
-            string = TRIM(ADJUSTL(DustName(js,mr)))
-            DustInd(js,mr)  = ifind(nt, string, tracer_name)   ! ifind -> muscat funktion /INIT/ifind.f90
+            string = TRIM(ADJUSTL(DustName(js,mr+1)))
+            DustInd(js,mr+1)  = ifind(nt, string, tracer_name)   ! ifind -> muscat funktion /INIT/ifind.f90
 #else
-            DustInd(js,mr) = js
+            DustInd(js,mr+1) = js
 #endif
-            IF (DustInd(js,mr) <= 0)  THEN
+            IF (DustInd(js,mr+1) <= 0)  THEN
               WRITE(*,8010)  string
               STOP  '2ndloop-Dust_Init: Error in Input Data !!'
             END IF
@@ -497,7 +498,7 @@ MODULE src_dust
       ! ALLOCATE(dust_flux(nb))
 
 
-      ! Bolck strukture of muscat, loop over blocks
+      ! Block strukture of muscat, loop over blocks
       DO ibLoc=1,nbLoc
 #ifndef OFFLINE
         ib1 = LocGlob(ibLoc)
@@ -523,8 +524,9 @@ MODULE src_dust
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
         ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,        &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
-        ALLOCATE(dust(ib1)%d_emis_m(decomp(ib1)%iy0+1:decomp(ib1)%iy1,      &
-                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt,12))                   !emission for mineral bins SGMA
+        ALLOCATE(dust(ib1)%d_emis_m(decomp(ib1)%iy0+1:decomp(ib1)%iy1,        &
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt,17))
+
 
         ! Allocate dust_ini
         ALLOCATE(dust(ib1)%biome(decomp(ib1)%iy0+1:decomp(ib1)%iy1,      &
@@ -564,23 +566,24 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
         ALLOCATE(dust(ib1)%d_emis_m(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
-                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt,12))             !emission for mineral bins SGMA
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt,17))
 
 
         ALLOCATE(dust(ib1)%soilmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,nmode))
         ALLOCATE(dust(ib1)%mineralmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,12))       !mineralmap SGMA
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,12))                         !temporarily hardcoded to the minerals number on GMINER data
+        ALLOCATE(dust(ib1)%mineralmapmod(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1,17))
 
         ALLOCATE(dust(ib1)%ustar(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
-
-
 
         ALLOCATE(dust(ib1)%srel_map(decomp(ib1)%nty,decomp(ib1)%ntx,nclass))
         ALLOCATE(dust(ib1)%mrel_map(decomp(ib1)%nty,decomp(ib1)%ntx,nclass))
         ALLOCATE(dust(ib1)%mrel_sum(decomp(ib1)%nty,decomp(ib1)%ntx,nclass))
         ALLOCATE(dust(ib1)%mrel_mx(decomp(ib1)%nty,decomp(ib1)%ntx,nclass,DustBins+1))
+
 
         dust(ib1)%biome(:,:)=0.
         dust(ib1)%cult(:,:)=0.
@@ -600,11 +603,12 @@ MODULE src_dust
 
         dust(ib1)%soilmap = 0.
         dust(ib1)%mineralmap = 0.
+        dust(ib1)%mineralmapmod = 0.
 
         dust(ib1)%ustar = 0.
 
         IF (z0const /= 999.0) dust(ib1)%z0(:,:)=z0const
-        
+
 
 
       END DO
@@ -650,8 +654,10 @@ MODULE src_dust
           IF (TRIM(ifile(i)) == 'mineral' .AND. mineralmaptype == 1) copy3d => dust(ib1)%mineralmap
           IF (TRIM(ifile(i)) == 'source' ) copy2d => dust(ib1)%source
           IF (TRIM(ifile(i)) == 'z0')      copy2d => dust(ib1)%z0
+          IF (TRIM(ifile(i)) == 'biome')   copy2d => dust(ib1)%biome
           ! IF (filenum == 4) copy2d => dust(ib1)%biome
           IF (TRIM(ifile(i)) == 'vegday' ) copy3d => dust(ib1)%veg
+          IF (TRIM(ifile(i)) == 'vegmon' ) copy3d => dust(ib1)%veg
           ! IF (filenum == 6) copy3d => dust(ib1)%veg
           ! IF (filenum == 7) copy2d => dust(ib1)%vegmin2
           IF (TRIM(ifile(i)) == 'moist') copy3d => dust(ib1)%vmoist
@@ -688,7 +694,7 @@ MODULE src_dust
           CALL init_soilmap(decomp(ib1))
         END IF
 
-        ! +-+-+- Sec 1.4.2.1 mineralmap -+-+-+   !mineralmap, SGMA
+        ! +-+-+- Sec 1.4.3 mineralmap -+-+-+
         IF (mineralmaptype ==  1) THEN
           CALL init_mineralmap(decomp(ib1))
         END IF
@@ -739,8 +745,7 @@ MODULE src_dust
     ! +-+-+- Sec 1.5 clean up -+-+-+
 
     ! DEALLOCATE(dust_it)
-
-    ! call quick_nc('z0',var2d=dust(1)%z0)
+     !call quick_nc('z0',var2d=dust(1)%z0)
 
     ! ------------------------------------
     ! +-+-+- Section 2 Dust flux calculation -+-+-+
@@ -756,7 +761,7 @@ MODULE src_dust
 
 
       IF (dust_scheme == 1) THEN
-        CALL emission_tegen(subdomain,flux)
+        CALL emission_tegen(subdomain,flux)   !maybe add an IF for the minerals
       END IF
 
       IF (dust_scheme == 2) THEN
@@ -871,10 +876,10 @@ MODULE src_dust
       DO j=1,subdomain%nty
 
         IF (soiltype(j,i) > 0.0) THEN
-          soilmap(j,i,1) = solspe(soiltype(j,i),3)
-          soilmap(j,i,2) = solspe(soiltype(j,i),6)
-          soilmap(j,i,3) = solspe(soiltype(j,i),9)
-          soilmap(j,i,4) = solspe(soiltype(j,i),12)
+          soilmap(j,i,1) = solspe(soiltype(j,i),3)  !coarse sand
+          soilmap(j,i,2) = solspe(soiltype(j,i),6)  !medium/fine sand
+          soilmap(j,i,3) = solspe(soiltype(j,i),9)  !silt
+          soilmap(j,i,4) = solspe(soiltype(j,i),12) !clay
         ELSE
           soilmap(j,i,:) = 0.0
         END IF
@@ -892,12 +897,12 @@ MODULE src_dust
   SUBROUTINE init_mineralmap(subdomain)
   !---------------------------------------------------------------------
   ! Description:
-  !Multiplying the fractions from the GMINER data set per the fraction
-  !of the soil that corresponds to either clay or silt per grid cell. SGMA
+
   !--------------------------------------------------------------------
 
     USE mo_dust
     USE dust_tegen_data
+    use, intrinsic :: ieee_arithmetic
 #ifdef OFFLINE
     USE offline_org
 #endif
@@ -907,18 +912,143 @@ MODULE src_dust
     TYPE(rectangle), INTENT(IN) :: subdomain
 
     INTEGER :: &
-      i,j
+      i,j,mr
+
+    REAL(8) :: &
+      clay_mr,    &
+      s_clay,     &
+      s_silt,     &
+      feld_clay,  &
+      gyps_clay,  &
+      illi_clay,  &
+      kaol_clay,  &
+      smec_clay,  &
+      clay_incl,  &
+      n_afactor,  &
+      illi_silt,  &
+      kaol_silt,  &
+      smec_silt,  &
+      calc_silt,  &
+      quar_silt,  &
+      hem_silt,   &
+      feld_silt,  &
+      gyps_silt
 
     REAL(8), POINTER ::  &
       soilmap(:,:,:),     &
-      mineralmap(:,:,:)
+      mineralmap(:,:,:),  &
+      mineralmapmod(:,:,:)
 
     soilmap => dust(subdomain%ib)%soilmap(:,:,:)
     mineralmap => dust(subdomain%ib)%mineralmap(:,:,:)
+    mineralmapmod => dust(subdomain%ib)%mineralmapmod(:,:,:)
 
     IF (lddebug) PRINT*, 'Enter init_mineralmap'
-    !before the mineralmap fractions were mutiplied by the pertinent soilmap components but
-    !we find out it is redundant.
+
+    ! start lon-lat-loop, multiply mineral fraction content per corresponding soil type
+    DO i=1,subdomain%ntx
+      DO j=1,subdomain%nty
+        !clay inclusion of feldspar and gypsum and relative reduction in phyllosilicates
+        clay_mr = mineralmap(j,i,1) + mineralmap(j,i,2) + mineralmap(j,i,3) &
+             + mineralmap(j,i,4) + mineralmap(j,i,5) + mineralmap(j,i,6)
+        IF (clay_mr > 0.) THEN
+          feld_clay = mineralmap(j,i,7) * (mineralmap(j,i,5)/mineralmap(j,i,10))    !feld*(quar-clay/quar-silt)-formulas by Goncalves et al. 2023
+          gyps_clay = mineralmap(j,i,8) * (mineralmap(j,i,4)/mineralmap(j,i,9))     !gyps*(cal-clay/cal-silt)
+          clay_incl = (mineralmap(j,i,4) * ((feld_clay + gyps_clay)/clay_mr)) &
+                   + (mineralmap(j,i,5) * ((feld_clay + gyps_clay)/clay_mr)) &
+                   + (mineralmap(j,i,6) * ((feld_clay + gyps_clay)/clay_mr)) &
+                   + feld_clay + gyps_clay
+          illi_clay = mineralmap(j,i,1) - (mineralmap(j,i,1)*(clay_incl/clay_mr))
+          kaol_clay = mineralmap(j,i,2) - (mineralmap(j,i,2)*(clay_incl/clay_mr))
+          smec_clay = mineralmap(j,i,3) - (mineralmap(j,i,3)*(clay_incl/clay_mr))
+        ELSE
+          feld_clay = 0.
+          gyps_clay = 0.
+          illi_clay = 0.
+          kaol_clay = 0.
+          smec_clay = 0.
+        END IF
+        !determine coefficient and fractions that will be used for multiplying vertical emission fluxes
+        !based on eq.(14) in Perwiltz et al., 2015a
+        IF (soilmaptype == 1) THEN
+          IF (soilmap(j,i,4) > 0. .OR. soilmap(j,i,3) > 0.) THEN
+            s_clay = soilmap(j,i,4) / (soilmap(j,i,4) + soilmap(j,i,3))    !relative clay by considering clay+silt==1
+            s_silt = soilmap(j,i,3) / (soilmap(j,i,4) + soilmap(j,i,3))    !relative silt
+          ELSE
+            s_clay = 0.
+            s_silt = 0.
+          END IF
+        ELSEIF (soilmaptype == 2) THEN
+          IF (soilmap(j,i,3) > 0. .OR. soilmap(j,i,2) > 0.) THEN
+            s_clay = soilmap(j,i,3) / (soilmap(j,i,3) + soilmap(j,i,2))
+            s_silt = soilmap(j,i,2) / (soilmap(j,i,3) + soilmap(j,i,2))
+          ELSE
+            s_clay = 0.
+            s_silt = 0.
+          END IF
+        END IF
+        IF (s_clay > 0. .OR. s_silt > 0.) THEN
+          n_afactor = 0.987 / (2*s_clay*(mineralmap(j,i,1) + mineralmap(j,i,2) &     !re-distribution of minerals silt size
+          + mineralmap(j,i,3) + mineralmap(j,i,4) + mineralmap(j,i,5) &              !from eq. 14 Perwiltz et al., 2015a
+          + mineralmap(j,i,6)) + s_silt*(mineralmap(j,i,9) + mineralmap(j,i,10) &
+          + mineralmap(j,i,11) + mineralmap(j,i,7) + mineralmap(j,i,8)))
+          illi_silt = n_afactor*(2*s_clay*mineralmap(j,i,1))
+          kaol_silt = n_afactor*(2*s_clay*mineralmap(j,i,2))
+          smec_silt = n_afactor*(2*s_clay*mineralmap(j,i,3))
+          calc_silt = n_afactor*((2*s_clay*mineralmap(j,i,4)) &
+                                  + (s_silt*mineralmap(j,i,9)))
+          quar_silt = n_afactor*(s_silt*mineralmap(j,i,10))
+          hem_silt = n_afactor*((2*s_clay*mineralmap(j,i,6)) &
+                                 + (s_silt*mineralmap(j,i,11)))
+          feld_silt = n_afactor*(s_silt*mineralmap(j,i,7))
+          gyps_silt = n_afactor*(s_silt*mineralmap(j,i,8))
+        ELSE
+          illi_silt = 0.
+          kaol_silt = 0.
+          smec_silt = 0.
+          calc_silt = 0.
+          quar_silt = 0.
+          hem_silt = 0.
+          feld_silt = 0.
+          gyps_silt = 0.
+        END IF
+        !construct new array with modified fractions
+        mineralmapmod(j,i,1) =illi_clay
+        mineralmapmod(j,i,2) =kaol_clay
+        mineralmapmod(j,i,3) =smec_clay
+        mineralmapmod(j,i,4) =mineralmap(j,i,4)                !calcite
+        mineralmapmod(j,i,5) =mineralmap(j,i,5)                !quartz
+        mineralmapmod(j,i,6) =mineralmap(j,i,6)                !hematite
+        mineralmapmod(j,i,7) =feld_clay                        !new feldspar PSD
+        mineralmapmod(j,i,8) =gyps_clay                        !new gypsum PSD
+        mineralmapmod(j,i,9) =illi_silt                        !new silt PSDs: illite, kaolinite,
+        mineralmapmod(j,i,10) =kaol_silt                       !smectite, calcite, quartz,
+        mineralmapmod(j,i,11) =smec_silt                       !hematite, feldspar and gypsum
+        mineralmapmod(j,i,12) =calc_silt
+        mineralmapmod(j,i,13) =quar_silt
+        mineralmapmod(j,i,14) =hem_silt
+        mineralmapmod(j,i,15) =feld_silt
+        mineralmapmod(j,i,16) =gyps_silt
+        mineralmapmod(j,i,17) =mineralmap(j,i,12)             !phosphorus has no PSD
+      END DO
+    END DO
+    ! end lon-lat-loop
+    ! start another lon-lat-loop to change missing values and infinite values to zero
+    DO i=1,subdomain%ntx
+      DO j=1,subdomain%nty
+        DO mr=1,17
+          IF (ieee_is_nan(mineralmapmod(j,i,mr)).or..not.ieee_is_finite(mineralmapmod(j,i,mr))) THEN
+            mineralmapmod(j,i,mr) = 0.
+          END IF
+        END DO !mr
+      END DO !j
+    END DO !i
+
+    !call quick_nc('mineral_map_mod',var3d=mineralmapmod(:,:,:))
+    !call quick_ascii('illite silt',mineralmapmod(:,:,9),pmin=0.,pmax=1.)
+    !call quick_ascii('kaolinte silt',mineralmapmod(:,:,10),pmin=0.,pmax=1.)
+    !call quick_ascii('quartz silt',mineralmapmod(:,:,13),pmin=0.,pmax=1.)
+
   IF (lddebug) PRINT*, 'Leave init_mineralmap',''//NEW_LINE('')
 
   END SUBROUTINE init_mineralmap
@@ -1007,6 +1137,14 @@ MODULE src_dust
       alpha = alpha*100. !  [cm-1] = 100 [m-1]
     END IF
 
+    !call quick_nc('alpha',var2d=alpha)
+    !call quick_nc('soil',var3d=soilmap(:,:,:))
+
+  ! call quick_ascii('alpha',alpha)
+   !call quick_ascii('sand',soilmap(:,:,1),pmin=0.,pmax=1.)
+   !call quick_ascii('silt',soilmap(:,:,2),pmin=0.,pmax=1.)
+   !call quick_ascii('clay',soilmap(:,:,3),pmin=0.,pmax=1.)
+
   IF (lddebug) PRINT*, 'Leave init_alpha',''//NEW_LINE('')
 
   END SUBROUTINE init_alpha
@@ -1054,7 +1192,7 @@ MODULE src_dust
         ELSEIF (psrcType == 2) THEN ! MSG source scheme by schepanski08
           !IF (psrc(j,i) >= 2 .AND. sum(soilmap(j,i,:)) > 0.0) THEN
           !  soilmap(j,i,:) = 0.0
-          !  soilmap(j,i,nmode-1) = 1. !all soil is converted to silt size
+          !  soilmap(j,i,nmode-1) = 1.
           !END IF
           IF (psrc(j,i) < 2 .AND. sum(soilmap(j,i,:)) > 0.0) THEN !if lower than 2 in the MSG file then 0 emissions
             soilmap(j,i,:) = 0.0
@@ -1073,7 +1211,7 @@ MODULE src_dust
 
   !+ init_tegen
   !---------------------------------------------------------------------
-  SUBROUTINE tegen02(yaction,subdomain,flux)
+  SUBROUTINE tegen02(yaction,subdomain,flux,flux_m)
   !---------------------------------------------------------------------
   ! Description:
   !   This subroutine performes the initialization for
@@ -1089,6 +1227,7 @@ MODULE src_dust
 
     ! Modules
     USE mo_dust
+    use, intrinsic :: ieee_arithmetic
     USE tegen02_param
     USE dust_tegen_data
 #ifndef OFFLINE
@@ -1116,8 +1255,9 @@ MODULE src_dust
     TYPE(rectangle), INTENT(IN) :: subdomain
 
     REAL(8), OPTIONAL, INTENT(INOUT)        :: &
-        flux(ntz,subdomain%nty,subdomain%ntx,nt)
-        !flux_m(ntz,subdomain%nty,subdomain%ntx,nt,13)
+        flux(ntz,subdomain%nty,subdomain%ntx,nt), &
+        flux_m(ntz,subdomain%nty,subdomain%ntx,nt,17)
+
 
     INTEGER :: &
       i,j,n,m,mr,n_bomb, & ! loops
@@ -1152,13 +1292,14 @@ MODULE src_dust
     REAL(8) :: &
       fluxtot (ntrace), &
       fluxbin (ntrace), &
-      fluxbin_m (ntrace,12) !mineralogical flux SGMA
+      fluxbin_m (ntrace,17) !mineralogical flux
 
     real    ::  T1,T2
 
     REAL(8), POINTER :: source(:,:)
     REAL(8), POINTER :: soilmap(:,:,:)
     REAL(8), POINTER :: mineralmap(:,:,:)
+    REAL(8), POINTER :: mineralmapmod(:,:,:)
     REAL(8), POINTER :: feff_z0(:,:)
     REAL(8), POINTER :: feff_veg(:,:,:)
     REAL(8), POINTER :: veff(:,:,:)
@@ -1175,13 +1316,14 @@ MODULE src_dust
 
 #ifndef OFFLINE
     REAL(8), POINTER :: EmiRate(:,:,:,:)
-  !  REAL(8), POINTER :: EmiRate_m(:,:,:,:,:)
+    REAL(8), POINTER :: EmiRate_m(:,:,:,:,:)
     REAL(8), POINTER :: dz(:,:,:)
 #endif
 
     source   => dust(subdomain%ib)%source(:,:)
     soilmap  => dust(subdomain%ib)%soilmap(:,:,:)
     mineralmap  => dust(subdomain%ib)%mineralmap(:,:,:)
+    mineralmapmod  => dust(subdomain%ib)%mineralmapmod(:,:,:)
     feff_z0  => dust(subdomain%ib)%feff_z0(:,:)
     feff_veg => dust(subdomain%ib)%feff_veg(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
@@ -1213,9 +1355,7 @@ MODULE src_dust
       median_dp(nmode-2) = median_dp_sand
       IF (nmode == 4) median_dp(nmode-3) = median_dp_csand
 
-
       mrel_mx = 0.
-
       ! create a gap between the outer edge of the domain and the dust emission
       ! emissions too close to the edge may are distorted by the boundary data
       ! only in the online model
@@ -1225,12 +1365,13 @@ MODULE src_dust
       stop_y  = subdomain%nty
 
 #ifndef OFFLINE
-      IF (my_cart_pos(1) == 0)        start_x = start_x + nboundlines
-      IF (my_cart_pos(2) == 0)        start_y = start_y + nboundlines
-      IF (my_cart_pos(1) == nprocx-1) stop_x  = stop_x  - nboundlines
-      IF (my_cart_pos(2) == nprocy-1) stop_y  = stop_y  - nboundlines
+    IF (my_cart_pos(1) == 0)        start_x = start_x + nboundlines
+    IF (my_cart_pos(2) == 0)        start_y = start_y + nboundlines
+    IF (my_cart_pos(1) == nprocx-1) stop_x  = stop_x  - nboundlines
+    IF (my_cart_pos(2) == nprocy-1) stop_y  = stop_y  - nboundlines
 #endif
 
+!call quick_nc('mineral_map_init',var3dtime=mineralmapmass(:,:,:,:))
       ! +-+-+- Sec xx srel calculation -+-+-+
       ! start lon-lat-loop
       DO i = start_x,stop_x
@@ -1244,22 +1385,20 @@ MODULE src_dust
             ! calc soil mass size distribution Marticorena 95 eq(29)
             dM = 0.
             DO m = 1, nmode
-              dM = dM + soilmap(j,i,m)/(SQRT(2. * pi) * LOG(sigma)) &
+              dM = dM + (soilmap(j,i,m)/(SQRT(2. * pi) * LOG(sigma))) &
                       * EXP((LOG(dp) - LOG(median_dp(m)))**2. / (-2. * LOG(sigma)**2.))
-            END DO
+            END DO  !nmode
 
             ! size distribution of basal surface Marticorena 95 eq(30)
             srel_map(j,i,n) = dM / (2./3. * rop * dp) * Dstep
+            ! mass size distribution per grid cell
             mrel_map(j,i,n) = dM * Dstep
 
             ! total basal surface Marticorena 95 eq(31)
             stot = stot + srel_map(j,i,n)
             mtot = mtot + mrel_map(j,i,n)
-
             mrel_sum(j,i,n) = mtot
-
           END DO ! n = 1, nclass
-
 
           IF (stot > 0.) THEN
             srel_map(j,i,:) = srel_map(j,i,:)/stot
@@ -1270,7 +1409,6 @@ MODULE src_dust
             mrel_map(j,i,:) = 0.
           END IF
 
-
           DO n = 1, nclass
             dp = dp_meter(n)
             IF (mrel_sum(j,i,n) > 0.) THEN
@@ -1278,7 +1416,6 @@ MODULE src_dust
                DO n_bomb = 1, n
                  ! diameter of particles effected by soltation bombardment
                  dp_bomb = dp_meter(n_bomb)
-
                  ! scale horizontal flux with the relativ particle mass of dp_bomb
                  m_rel     = mrel_map(j,i,n_bomb)
                  m_rel_sum = mrel_sum(j,i,n)
@@ -1286,8 +1423,6 @@ MODULE src_dust
                   IF (m <= DustBins) THEN
                     IF (dp_bomb > dustbin_top(m)) m = m+1
                   END IF
-
-
                   ! bin-wise integration
                   IF (m <= DustBins) THEN
                     mrel_mx(j,i,n,m) = mrel_mx(j,i,n,m) + m_rel/m_rel_sum
@@ -1295,16 +1430,17 @@ MODULE src_dust
                     mrel_mx(j,i,n,m) = 1.0 - SUM(mrel_mx(j,i,n,1:DustBins))
                     EXIT
                   END IF
-
                END DO ! n_bomb
              END IF
           END DO ! n = 1, nclass
         END DO ! j=1,subdomain%nty
       END DO ! i=1,subdomain%ntx
+      !call quick_nc('mrel_map',var3d=mrel_map(:,:,:))
+      !call quick_nc('srel_map',var3d=srel_map(:,:,:))
+      !call quick_nc('mrel_mx',var3dtime=mrel_mx(:,:,:,:))
 
       call cpu_time(T2)
-
-      IF (lddebug) print*, 'init time:',T2-T1
+      print*, 'init time:',T2-T1
 
     ELSEIF (yaction == 'calc') THEN
       ! +-+-+- Sec 1 Set the actually date -+-+-+
@@ -1322,10 +1458,11 @@ MODULE src_dust
       ELSE
         tnow = 1
       END IF
+      !PRINT*, 'my veg month is:', tnow
 
+      call cpu_time(T1)
       DO i=1,subdomain%ntx
         DO j=1,subdomain%nty
-          call cpu_time(T1)
 
           ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
@@ -1347,45 +1484,43 @@ MODULE src_dust
               uthp = (uth(n)*u1fac)/feff * mfac(j,i)
               s_rel = srel_map(j,i,n)
 
-
-
               IF (ustar(j,i) > uthp) THEN
                 dmy_R = uthp/ustar(j,i)
               ELSE
                 dmy_R = 1
               END IF
 
-              ! Horizontal dust flux
+              ! Horizontal dust flux [one particle size]
               hflux = roa/g * ustar(j,i)**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
-
               ! soltation bombardment
               IF (hflux > 0.) THEN
 
                   ! Vertical dust flux
-                  vflux = hflux * alpha(j,i) !1e-3 cause is in meters !
-
+                  vflux = hflux * alpha(j,i)
                   ! bin-wise integration
                   DO m = 1, DustBins
                     fluxbin(m) = fluxbin(m)+vflux * mrel_mx(j,i,n,m)
                     IF (mineralmaptype == 1) THEN
-                      DO mr=1,12
-                        fluxbin_m(m,mr) = fluxbin(m)*mineral_dist(mr,m)*mineralmap(j,i,mr)
+                      !PRINT*, 'calculating flux mineral', fluxbin(m), 'dustbin', m
+                      DO mr=1,17
+                        fluxbin_m(m,mr) = fluxbin(m)*mineral_dist(mr,m)*mineralmapmod(j,i,mr)
                       END DO
-                    END IF !mineralloop SGMA
-                  END DO
-
-              END IF
+                    END IF !mineral
+                  END DO ! m
+              END IF !hflux
             END DO ! n = 1, nclass
-          ENDIF
+          END IF
 
           DO n=1,ntrace
-
+            ! fluxtot: g/cm2/sec --> kg/m2/sec
+            !
+            !PRINT*,'bin number:', n
             ! Mask Effective area determined by preferential source fraction:
             ! only for psrcType = 3
              IF (psrcType == 3) THEN
                fluxbin(n) = fluxbin(n) * source(j,i)
                IF (mineralmaptype == 1) THEN
-                 DO mr=1,12
+                 DO mr=1,17
                    fluxbin_m(n,mr) = fluxbin_m(n,mr) * source(j,i)
                  END DO
                END IF
@@ -1394,9 +1529,9 @@ MODULE src_dust
             ! Mask Effective area determined by vegetation fraction:
             ! only for veg_scheme = 2
             IF (veg_scheme == 2) THEN
-              fluxbin(n) = fluxbin(n) * feff_veg(j,i,tnow)
+              fluxbin(n) = fluxbin(n) * veff(j,i,tnow)
               IF (mineralmaptype == 1) THEN
-                DO mr=1,12
+                DO mr=1,17
                   fluxbin_m(n,mr) = fluxbin_m(n,mr) * feff_veg(j,i,tnow)
                 END DO
               END IF
@@ -1405,7 +1540,7 @@ MODULE src_dust
             ! write output in [g m-2 s-1]
             fluxbin(n) = fluxbin(n) * 1.E3
             IF (mineralmaptype == 1) THEN
-              DO mr=1,12
+              DO mr=1,17
                 fluxbin_m(n,mr) = fluxbin_m(n,mr) * 1.E3
               END DO
             END IF
@@ -1413,25 +1548,23 @@ MODULE src_dust
 #ifdef OFFLINE
             DustEmis(j,i,n) = fluxbin(n)
             IF (mineralmaptype == 1) THEN
-              DO mr=1,12
+              DO mr=1,17
                 DustEmis_m(j,i,n,mr) = fluxbin_m(n,mr)
               END DO
             END IF
-
 #else
             ! chemistry units (nradm=1): g/m2/s ==> g/m2/s * mol2part
             fluxbin(n) = fluxbin(n) * ConvPart
             DustEmis(j,i,DustInd(n,1)) = fluxbin(n)
             IF (mineralmaptype == 1) THEN
-              DO mr=1,12
-                fluxbin_m(n,mr) = fluxbin_m(n,mr) * ConvPart
-                DustEmis(j,i,DustInd(n,mr+1)) = fluxbin_m(n,mr)
+              DO mr=1,17
+                DustEmis(j,i,DustInd(n,mr+1)) = fluxbin_m(n,mr) * ConvPart
               END DO
             END IF
 
             flux(1,j,i,DustInd(n,1))   = flux(1,j,i,DustInd(n,1)) + fluxbin(n)/dz(1,j,i)
             IF (mineralmaptype == 1) THEN
-              DO mr=1,12
+              DO mr=1,17
                 flux(1,j,i,DustInd(n,mr+1))   = flux(1,j,i,DustInd(n,mr+1)) + fluxbin_m(n,mr)/dz(1,j,i)
               END DO
             END IF
@@ -1439,23 +1572,37 @@ MODULE src_dust
             EmiRate(EmiIndBio,j,i,DustInd(n,1)) = EmiRate(EmiIndBio,j,i,DustInd(n,1)) + fluxbin(n)
             EmiRate(EmiIndSum,j,i,DustInd(n,1)) = EmiRate(EmiIndSum,j,i,DustInd(n,1)) + fluxbin(n)
             IF (mineralmaptype == 1) THEN
-              DO mr=1,12
+              DO mr=1,17
                 EmiRate(EmiIndBio,j,i,DustInd(n,mr+1)) = EmiRate(EmiIndBio,j,i,DustInd(n,mr+1)) + fluxbin_m(n,mr)
                 EmiRate(EmiIndSum,j,i,DustInd(n,mr+1)) = EmiRate(EmiIndSum,j,i,DustInd(n,mr+1)) + fluxbin_m(n,mr)
               END DO
             END IF
-
 #endif
           END DO
-
 
           call cpu_time(T2)
         END DO ! j
       END DO ! i
+      !find infinite values make them zero
+      DO i=1,subdomain%ntx
+        DO j=1,subdomain%nty
+          DO n=1,ntrace
+            DO mr=1,18
+              IF (ieee_is_nan(flux(1,j,i,DustInd(n,mr))).or..not.ieee_is_finite(flux(1,j,i,DustInd(n,mr)))) THEN
+                flux(1,j,i,DustInd(n,mr)) = 0.
+              ELSE IF (ieee_is_nan(DustEmis(j,i,DustInd(n,mr))).or..not.ieee_is_finite(DustEmis(j,i,DustInd(n,mr)))) THEN
+                DustEmis(j,i,DustInd(n,mr)) = 0.
+              END IF
+            END DO !mr
+          END DO !ntrace --> DustBins
+        END DO !j
+      END DO !i
+
     END IF ! yaction
 
     IF (lddebug) PRINT*, 'Leave tegen02, yaction=',yaction,''//NEW_LINE('')
-    IF (lddebug) PRINT*, 'u1fac is:', u1fac,''//NEW_LINE('')
+    !IF (lddebug) PRINT*, 'DustEmis_01 max value:', MAXVAL(DustEmis(:,:,1)),''//NEW_LINE('')
+    !IF (lddebug) PRINT*, 'fluxbin_01 max value:', MAXVAL(flux(1,:,:,1)),''//NEW_LINE('')
 
   END SUBROUTINE tegen02
 
@@ -1492,7 +1639,7 @@ MODULE src_dust
     INTEGER    :: &
       nn,ns,kk,nm,      & ! loops
       nd,nsi,np,        &
-      i,j,t,            &
+      i,j,t,mr,         &
       isoiltype
 
     REAL (8)   :: &
@@ -1515,13 +1662,13 @@ MODULE src_dust
       dkmax(nclass),            & !max original size class dkmax
       su_class(nclass),         & !surface occupied by each granulometric class
       su_classV(nclass),        & !volume occupied by each granulometric class
-      utest(nats)
+      utest(nats),              &
+      dM_m(9), su_loc_m(9),   &
+      su_locV_m(9), su_m(9),  &
+      suV_m(9),                &
+      Stotal_m(9),             &
+      StotalV_m(9)     !       &
 
-    ! ! 2D Arrays
-    ! REAL(8) ::                  &
-    !   srel(nats,nclass),        & !
-    !   srelV(nats,nclass),       & !
-    !   su_srelV(nats,nclass)!,    & !
 
     REAL(8) ::          &
       dmy_B,            & ! Dummy for B Factor (Marticorena 95)
@@ -1529,18 +1676,20 @@ MODULE src_dust
       dmy_xk,           & ! Dummy for Marticorena 95 eq. (29)
       dmy_xl,           & ! Dummy for Marticorena 95 eq. (29)
       dmy_xm,           & ! Dummy for Marticorena 95 eq. (29)
-      dmy_xn!,           & ! Dummy for Marticorena 95 eq. (29)
+      dmy_xn           !& ! Dummy for Marticorena 95 eq. (29)
 
     REAL(8), POINTER ::  &
       soiltype(:,:),     &
       source(:,:),       &
       z0(:,:),           &
       alpha(:,:),        &
-      feff_z0(:,:)
+      feff_z0(:,:),      &
+      mineralmap(:,:,:)
 
     REAL(8), ALLOCATABLE :: printvar(:,:,:,:)
 
     soiltype => dust(subdomain%ib)%soiltype(:,:)
+    mineralmap  => dust(subdomain%ib)%mineralmap(:,:,:)
     source => dust(subdomain%ib)%source(:,:)
     z0 => dust(subdomain%ib)%z0(:,:)
     alpha => dust(subdomain%ib)%alpha2(:,:)
@@ -1549,6 +1698,7 @@ MODULE src_dust
     !  => dust_ini(ib1)%veg
     !  => dust_ini(ib1)%veg
     !  => dust_ini(ib1)%vegmin
+
 
     IF (lddebug) PRINT*, 'Enter init_tegen'
 
@@ -1574,7 +1724,7 @@ MODULE src_dust
     dkmax=0.
 
     ! soiltype loop, calculation surface flux for every possible soiltype
-    DO ns = 1,nats !ns (soil type)
+    DO ns = 1,nats !ns (soil type, 45 of them!)
       Stotal = 0.
       StotalV = 0.
       dp = Dmin
@@ -1597,15 +1747,16 @@ MODULE src_dust
           nsi = nd + 1             ! index of solspe that point to sigma
           np  = nd + 2             ! index of solspe that point to the fraction of sand/silt/clay
 
+                                          !solspe is defined at data dust, it is the soil type characteristics
           IF (solspe(ns,nd) == 0.) THEN
             su_loc = 0.
             su_locV=0.
           ELSE
-            !Marticorena 95, eq. (29)
+            !Marticorena 95, eq. (29); horizontal flux
             dmy_xk = solspe(ns,np)/(sqrt(2.* pi2)*log(solspe(ns,nsi)))
             dmy_xl = ((log(dp)-log(solspe(ns,nd)))**2)/                 &
                  (2.*(log(solspe(ns,nsi)))**2)
-            dmy_xm = dmy_xk * exp(-dmy_xl)
+            dmy_xm = dmy_xk * exp(-dmy_xl)    !is this the same as dM on tegen02 ?
             !Marticorena 95, eq. (30)
             dmy_xn =  rop*(2./3.)*(dp/2.) !surface
             su_loc = (dmy_xm*Dstep/dmy_xn)
@@ -1613,6 +1764,8 @@ MODULE src_dust
           END IF
           su  = su  + su_loc
           suV = suV + su_locV
+          !mineral loop, check if the median diameter corresponds to either clay or silt
+            dmy_xn =  rop*(2./3.)*(dp/2.)
         END DO !nmode
 
         su_class(kk) = su
@@ -1625,12 +1778,12 @@ MODULE src_dust
         dkmax(kk)=dp
       END DO ! (dp <= Dmax+1E-5)
 
-      DO nn = 1,nclass
+      DO nn = 1,nclass  !particle size loop
         IF (Stotal.eq.0.)THEN
-          srel(ns,nn) = 0.
+          srel(ns,nn) = 0.     !srel is what is going to be used for the flux calculation on the next subroutine
           srelV(ns,nn) = 0.
         ELSE
-          !Marticorena 95, eq. (33)
+          !Marticorena 95, eq. (33); horizontal flux distribution as a function of particle diameter
           srel(ns,nn) = su_class(nn)/Stotal
           srelV(ns,nn) = su_classV(nn)/StotalV
           utest(ns)=utest(ns)+srelV(ns,nn)
@@ -1737,7 +1890,7 @@ MODULE src_dust
     REAL(8) :: del,tnm,sum
 
     INTEGER ::   &
-      i,j,nn,    &
+      i,j,nn,mr,    &
       k,kk,kkk,  &
       kfirst,    &
       kkmin,     &
@@ -1761,10 +1914,26 @@ MODULE src_dust
       feff,             & ! drag partition
       cultfac
 
+    !1D arrays
+    REAL (8)   :: &
+      flux_umean_m(9), &
+      flux_diam_m(9)
+
 
     REAL(8) :: uwind, vwind,van
     !REAL(8) :: mfac             !factor due to soil moisture [Fecan, F. et al., 1999]
     REAL(8) :: FDust(subdomain%nty,subdomain%ntx,ntrace)
+    !arrays for minerals
+    !REAL(8) :: &
+      !Flux_m(ntz,subdomain%nty,subdomain%ntx,nt,miner), & !should it be INTENT INOUT?
+      !fluxtyp_m(subdomain%nty,subdomain%ntx,nclass,9) , &
+  !    fluxbin_mr(subdomain%nty,subdomain%ntx,nclass,9), &
+      !fluxtot_m(subdomain%nty,subdomain%ntx,nclass,9), &
+      !fdust_m(subdomain%nty,subdomain%ntx,nclass,9)
+
+    REAL:: T1, T2
+
+
     REAL(8) :: time_start,time_now
 
     REAL(8) :: &
@@ -1775,7 +1944,7 @@ MODULE src_dust
       dbmax (ntrace),                         & !bin size limit
       fluxtot (ntrace),                       & !total dust flux at 06am and 06 pm fluxtot06
       fluxtyp (nclass),                       & !
-      fluxbin (ntrace)!,                       & !
+      fluxbin (ntrace)                        !& !
 
 
     ! Pointer
@@ -1790,6 +1959,7 @@ MODULE src_dust
 #endif
 
     REAL(8), POINTER :: soiltype(:,:)
+    REAL(8), POINTER :: mineralmap(:,:,:)
     REAL(8), POINTER :: source(:,:)
     REAL(8), POINTER :: alpha(:,:)
     REAL(8), POINTER :: feff_z0(:,:)
@@ -1808,6 +1978,7 @@ MODULE src_dust
 
 
     soiltype => dust(subdomain%ib)%soiltype(:,:)
+    mineralmap => dust(subdomain%ib)%mineralmap(:,:,:)
     source   => dust(subdomain%ib)%source(:,:)
     alpha    => dust(subdomain%ib)%alpha2(:,:)
     feff_z0     => dust(subdomain%ib)%feff_z0(:,:)
@@ -1821,9 +1992,17 @@ MODULE src_dust
     ! w_str   => dust(subdomain%ib)%w_str(:,:,1)
     !
     DustEmis => dust(subdomain%ib)%d_emis(:,:,:)
+  !  DustEmis_m => dust(subdomain%ib)%d_emis_m(:,:,:,:)
 #ifndef OFFLINE
     EmiRate  => block(subdomain%ib)%EmiRate(:,:,:,:)
 #endif
+
+!why is allocation not working? Error message as follows:
+!Fortran runtime error: Attempting to allocate already allocated variable 'fluxtyp_m'
+    !ALLOCATE(fluxtyp_m(subdomain%nty,subdomain%ntx,nclass,9))
+    !ALLOCATE(fluxbin_mr(subdomain%nty,subdomain%ntx,nclass,9))
+    !ALLOCATE(fluxtot_m(subdomain%nty,subdomain%ntx,nclass,9))
+    !ALLOCATE(fdust_m(subdomain%nty,subdomain%ntx,nclass,9))
 
 IF (lddebug) PRINT*, 'Enter emission_tegen'
 
@@ -1845,7 +2024,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     END IF
 
 
-
+    call cpu_time(T1)
     DO i=1,subdomain%ntx
       DO j=1,subdomain%nty
         ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
@@ -1913,11 +2092,13 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
               IF (fdp1 <= 0 .OR. fdp2 <= 0) THEN
                 flux_umean = 0.
+                flux_umean_m = 0.
               ELSE
                 flux_umean = srel(i_s1,kk) * fdp1 * fdp2 * cd * ustar_cm**3 *alpha(j,i)
                 flux_diam = flux_umean
 
                 Ustar_var = Ustar_min
+
 
                 ! ! taking subgrid-scale variations of Ustar into account
                 ! DO WHILE(Ustar_var <= Ustar_max+1E-5)
@@ -1964,7 +2145,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
                       ! scaling with relative contribution of dust size  fraction
                       IF (kk > kkmin) THEN
                         fluxtyp(kkk) = fluxtyp(kkk) +flux_diam               &
-                                      *srelV(i_s11,kkk)/((su_srelV(i_s11,kk) &
+                                      *srelV(i_s11,kkk)/((su_srelV(i_s11,kk) &   !srelV(soiltype,particle)
                                       -su_srelV(i_s11,kkmin)))
 
                       END IF ! (kk > kkmin)
@@ -2017,6 +2198,11 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
           ! MASK: Effective area determined by cultfac/snow
           fdust(j,i,nn) = fluxtot(nn) * 10000 / 1000          &
                           *cultfac!*(1.-snow365(j,i))
+          !IF (mineralmaptype == 1) THEN
+          !  DO mr=1,11
+          !    fdust_m(j,i,nn,mr) = fluxtot_m(j,i,nn,mr) * 10000 / 1000
+          !  END DO
+          !END IF
 
           ! Mask Effective area determined by preferential source fraction:
           ! only for psrcType = 2
@@ -2039,7 +2225,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
         END DO ! nn=1,ntrace
 
         !---  transformation to chemistry units  (RW)
-        FDust(j,i,:) = FDust(j,i,:) * 1.E3         ! kg/m2/s ==> g/m2/s
+        FDust(j,i,:) = FDust(j,i,:) * 1.E3   ! kg/m2/s ==> g/m2/s
         ! FDust(j,i,:) = FDust(j,i,:) * ConvPart     ! chemistry units (nradm=1): g/m2/s ==> g/m2/s * mol2part
 
 
@@ -2056,6 +2242,10 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
         END DO
       END DO
     END DO
+    call cpu_time(T2)
+    print*, 'calc time step:',T2-T1
+
+    !call quick_ascii('Dust Illite',DustEmis_m(:,:,1))
 
     IF (lddebug) PRINT*, 'Leave emission_tegen',''//NEW_LINE('')
 
@@ -2686,6 +2876,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
         END DO
       END DO
 
+    CALL quick_nc('moisture', var3d=vmoist)
+    CALL quick_nc('w_str', var2d=w_str)
       ! end lon-lat-loop
 
     ELSEIF (yaction == 'calc') THEN ! yaction == 'init'
@@ -3071,7 +3263,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
         varname(2)='silt'
         varname(3)='clay'
       END IF
-    ELSEIF (infile == 'mineral') THEN   !mineralmap read SGMA
+    ELSEIF (infile == 'mineral') THEN
       filename = TRIM(mineraltypeFile)
       IF (mineralmaptype == 1) THEN
         varnum = 12
@@ -3105,6 +3297,14 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       varname='FCOVER'
       ntimes = SIZE(outvar(1,1,:))
       timecheck = .True.
+    ELSEIF (infile == 'vegmon') THEN
+      filename = TRIM(vegmonFile)
+      varname='var1'
+      ntimes = SIZE(outvar(1,1,:))
+      timecheck = .False.
+    ELSEIF (infile == 'biom') THEN
+      filename = TRIM(biomeFile)
+      varname='biome'
     END IF
 
     IF (filename(LEN(TRIM(filename))-2:) /= '.nc') THEN
@@ -3332,7 +3532,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       ENDIF
 
       ! get the var
-      !IF (istart < 1) istart = 1
+      !IF (istart /= 0) istart = 0
+      PRINT*, shape(var_read), istart, ntimes
       istat = nf90_get_var(ncid, varID, var_read(:,:,iv),start= (/1,1,istart/),count=(/ie_tot,je_tot,ntimes/))
       IF (istat /= nf90_noerr) THEN
         ierror  = 10017

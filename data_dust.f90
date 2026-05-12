@@ -40,8 +40,8 @@ MODULE tegen02_param
     nbin = 24,               & !max number of bins
     ! nmode = 4,               &
     nspe = 14,               & !Nmode*3+2
-    ntrace = DustBins,       &   !max number of bins
-    nmin = 12
+    ntrace = DustBins,       &!max number of bins
+    nmin = 17                  !max number of minerals
 
 
   REAL(8), PARAMETER ::                   &
@@ -49,7 +49,7 @@ MODULE tegen02_param
     b_rnolds    = 0.38,                   & ! Reynolds constant
     x_rnolds    = 1.56,                   & ! Reynolds constant
 
-    rop         = 2650.0E0,               & ! particules density (kg.m-3) Sahara; 1.5g/cm3 for Diatomite
+    rop         = 2650.0E0,               & ! particules density (kg.m-3) Sahara 2650; 1.5g/cm3 for Diatomite/ 2710 silt with 4% hematite
     roa         = 1.227E0,                & ! air density (kg.m-3)
     g           = 9.81E0,                 & ! gravitational constant (m s-2)
 
@@ -94,8 +94,8 @@ MODULE dust_tegen_param
     nbin = 24,               & !max number of bins
     ! nmode = 4,               &
     nspe = 14,               & !Nmode*3+2
-    ntrace = DustBins,       &   !max number of bins
-    nmin = 12
+    ntrace = DustBins,       &          !max number of bins
+    nmin = 17                   !max number of minerals (from GMINER dataset)
 
 
   REAL(8), PARAMETER ::                       &
@@ -151,7 +151,7 @@ MODULE dust_tegen_data
   USE mo_dust, ONLY: &
     nats, DustBins
   USE dust_tegen_param, ONLY: &
-  combimax,nspe, nmin
+  combimax,nspe,nmin
 
 
   ! ------------
@@ -198,7 +198,7 @@ MODULE dust_tegen_data
 
    IMPLICIT NONE
 
-   INTEGER :: jspe, bins
+   INTEGER :: jspe, bins, mineral
 
    INTEGER, DIMENSION(combimax) :: active
 
@@ -899,36 +899,54 @@ MODULE dust_tegen_data
              0.0002E0, 2.E0, 0.3298E0 ,        &
              3.98E-06,  0.2E0/
 
-!----------------------------------------------------------------
-!mineral_dist --> fractions of the dustbin emission that corresponds to the mineral size distribution
-!----------------------------------------------------------------
 
-REAL, DIMENSION(nmin,DustBins) :: mineral_dist
+  !----------------------------------------------------------------
+  !mineral_dist --> fractions of the dustbin emission that corresponds to the mineral size distribution
+  !
+  !
+  !----------------------------------------------------------------
+
+  REAL, DIMENSION(nmin,DustBins) :: mineral_dist
 !the fractions are temporary, more analysis is needed
-      data (mineral_dist(1,bins), bins=1,DustBins)/ &
-        1., 0.5, 0. , 0. , 0./
-      data (mineral_dist(2,bins), bins=1,DustBins)/ &
-        1., 0.5, 0. , 0. , 0./
-      data (mineral_dist(3,bins), bins=1,DustBins)/ &
-        1., 0.5, 0. , 0. , 0./
-      data (mineral_dist(4,bins), bins=1,DustBins)/ &
-        1., 0.5, 0. , 0. , 0./
-      data (mineral_dist(5,bins), bins=1,DustBins)/ &
-        1., 0.5, 0. , 0. , 0./
-      data (mineral_dist(6,bins), bins=1,DustBins)/ &
-        1., 0.5, 0. , 0. , 0./
-      data (mineral_dist(7,bins), bins=1,DustBins)/ &
-        0., 0.5, 1. , 1. , 0.05/
-      data (mineral_dist(8,bins), bins=1,DustBins)/ &
-        0., 0.5, 1. , 1. , 0.05/
-      data (mineral_dist(9,bins), bins=1,DustBins)/ &
-        0., 0.5, 1. , 1. , 0.05/
-      data (mineral_dist(10,bins), bins=1,DustBins)/ &
-        0., 0.5, 1. , 1. , 0.05/
-      data (mineral_dist(11,bins), bins=1,DustBins)/ &
-        0., 0.5, 1. , 1. , 0.05/
-      data (mineral_dist(12,bins), bins=1,DustBins)/ &
-        0., 0.5, 1. , 1. , 0.05/
+          data (mineral_dist(1,bins), bins=1,DustBins)/ &
+            1., 0.5, 0. , 0. , 0./
+          data (mineral_dist(2,bins), bins=1,DustBins)/ &
+            1., 0.5, 0. , 0. , 0./
+          data (mineral_dist(3,bins), bins=1,DustBins)/ &
+            1., 0.5, 0. , 0. , 0./
+          data (mineral_dist(4,bins), bins=1,DustBins)/ &
+            1., 0.5, 0. , 0. , 0./
+          data (mineral_dist(5,bins), bins=1,DustBins)/ &
+            1., 0.5, 0. , 0. , 0./
+          data (mineral_dist(6,bins), bins=1,DustBins)/ &
+            1., 0.5, 0. , 0. , 0./
+          data (mineral_dist(7,bins), bins=1,DustBins)/ &
+            1., 0.5, 0. , 0. , 0./
+          data (mineral_dist(8,bins), bins=1,DustBins)/ &
+            1., 0.5, 0. , 0. , 0./
+          data (mineral_dist(9,bins), bins=1,DustBins)/ &
+            0., 0.5, 1. , 1. , 0.5/
+          data (mineral_dist(10,bins), bins=1,DustBins)/ &
+            0., 0.5, 1. , 1. , 0.5/
+          data (mineral_dist(11,bins), bins=1,DustBins)/ &
+            0., 0.5, 1. , 1. , 0.5/
+          data (mineral_dist(12,bins), bins=1,DustBins)/ &
+            0., 0.5, 1. , 1. , 0.5/
+          data (mineral_dist(13,bins), bins=1,DustBins)/ &
+            0., 0.5, 1. , 1. , 0.5/
+          data (mineral_dist(14,bins), bins=1,DustBins)/ &
+            0., 0.5, 1. , 1. , 0.5/
+          data (mineral_dist(15,bins), bins=1,DustBins)/ &
+            0., 0.5, 1. , 1. , 0.5/
+          data (mineral_dist(16,bins), bins=1,DustBins)/ &
+            0., 0.5, 1. , 1. , 0.5/
+          data (mineral_dist(17,bins), bins=1,DustBins)/ &
+            1., 1., 1. , 1. , 0.5/
+
+!densitites of different minerals in (kg.m-3)
+!REAL, DIMENSION(nminrl) :: rop_mr
+!  data (rop_mr(mineral), mineral=1,nminrl)/ &
+!  2570.0E0, 2630.0E0, 2570.0E0, 2710.0E0, 2670.0E0, 5210.0E0, 2680.0E0, 2310.0E0, 2320.0E0/
 
 END MODULE dust_tegen_data
 
@@ -972,7 +990,7 @@ MODULE offline_org
     nt          = 8,    &
     ntz         = 1,    &
     ScalCur     = 1,    &
-    miner       = 12     !minerals number
+    miner       = 17     !minerals number
 
   INTEGER :: &
     SurfRef, &
@@ -1012,7 +1030,7 @@ MODULE offline_org
 
   INTEGER ::        &
     Dust_e_ID(5),   &
-    Dust_em_ID(5,12)
+    Dust_em_ID(5,17)
 
 END MODULE offline_org
 #endif
