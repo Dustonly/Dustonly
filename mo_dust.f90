@@ -39,18 +39,20 @@ MODULE mo_dust
     psrcType,     & ! Flag for type of potential dust source
                     ! 0 : off, 1 : psrc, 2 : msgsrc
     soilmaptype,      & ! 1 : solspe table, 2 : soilgrids
-    mineralmaptype, &   !0: none, 1:GMINER data  SGMA
+    mineralmaptype, &   !0: none, 1:GMINER data
     threshold_scheme   ! 0 : Marticorena, 1 : Shao  !
 
   REAL :: &
     moistinc, &    ! time increment of soil moisture
+    z0synop,  &
+    z0const,  &
     SSR_min
 
 
   !-- Files with soil data
   CHARACTER(120) ::     &
     soiltypeFile,       & ! Filename of Soil Type Data
-    mineraltypeFile,    & ! Filename of Mineralogical data SGMA
+    mineraltypeFile,    & ! Filename of Mineralogical data
     psrcFile,           & ! Filename of preferential Dust Sources
     cultFile,           & ! Filename of Cultivation Class
     vegmonFile,         & ! Filename of monthly vegitation cover
@@ -64,7 +66,7 @@ MODULE mo_dust
   ! description of dust particles for external use
   INTEGER, PARAMETER :: &
     DustBins = 5, & !8  ! number of dust particle fractions
-    nmin = 13       !number of possible minerals (GMINER)
+    nmin = 18       !number of possible minerals (GMINER) plus first position for total dust in bins
 
   INTEGER :: bins
 
@@ -72,29 +74,39 @@ MODULE mo_dust
   DATA (DustInd(bins, 1), bins=1,DustBins)/ &
     1, 2, 3, 4, 5/
   DATA (DustInd(bins, 2), bins=1,DustBins)/ &
-    6, 18, 30, 42, 54/
+    6, 23, 40, 57, 74/
   DATA (DustInd(bins, 3), bins=1,DustBins)/ &
-    7, 19, 31, 43, 55/
+    7, 24, 41, 58, 75/
   DATA (DustInd(bins, 4), bins=1,DustBins)/ &
-    8, 20, 32, 44, 56/
+    8, 25, 42, 59, 76/
   DATA (DustInd(bins, 5), bins=1,DustBins)/ &
-    9, 21, 33, 45, 57/
+    9, 26, 43, 60, 77/
   DATA (DustInd(bins, 6), bins=1,DustBins)/ &
-    10, 22, 34, 46, 58/
+    10, 27, 44, 61, 78/
   DATA (DustInd(bins, 7), bins=1,DustBins)/ &
-    11, 23, 35, 47, 59/
+    11, 28, 45, 62, 79/
   DATA (DustInd(bins, 8), bins=1,DustBins)/ &
-    12, 24, 36, 48, 60/
+    12, 29, 46, 63, 80/
   DATA (DustInd(bins, 9), bins=1,DustBins)/ &
-    13, 25, 37, 49, 61/
+    13, 30, 47, 64, 81/
   DATA (DustInd(bins, 10), bins=1,DustBins)/ &
-    14, 26, 38, 50, 62/
+    14, 31, 48, 65, 82/
   DATA (DustInd(bins, 11), bins=1,DustBins)/ &
-    15, 27, 39, 51, 63/
+    15, 32, 49, 66, 83/
   DATA (DustInd(bins, 12), bins=1,DustBins)/ &
-    16, 28, 40, 52, 64/
+    16, 33, 50, 67, 84/
   DATA (DustInd(bins, 13), bins=1,DustBins)/ &
-    17, 29, 41, 53, 65/
+    17, 34, 51, 68, 85/
+  DATA (DustInd(bins, 14), bins=1,DustBins)/ &
+    18, 35, 52, 69, 86/
+  DATA (DustInd(bins, 15), bins=1,DustBins)/ &
+    19, 36, 53, 70, 87/
+  DATA (DustInd(bins, 16), bins=1,DustBins)/ &
+    20, 37, 54, 71, 88/
+  DATA (DustInd(bins, 17), bins=1,DustBins)/ &
+    21, 38, 55, 72, 89/
+  DATA (DustInd(bins, 18), bins=1,DustBins)/ &
+    22, 39, 56, 73, 90/
 
   REAL :: dustbin_top(DustBins)
   DATA dustbin_top(1) /1.E-6/,  &
@@ -105,31 +117,35 @@ MODULE mo_dust
 
   CHARACTER(20), DIMENSION(DustBins,nmin) :: DustName  !the position 1 is for non mineral bins
     DATA (DustName(1,minerals), minerals=1,nmin) / &
-      'DP_01', 'DP_01_illi', 'DP_01_kaol', 'DP_01_smec',      &
-      'DP_01_cal', 'DP_01_qua', 'DP_01_hem', 'DP_01_feld',    &
-      'DP_01_gyps', 'DP_01_calc', 'DP_01_quar', 'DP_01_hema', &
-      'DP_01_phos'/
+      'DP_01', 'DP_01_ili', 'DP_01_kao', 'DP_01_smc',      &
+      'DP_01_cal', 'DP_01_qua', 'DP_01_hem', 'DP_01_fel',    &
+      'DP_01_gyp', 'DP_01_ill','DP_01_kal','DP_01_sme',    &
+      'DP_01_clc', 'DP_01_qur', 'DP_01_hmm','DP_01_fld',   &
+      'DP_01_gps', 'DP_01_pho'/
     DATA (DustName(2,minerals), minerals=1,nmin) / &
-      'DP_03', 'DP_03_illi', 'DP_03_kaol', 'DP_03_smec',      &
-      'DP_03_cal', 'DP_03_qua', 'DP_03_hem', 'DP_03_feld',    &
-      'DP_03_gyps', 'DP_03_calc', 'DP_03_quar', 'DP_03_hema', &
-      'DP_03_phos'/
+      'DP_03', 'DP_03_ili', 'DP_03_kao', 'DP_03_smc',      &
+      'DP_03_cal', 'DP_03_qua', 'DP_03_hem', 'DP_03_fel',    &
+      'DP_03_gyp', 'DP_03_ill','DP_03_kal','DP_03_sme',    &
+      'DP_03_clc', 'DP_03_qur', 'DP_03_hmm','DP_03_fld',   &
+      'DP_03_gps', 'DP_03_pho'/
     DATA (DustName(3,minerals), minerals=1,nmin) / &
-      'DP_09', 'DP_09_illi', 'DP_09_kaol', 'DP_09_smec',      &
-      'DP_09_cal', 'DP_09_qua', 'DP_09_hem', 'DP_09_feld',    &
-      'DP_09_gyps', 'DP_09_calc', 'DP_09_quar', 'DP_09_hema', &
-      'DP_09_phos'/
+      'DP_09', 'DP_09_ili', 'DP_09_kao', 'DP_09_smc',      &
+      'DP_09_cal', 'DP_09_qua', 'DP_09_hem', 'DP_09_fel',    &
+      'DP_09_gyp', 'DP_09_ill','DP_09_kal','DP_09_sme',    &
+      'DP_09_clc', 'DP_09_qur', 'DP_09_hmm','DP_09_fld',   &
+      'DP_09_gps', 'DP_09_pho'/
     DATA (DustName(4,minerals), minerals=1,nmin) / &
-      'DP_26', 'DP_26_illi', 'DP_26_kaol', 'DP_26_smec',      &
-      'DP_26_cal', 'DP_26_qua', 'DP_26_hem', 'DP_26_feld',    &
-      'DP_26_gyps', 'DP_26_calc', 'DP_26_quar', 'DP_26_hema', &
-      'DP_26_phos'/
+      'DP_26', 'DP_26_ili', 'DP_26_kao', 'DP_26_smc',      &
+      'DP_26_cal', 'DP_26_qua', 'DP_26_hem', 'DP_26_fel',    &
+      'DP_26_gyp', 'DP_26_ill','DP_26_kal','DP_26_sme',    &
+      'DP_26_clc', 'DP_26_qur', 'DP_26_hmm','DP_26_fld',   &
+      'DP_26_gps', 'DP_26_pho'/
     DATA (DustName(5,minerals), minerals=1,nmin) / &
-      'DP_80', 'DP_80_illi', 'DP_80_kaol', 'DP_80_smec',      &
-      'DP_80_cal', 'DP_80_qua', 'DP_80_hem', 'DP_80_feld',    &
-      'DP_80_gyps', 'DP_80_calc', 'DP_80_quar', 'DP_80_hema', &
-      'DP_80_phos'/
-
+      'DP_80', 'DP_80_ili', 'DP_80_kao', 'DP_80_smc',      &
+      'DP_80_cal', 'DP_80_qua', 'DP_80_hem', 'DP_80_fel',    &
+      'DP_80_gyp', 'DP_80_ill','DP_80_kal','DP_80_sme',    &
+      'DP_80_clc', 'DP_80_qur', 'DP_80_hmm','DP_80_fld',   &
+      'DP_80_gps', 'DP_80_pho'/
 
   INTEGER, PARAMETER :: DustBins_m = 5  !8  ! number of dust particle fractions
   INTEGER :: DustInd_m(DustBins_m)            ! indices of dust particles
@@ -153,9 +169,8 @@ MODULE mo_dust
   REAL(8), POINTER ::     &
     soilprop (:,:,:,:),   & !soil properties
     soilmap(:,:,:),       & ! sand, silt, clay map
-    mineralmap(:,:,:),    & ! illite, kaolinite, smectite, feldpsar, calcite, hematite SGMA
-    mineralclay(:,:),    &
-    mineralsilt(:,:),    &
+    mineralmap(:,:,:),       & ! illite, kaolinite, smectite, feldpsar, calcite, hematite
+    mineralmapmod(:,:,:),       & ! modified mineral map
     lai (:,:,:,:),        & !leafe area index
     vegmin (:,:,:),       & !minimum of vegetation
     alpha (:,:,:),        & !ratio horiz/vertical flux
@@ -164,7 +179,7 @@ MODULE mo_dust
     w_str (:,:),        & !threshold soil moisture w' (Fecan, F. et al., 1999)
     umin2(:,:,:),         &
     d_emis(:,:,:),         & !dust emission
-    d_emis_m(:,:,:,:),     & !dust mineralogical emission SGMA
+    d_emis_m(:,:,:,:),         & !dust mineralogical emission
     biome(:,:),         &
     cult(:,:),          &
     veg (:,:,:),        & !leafe area index
@@ -182,11 +197,7 @@ MODULE mo_dust
     srel_map(:,:,:),&          ! (j,i,nclass)
     mrel_map(:,:,:),&          ! (j,i,nclass)
     mrel_sum(:,:,:),&          ! (j,i,nclass)
-    mrel_mx(:,:,:,:),&          ! (j,i,nclass,nclass)
-    srel_map_m(:,:,:,:),&          ! (j,i,nclass)
-    mrel_map_m(:,:,:,:),&          ! (j,i,nclass)
-    mrel_sum_m(:,:,:,:),&          ! (j,i,nclass)
-    mrel_mx_m(:,:,:,:,:)          ! (j,i,nclass,nclass)
+    mrel_mx(:,:,:,:)        ! (j,i,nclass,nclass)
   END TYPE dust_subdomain
   TYPE (dust_subdomain), ALLOCATABLE, TARGET :: dust(:)
 
@@ -213,7 +224,7 @@ MODULE mo_dust
                    ! IF (nmode = 3) median_dp = (707.0E-6,158.0E-6,15.0E-6,2.0E-6)
                    ! IF (nmode = 4) median_dp = (158.0E-6,15.0E-6,2.0E-6)
 
-  ! dummy variable for input, allocate new when switch from 2d to 3d
+  ! dummy variable for input, allocate new wshen switch from 2d to 3d
   REAL(8), ALLOCATABLE ::  &
     read_input(:,:,:)       ! (j,i,time)
 
@@ -225,9 +236,9 @@ MODULE mo_dust
 
   ! 2D Arrays
   REAL(8) ::                  &
-    srel(nats,nclass),        & !
+    srel(nats,nclass),        & !   &
     srelV(nats,nclass),       & !
-    su_srelV(nats,nclass)!,    & !
+    su_srelV(nats,nclass)
 
   ! internal switches
   LOGICAL     :: &
@@ -261,8 +272,6 @@ MODULE mo_dust
     uconst,    &
     vconst,    &
     ustconst,  &
-    z0const,  &
-    z0synop,  &
     dzconst
 
 
