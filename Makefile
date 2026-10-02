@@ -2,12 +2,13 @@
 FC = gfortran
 FLAGS = -cpp -Wall -O3 -DOFFLINE
 
-# NetCDF library and include paths. You may have it in your $LDFLAGS and $CPPFLAGS otherwise adjust as needed.
-NETCDF_LIB =  -lnetcdf -lnetcdff
-NETCDF_INC = 
-# NETCDF_LIB = -L/path/to/netcdf/library -lnetcdf -lnetcdff
-# NETCDF_INC = -I/path/to/netcdf/include
+# NetCDF-Fortran installation. Default: serial gcc build on DKRZ Levante.
+# Override on the command line, e.g. make NETCDF_FORTRAN=/path/to/netcdf-fortran
+NETCDF_FORTRAN ?= /sw/spack-levante/netcdf-fortran-4.5.3-l2ulgp
 
+# NetCDF library and include paths (rpath so no LD_LIBRARY_PATH is needed at runtime)
+NETCDF_LIB ?= $(shell $(NETCDF_FORTRAN)/bin/nf-config --flibs) -Wl,-rpath,$(NETCDF_FORTRAN)/lib
+NETCDF_INC ?= -I$(NETCDF_FORTRAN)/include
 # Source files
 SRC = dust_only.f90 src_dust.f90 data_dust.f90 mo_dust.f90
 
