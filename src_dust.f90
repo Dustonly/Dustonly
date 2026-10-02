@@ -3337,7 +3337,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     ! local Vars
 
     CHARACTER(15)     :: &
-      varname(12)       ! name of variable that shoud be read
+      varname(12),    & ! name of variable that shoud be read
+      altname           ! alternative name, tried if varname is not in the file
 
     CHARACTER(120)     :: &
       filename       ! name of variable that shoud be read
@@ -3359,7 +3360,10 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       varID,    &  ! id of the  var
       timeID,   &  ! id of time var
       dimID,    &  ! id of a dimension
-      dimlen       ! length of the above dimension
+      dimlen,   &  ! length of the above dimension
+      ndims,    &  ! number of dimensions of the var
+      var_start(3), & ! start indices for nf90_get_var
+      var_count(3)    ! counts for nf90_get_var
 
     REAL  :: &
       var_scale, &    ! index of the start date in the var file
@@ -3400,6 +3404,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     ! Definitions
     varnum = 1
     ntimes = 0
+    altname = ''
     istart = 0
     istat = nf90_noerr
     ierror = 0
@@ -3435,6 +3440,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     ELSEIF (infile == 'source') THEN
       filename = TRIM(psrcFile)
       varname = 'source'
+      altname = 'dustfraction'  ! name used by dust-input-pipline
     ELSEIF (infile == 'z0') THEN
       filename = TRIM(z0File)
       varname = 'z0'
@@ -3655,6 +3661,9 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     DO iv = 1, varnum
       ! get the id of the var
       istat = nf90_inq_varid(ncID, varname(iv) , varID)
+      IF (istat /= nf90_noerr .AND. LEN_TRIM(altname) > 0) THEN
+        istat = nf90_inq_varid(ncID, TRIM(altname), varID)
+      ENDIF
       IF (istat /= nf90_noerr) THEN
         ierror  = 10015
         PRINT*,'ERROR reading ', TRIM(filename)
@@ -3684,8 +3693,25 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
       ! get the var
       !IF (istart /= 0) istart = 0
+      ! a time-invariant field may still carry a time dimension of length 1
+      ! (e.g. dustfraction(time_dust,rlat,rlon) from dust-input-pipline): read its first record
+      istat = nf90_inquire_variable(ncID, varID, ndims=ndims)
+      IF (istat /= nf90_noerr) THEN
+        ierror  = 10018
+        PRINT*,'ERROR reading ', TRIM(filename)
+        PRINT*,ierror
+        yerrmsg = TRIM(nf90_strerror(istat))
+        RETURN
+      ENDIF
+      var_start = (/1, 1, istart/)
+      var_count = (/ie_tot, je_tot, ntimes/)
+      IF (ntimes == 0 .AND. ndims == 3) THEN
+        var_start(3) = 1
+        var_count(3) = 1
+      END IF
+
       PRINT*, shape(var_read), istart, ntimes
-      istat = nf90_get_var(ncid, varID, var_read(:,:,iv),start= (/1,1,istart/),count=(/ie_tot,je_tot,ntimes/))
+      istat = nf90_get_var(ncid, varID, var_read(:,:,iv),start=var_start,count=var_count)
       IF (istat /= nf90_noerr) THEN
         ierror  = 10017
         PRINT*,'ERROR reading ', TRIM(filename)
