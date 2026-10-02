@@ -61,7 +61,7 @@ PROGRAM dust_only
 
     ! read in v wind
     IF (vconst == 999.0) THEN
-      CALL netcdf_in(TRIM(windFile),TRIM(u_var_name),v,lasttstep,.TRUE.,ierr,yerr)
+      CALL netcdf_in(TRIM(windFile),TRIM(v_var_name),v,lasttstep,.TRUE.,ierr,yerr)
       IF (ierr /= 0) THEN
         print*, 'ERROR netcdf in'
         ierr =  ierr
