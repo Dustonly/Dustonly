@@ -412,6 +412,12 @@ SUBROUTINE read_namelist(ierr)
     vegdayFile,        & ! Filename of daily vegetation cover
     vegminFile,        & ! Filename of min vegetation cover MF
     SSR_min,           & !
+    okin_c1,           & ! Okin: e-folding length of wake recovery [plant heights]
+    okin_rplant,       & ! Okin: radius of the idealised plant [m]
+    okin_hc,           & ! Okin: plant height at canopy closure [m]
+    okin_A,            & ! Okin: (u*s/u*) behind a single plant (veg_scheme = 3)
+    okin_gap_type,     & ! Okin: 1 = square grid gap, 2 = mean free path gap
+    lokin_chain,       & ! Okin: sheltering chain on/off (veg_scheme = 3)
     z0File,            & ! Filename of Roughness Length
     biomeFile,         & ! Filename of Vegetation Cover/Type Data
     moistFile,         &
@@ -448,6 +454,12 @@ SUBROUTINE read_namelist(ierr)
   mineralmaptype  = 0
   mineraltypeFile = 'without'
   SSR_min         =  0.0
+  okin_c1         =  4.8         ! Okin (2008)
+  okin_rplant     =  0.05        ! [m]
+  okin_hc         =  1.0         ! [m], 1.0 reproduces h = FCOVER
+  okin_A          =  0.32        ! Okin (2008)
+  okin_gap_type   =  1           ! square grid as before
+  lokin_chain     = .TRUE.
   lwithz0         = .FALSE.
   lwithbiom       = .FALSE.
   uconst          = 999.0

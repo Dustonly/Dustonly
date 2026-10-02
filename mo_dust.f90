@@ -34,6 +34,7 @@ MODULE mo_dust
     nDust,        & ! Flag for Dust Calculations
     dust_scheme,  & ! 1=Tegen02
     veg_scheme,   & ! =0 no vegitation; =1 Okin scheme; =2 linear Tegen
+                    ! =3 Okin direct with sheltering chain (only dust_scheme = 2)
     moist_scheme, &
     fricvelo_scheme, & ! 1 calc from wind and z0;  2 pre-calculated
     psrcType,     & ! Flag for type of potential dust source
@@ -47,6 +48,23 @@ MODULE mo_dust
     z0synop,  &
     z0const,  &
     SSR_min
+
+  !-- parameters of the Okin vegetation drag partition (veg_scheme = 1 and 3)
+  !   defaults reproduce the former hard-coded values
+  REAL :: &
+    okin_c1     = 4.8,  & ! e-folding length of the wake recovery in plant heights (Okin 2008)
+    okin_rplant = 0.05, & ! radius of the idealised plant [m]
+    okin_hc     = 1.0,  & ! plant height at canopy closure [m], h = okin_hc * FCOVER
+    okin_A      = 0.32    ! veg_scheme = 3: (u*s/u*) directly behind a single plant
+                          !   (Okin 2008 best fit 0.32; young crops may justify larger values)
+
+  INTEGER :: &
+    okin_gap_type = 1     ! gap between plants: 1 = square grid, mean of row and diagonal gap
+                          !                     2 = mean free path, L = pi*r/(4*FCOVER) (Faust, thesis Eq. 3.8)
+
+  LOGICAL :: &
+    lokin_chain = .TRUE.  ! veg_scheme = 3: wakes of successive plants superpose (sheltering chain)
+                          !   .FALSE.: every plant sees the undisturbed wind (original Okin 2008)
 
 
   !-- Files with soil data
@@ -191,6 +209,8 @@ MODULE mo_dust
     alpha2   (:,:),      & ! ratio horiz/vertical flux
     feff_z0    (:,:),    & ! drag partition by roughness
     feff_veg   (:,:,:),    & ! drag partition by vegetation
+    okin_mu    (:,:,:),    & ! veg_scheme = 3: mean gap / (c1 * h), < 0: no vegetation
+    okin_aeff  (:,:,:),    & ! veg_scheme = 3: effective (u*s/u*) directly behind a plant
     veff    (:,:,:),    &   ! effective vegetation
     mfac    (:,:),&          ! moisture factore
     ustar(:,:),&          ! (j,i,)

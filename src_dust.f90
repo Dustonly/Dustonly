@@ -328,13 +328,44 @@ MODULE src_dust
       ENDIF
 
       ! veg_scheme need right values
-      IF (veg_scheme < 0 .OR. veg_scheme > 2) THEN
+      IF (veg_scheme < 0 .OR. veg_scheme > 3) THEN
         ierr = 100007
         yerr = 'wrong value for veg_scheme'
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
         PRINT*,'         ',yerr
         STOP
+      END IF
+
+      ! veg_scheme == 3 acts on the wind inside the flux integral,
+      ! which is only implemented in tegen02 (dust_scheme == 2)
+      IF (veg_scheme == 3 .AND. dust_scheme /= 2) THEN
+        ierr = 100010
+        yerr = 'veg_scheme = 3 requires dust_scheme = 2'
+        PRINT*,'ERROR    src_dust "init" '
+        PRINT*,'         #',ierr
+        PRINT*,'         ',yerr
+        STOP
+      END IF
+
+      ! parameters of the Okin scheme need valid values
+      IF (veg_scheme == 1 .OR. veg_scheme == 3) THEN
+        IF (okin_c1 <= 0. .OR. okin_rplant <= 0. .OR. okin_hc <= 0. .OR.  &
+            okin_A < 0. .OR. okin_A >= 1. .OR.                              &
+            (okin_gap_type /= 1 .AND. okin_gap_type /= 2)) THEN
+          ierr = 100011
+          yerr = 'invalid okin_* namelist parameter (c1,rplant,hc > 0; 0 <= A < 1; gap_type 1 or 2)'
+          PRINT*,'ERROR    src_dust "init" '
+          PRINT*,'         #',ierr
+          PRINT*,'         ',yerr
+          STOP
+        END IF
+        IF (lddebug) THEN
+          PRINT*, 'Okin vegetation: veg_scheme =', veg_scheme, ' c1 =', okin_c1,  &
+                  ' r =', okin_rplant, ' hc =', okin_hc, ' gap_type =', okin_gap_type
+          IF (veg_scheme == 1) PRINT*, '                 SSR_min =', SSR_min
+          IF (veg_scheme == 3) PRINT*, '                 A =', okin_A, ' chain =', lokin_chain
+        END IF
       END IF
 
       ! any vegFile maybe necessary
@@ -559,6 +590,10 @@ MODULE src_dust
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
         ALLOCATE(dust(ib1)%feff_veg(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+        ALLOCATE(dust(ib1)%okin_mu(decomp(ib1)%iy0+1:decomp(ib1)%iy1,      &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+        ALLOCATE(dust(ib1)%okin_aeff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
         ALLOCATE(dust(ib1)%veff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
         ALLOCATE(dust(ib1)%mfac(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
@@ -596,6 +631,8 @@ MODULE src_dust
         dust(ib1)%alpha2(:,:)=0.
         dust(ib1)%feff_z0(:,:)=1.
         dust(ib1)%feff_veg(:,:,:)=1.
+        dust(ib1)%okin_mu(:,:,:)=-1.   ! no vegetation
+        dust(ib1)%okin_aeff(:,:,:)=1.
         dust(ib1)%veff(:,:,:)=1.
         dust(ib1)%mfac(:,:)=1.
         dust(ib1)%d_emis(:,:,:)=0.
@@ -724,7 +761,7 @@ MODULE src_dust
 
 
         ! +-+-+- Sec 1.4.7 Vegetation -+-+-+
-        IF (veg_scheme == 1) THEN
+        IF (veg_scheme == 1 .OR. veg_scheme == 3) THEN
           CALL okin_vegetation(decomp(ib1),dimveg)
         ELSE IF (veg_scheme == 2) THEN
           CALL linear_vegetation(decomp(ib1),dimveg)
@@ -1302,6 +1339,8 @@ MODULE src_dust
     REAL(8), POINTER :: mineralmapmod(:,:,:)
     REAL(8), POINTER :: feff_z0(:,:)
     REAL(8), POINTER :: feff_veg(:,:,:)
+    REAL(8), POINTER :: okin_mu(:,:,:)
+    REAL(8), POINTER :: okin_aeff(:,:,:)
     REAL(8), POINTER :: veff(:,:,:)
     REAL(8), POINTER :: mfac(:,:)
     REAL(8), POINTER :: z0(:,:)
@@ -1326,6 +1365,8 @@ MODULE src_dust
     mineralmapmod  => dust(subdomain%ib)%mineralmapmod(:,:,:)
     feff_z0  => dust(subdomain%ib)%feff_z0(:,:)
     feff_veg => dust(subdomain%ib)%feff_veg(:,:,:)
+    okin_mu  => dust(subdomain%ib)%okin_mu(:,:,:)
+    okin_aeff=> dust(subdomain%ib)%okin_aeff(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
     mfac     => dust(subdomain%ib)%mfac(:,:)
     z0       => dust(subdomain%ib)%z0(:,:)
@@ -1467,6 +1508,8 @@ MODULE src_dust
           ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
           ! feff = MIN(feff_z0(j,i) , feff_veg(j,i,tnow))
+          ! veg_scheme = 3: feff_veg = 1, vegetation acts on the wind (see below),
+          !   feff contains only the roughness drag partition
           feff = feff_z0(j,i) * feff_veg(j,i,tnow)
 
           hflux = 0.
@@ -1484,14 +1527,22 @@ MODULE src_dust
               uthp = (uth(n)*u1fac)/feff * mfac(j,i)
               s_rel = srel_map(j,i,n)
 
-              IF (ustar(j,i) > uthp) THEN
-                dmy_R = uthp/ustar(j,i)
+              IF (veg_scheme == 3) THEN
+                ! Horizontal dust flux [one particle size], vegetation after Okin (2008, Eq. 1):
+                ! the local surface friction velocity behind the plants enters the flux and
+                ! the flux is averaged over the distances to the nearest upwind plant
+                hflux = roa/g * s_rel *                                            &
+                        okin_hflux_kernel(ustar(j,i), uthp, okin_mu(j,i,tnow), okin_aeff(j,i,tnow))
               ELSE
-                dmy_R = 1
-              END IF
+                IF (ustar(j,i) > uthp) THEN
+                  dmy_R = uthp/ustar(j,i)
+                ELSE
+                  dmy_R = 1
+                END IF
 
-              ! Horizontal dust flux [one particle size]
-              hflux = roa/g * ustar(j,i)**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
+                ! Horizontal dust flux [one particle size]
+                hflux = roa/g * ustar(j,i)**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
+              END IF
               ! soltation bombardment
               IF (hflux > 0.) THEN
 
@@ -2465,9 +2516,23 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
   ! Okin aprroach (G. Okin, 2008, DOI:10.1029/2007JF000758 )
   !
   ! Reduction of dust emission caused by vegetation.
-  ! The fractional plant cover (FCOVER) (dust%veg(:,:,:))
-  ! decreases the drag partition (dust%feff). A reduced
-  ! drag partition leads to a decrease in the horizontal dust flux.
+  ! The fractional plant cover (FCOVER) (dust%veg(:,:,:)) is translated
+  ! into the ratio of the mean gap between plants and the plant height.
+  !
+  ! veg_scheme = 1:
+  !   The shear stress ratio (SSR) of Okin is integrated over the gap
+  !   distribution and used as drag partition, feff_veg = sqrt(SSR),
+  !   which increases the threshold friction velocity.
+  !
+  ! veg_scheme = 3:
+  !   Only the geometry is prepared here (okin_mu, okin_aeff). The
+  !   vegetation acts on the wind inside the flux calculation
+  !   (tegen02 / okin_hflux_kernel), feff_veg = 1.
+  !   Sheltering chain (lokin_chain): plant k sees the wind already
+  !   reduced by the upwind plants. For exponentially distributed gaps
+  !   the stationary mean gives an effective lee value
+  !       A_eff = A*mu/(1+mu-A),   mu = L/(c1*h)
+  !   with A_eff -> A for large gaps and A_eff -> 0 for a closed canopy.
   !--------------------------------------------------------------------
 #ifdef OFFLINE
     USE offline_org
@@ -2486,77 +2551,100 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     REAL(8), PARAMETER :: pi = 3.14159265359
 
     REAL(8) :: &
-      gap, gap1, gap2, &  ! gap size between plants
+      rp,              &  ! plant radius [m]
+      spacing,         &  ! distance between plant centres (square grid) [m]
+      gap, gap1, gap2, &  ! gap size between plants [m]
+      hplant,          &  ! plant height [m]
       gapheight,       &  ! funktion of gap size / plant height
+      mu,              &  ! gap / (c1 * plant height)
       SSR                 ! shear stress ratio
 
     REAL(8), POINTER ::  &
       veg(:,:,:),        &
       vegmin(:,:),       &
-      feff_veg(:,:,:)!,       &
+      feff_veg(:,:,:),   &
+      okin_mu(:,:,:),    &
+      okin_aeff(:,:,:)
 
 
-    veg     => dust(subdomain%ib)%veg(:,:,:)
-    vegmin  => dust(subdomain%ib)%vegmin2(:,:)
-    feff_veg    => dust(subdomain%ib)%feff_veg(:,:,:)
+    veg       => dust(subdomain%ib)%veg(:,:,:)
+    vegmin    => dust(subdomain%ib)%vegmin2(:,:)
+    feff_veg  => dust(subdomain%ib)%feff_veg(:,:,:)
+    okin_mu   => dust(subdomain%ib)%okin_mu(:,:,:)
+    okin_aeff => dust(subdomain%ib)%okin_aeff(:,:,:)
 
     IF (lddebug) PRINT*, 'Enter okin_vegetation'
+
+    rp = okin_rplant
 
     ! start lon-lat-loop
     DO i=1,subdomain%ntx
       DO j=1,subdomain%nty
         DO vegnow=1,dimveg
 
-         ! -- gap size/height --
-         ! Formula of okin depends on the fraction of
-         !   gap between the plants(L) and plant height (h) --> L/h.
-
-         ! -- scale up Fcover a bit becaus of the offset FCOVER_MIN = 0.1 !TEST maybe dump
-         ! veg(j,i,vegnow) = 10./9. * veg(j,i,vegnow) - 1./9.
+         ! -- scale up Fcover a bit becaus of the offset FCOVER_MIN
          IF (lvegmin) veg(j,i,vegnow) = 1./(1-vegmin(j,i)) * veg(j,i,vegnow) - 1./(1-vegmin(j,i))*(vegmin(j,i))
          IF(veg(j,i,vegnow) < 0.) veg(j,i,vegnow)=0.
          IF(veg(j,i,vegnow) > 1.) veg(j,i,vegnow)=1.
 
-         ! -- paramet for gap size (Matthias Faust) --
-         ! Uniform plants with r = 0.05 m are distributed as grid over the whole Area.
-         ! The total plant area is equal to the fractional plant cover (FCOVER).
-         ! The gap between the plants is calc as the mean of column gap and diagonal gap.
+         ! defaults: no vegetation effect
+         feff_veg(j,i,vegnow)  = 1.
+         okin_mu(j,i,vegnow)   = -1.
+         okin_aeff(j,i,vegnow) = 1.
 
          ! cover should be bigger than one plant
-         IF (veg(j,i,vegnow) >= pi*0.05**2 ) THEN
-           gap1=1./(sqrt((veg(j,i,vegnow))/(pi*0.05**2))-1.) -2.*0.05
-           gap2=sqrt( 2.*(1./(sqrt((veg(j,i,vegnow))/(pi*0.05**2))-1.))**2) -2.*0.05
-           gap = (gap1+gap2)/2.
+         IF (veg(j,i,vegnow) > pi*rp**2 ) THEN
 
-           ! -- paramet for plant height (Matthias Faust) --
-           ! Okin is only calculated on agricultural areas.
-           ! Most common crop is wheat. At vegetation maximum, wheat is approx 1m height
-           !   and the fractional plant cover is nearly 1.
-           ! Because of this, FCOVER is used as plant height.
+           ! -- gap size (Matthias Faust) --
+           ! Uniform plants with radius rp, the total plant area is equal to FCOVER.
+           SELECT CASE (okin_gap_type)
+           CASE (1)
+             ! plants on a square grid, gap = mean of row gap and diagonal gap
+             spacing = 1./(SQRT(veg(j,i,vegnow)/(pi*rp**2)) - 1.)
+             gap1 = spacing - 2.*rp
+             gap2 = SQRT(2.)*spacing - 2.*rp
+             gap  = (gap1+gap2)/2.
+           CASE (2)
+             ! randomly distributed plants, mean free path L = 1/(4 r n_p), n_p = FCOVER/(pi r^2)
+             gap = pi*rp/(4.*veg(j,i,vegnow))
+           END SELECT
+           ! safety only: for FCOVER <= 1 the gap stays positive (row gap alone may be negative)
+           gap = MAX(gap, 0._8)
 
-           gapheight = gap/(veg(j,i,vegnow) + 1.E-8) ! + 1.E-8 to avoid division by zero
+           ! -- plant height (Matthias Faust) --
+           ! The height relevant for the drag partition is the height at canopy closure,
+           ! once the gaps are closed the height does not matter anymore: h = hc * FCOVER.
+           ! okin_hc = 1 m reproduces the former assumption h = FCOVER.
+           ! Note: h enters only as gap/(c1*h), i.e. okin_hc and okin_c1 are interchangeable.
+           hplant    = okin_hc * veg(j,i,vegnow)
+           gapheight = gap/(hplant + 1.E-8) ! + 1.E-8 to avoid division by zero
 
-           ! -- paramet of the SSR (Okin)
-           ! There is a constant c1 with the best fit value of c1=4.8 by okin.
-           ! In the aprroach there is a minimum SSR. For Okins experiments the best fit of
-           ! the best fit of SSR_min is 0.32. I (MF) assumed for dense vegetated
-           ! crop land SSR_min = 0.
-           ! However latest tests showed that SSR_min = 0.07 might be a good value for cropland.
-           ! SSR_min is adjustable in the namelist.
+           IF (veg_scheme == 1) THEN
+             ! -- SSR (Okin), integrated over the exponential gap distribution
+             ! SSR_min is adjustable in the namelist (Okin best fit 0.32, cropland tests 0.07)
+             SSR = 1. - (1. - SSR_min)/(gapheight/okin_c1 + 1.)
 
-           SSR = 1. + SSR_min/((1./4.8)*gapheight + 1.) - 1./((1./4.8)*gapheight + 1.)
+             ! the drag partition is defined as sqrt(SSR)
+             feff_veg(j,i,vegnow) = SQRT(MAX(SSR, 0._8))
 
-           ! the drag partition is defined as sqrt(SSR)
-           feff_veg(j,i,vegnow) = SQRT(SSR)
+           ELSE IF (veg_scheme == 3) THEN
+             ! -- geometry for the flux integral in tegen02
+             mu = gapheight/okin_c1
+             okin_mu(j,i,vegnow) = mu
+             IF (lokin_chain) THEN
+               ! sheltering chain: effective lee value of a plant inside the stand
+               okin_aeff(j,i,vegnow) = okin_A*mu/(1. + mu - okin_A)
+             ELSE
+               ! original Okin: every plant sees the undisturbed wind
+               okin_aeff(j,i,vegnow) = okin_A
+             END IF
+           END IF
 
+         END IF
 
-         ELSE ! if cover is smaller than one plant
-           feff_veg(j,i,vegnow) = 1
-         ENDIF
-
-         IF(mineralmaptype == 1) THEN
+         ! as before: with mineralogy the Okin drag partition is replaced by a linear one
+         IF(veg_scheme == 1 .AND. mineralmaptype == 1) THEN
            feff_veg(j,i,vegnow) = 1.-(veg(j,i,vegnow))*1./0.5
-           !PRINT*, 'feff_veg in mineralmap loop is', feff_veg(j,i,1), 'at (j,i)', j,i, 'veg values is', veg(j,i,1)
          END IF
 
          ! This should not happen, but just in case
@@ -2571,6 +2659,69 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     IF (lddebug) PRINT*, 'Leave okin_vegetation',''//NEW_LINE('')
 
   END SUBROUTINE okin_vegetation
+
+  !+ okin_hflux_kernel
+  !---------------------------------------------------------------------
+  REAL(8) FUNCTION okin_hflux_kernel(us, ut, mu, aeff)
+  !---------------------------------------------------------------------
+  ! Description:
+  ! Horizontal flux of one size class divided by (roa/g * s_rel), averaged
+  ! over the distribution of distances x to the nearest upwind plant
+  ! (Okin 2008, Eq. 1), used with veg_scheme = 3.
+  !
+  ! Local friction velocity behind a plant (Okin 2008, Eq. 4, with A_eff):
+  !     u_s(x) = us * (1 - b*z),   b = 1 - aeff,   z = exp(-x/(c1*h))
+  ! For P_d(x) exponential with mean gap L, z has the density a*z**(a-1)
+  ! on (0,1] with a = 1/mu, mu = L/(c1*h).
+  ! With u_s**3 (1+R)(1-R**2) = u_s**3 + ut*u_s**2 - ut**2*u_s - ut**3 and
+  ! u_s > ut  <=>  z < zc = (1 - ut/us)/b, the integral is exact:
+  !     I_m = INT_0^zc a z**(a+m-1) dz = a/(a+m) * zc**(a+m),  m = 0..3
+  !     J_k = INT_0^zc a z**(a-1) (1-b z)**k dz
+  !   kernel = us**3 J_3 + ut us**2 J_2 - ut**2 us J_1 - ut**3 J_0
+  ! Limits: mu < 0 (no plants) -> bare soil; mu -> 0 (closed canopy)
+  ! -> uniform u_s = us*aeff; aeff -> 1 -> bare soil.
+  !--------------------------------------------------------------------
+    IMPLICIT NONE
+
+    REAL(8), INTENT(IN) :: &
+      us,   & ! friction velocity without vegetation [m/s]
+      ut,   & ! threshold friction velocity of the size class [m/s]
+      mu,   & ! mean gap / (c1 * h), < 0: no vegetation
+      aeff    ! effective (u*s/u*) directly behind a plant
+
+    REAL(8) :: a, b, zc, usl, J0, J1, J2, J3
+    REAL(8) :: Im(0:3)
+    INTEGER :: m
+
+    okin_hflux_kernel = 0.
+    IF (us <= 0. .OR. ut <= 0.) RETURN
+
+    b = 1. - aeff
+
+    IF (mu < 0. .OR. b < 1.E-12) THEN
+      ! no vegetation or plants without effect
+      usl = us
+    ELSE IF (mu < 1.E-8) THEN
+      ! closed canopy: every point lies directly behind a plant
+      usl = us * aeff
+    ELSE
+      a  = 1./mu
+      zc = MIN((1. - ut/us)/b, 1._8)
+      IF (zc <= 0.) RETURN
+      DO m = 0, 3
+        Im(m) = a/(a+m) * zc**(a+m)
+      END DO
+      J0 = Im(0)
+      J1 = Im(0) -    b*Im(1)
+      J2 = Im(0) - 2.*b*Im(1) +    b**2*Im(2)
+      J3 = Im(0) - 3.*b*Im(1) + 3.*b**2*Im(2) - b**3*Im(3)
+      okin_hflux_kernel = MAX(0._8, us**3*J3 + ut*us**2*J2 - ut**2*us*J1 - ut**3*J0)
+      RETURN
+    END IF
+
+    IF (usl > ut) okin_hflux_kernel = usl**3 + ut*usl**2 - ut**2*usl - ut**3
+
+  END FUNCTION okin_hflux_kernel
 
   !+ linear_vegetation
   !---------------------------------------------------------------------
