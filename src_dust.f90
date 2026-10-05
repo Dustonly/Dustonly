@@ -1332,7 +1332,9 @@ MODULE src_dust
         flux_m(ntz,subdomain%nty,subdomain%ntx,nt,17)
 
     REAL(8) :: &
-      wz0             ! weight of the roughness drag partition (lz0_mu_blend)
+      wz0,          & ! weight of the roughness drag partition (lz0_mu_blend)
+      feff_bare,    & ! drag partition without plants, full roughness (cap with lz0_mu_blend)
+      hkernel         ! horizontal flux / (roa/g * s_rel), Okin integral scheme
 
 
     INTEGER :: &
@@ -1539,6 +1541,7 @@ MODULE src_dust
           ELSE
             feff = feff_z0(j,i) * feff_veg(j,i,tnow)
           END IF
+          feff_bare = feff_z0(j,i) * feff_veg(j,i,tnow)
 
           hflux = 0.
           fluxbin = 0.
@@ -1570,8 +1573,19 @@ MODULE src_dust
                 ! Horizontal dust flux [one particle size], vegetation after Okin (2008, Eq. 1):
                 ! the local surface friction velocity behind the plants enters the flux and
                 ! the flux is averaged over the distances to the nearest upwind plant
-                hflux = roa/g * s_rel *                                            &
-                        okin_hflux_kernel(ustar(j,i), uthp, okin_mu(j,i,tnow), okin_aeff(j,i,tnow))
+                hkernel = okin_hflux_kernel(ustar(j,i), uthp, okin_mu(j,i,tnow), okin_aeff(j,i,tnow))
+                IF (lz0_mu_blend) THEN
+                  ! the plants switch the roughness off, so cap the flux at the value of the bare
+                  ! soil (no plants) with the full roughness drag partition: vegetation never
+                  ! increases the emission (mu < 0 in the kernel = bare soil)
+                  IF (feff_bare > 0.) THEN
+                    hkernel = MIN(hkernel, okin_hflux_kernel(ustar(j,i),                    &
+                                  (uth(n)*u1fac)/feff_bare * mfac(j,i), -1._8, 1._8))
+                  ELSE
+                    hkernel = 0.
+                  END IF
+                END IF
+                hflux = roa/g * s_rel * hkernel
               ELSE
                 IF (ustar(j,i) > uthp) THEN
                   dmy_R = uthp/ustar(j,i)
