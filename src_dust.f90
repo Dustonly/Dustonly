@@ -1331,6 +1331,9 @@ MODULE src_dust
         flux(ntz,subdomain%nty,subdomain%ntx,nt), &
         flux_m(ntz,subdomain%nty,subdomain%ntx,nt,17)
 
+    REAL(8) :: &
+      wz0             ! weight of the roughness drag partition (lz0_mu_blend)
+
 
     INTEGER :: &
       i,j,n,m,mr,     & ! loops
@@ -1385,7 +1388,6 @@ MODULE src_dust
     REAL(8), POINTER :: mineralmapmod(:,:,:)
     REAL(8), POINTER :: feff_z0(:,:)
     REAL(8), POINTER :: feff_veg(:,:,:)
-    REAL(8), POINTER :: veg(:,:,:)
     REAL(8), POINTER :: okin_mu(:,:,:)
     REAL(8), POINTER :: okin_aeff(:,:,:)
     REAL(8), POINTER :: veff(:,:,:)
@@ -1408,7 +1410,6 @@ MODULE src_dust
     mineralmapmod  => dust(subdomain%ib)%mineralmapmod(:,:,:)
     feff_z0  => dust(subdomain%ib)%feff_z0(:,:)
     feff_veg => dust(subdomain%ib)%feff_veg(:,:,:)
-    veg      => dust(subdomain%ib)%veg(:,:,:)
     okin_mu  => dust(subdomain%ib)%okin_mu(:,:,:)
     okin_aeff=> dust(subdomain%ib)%okin_aeff(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
@@ -1523,11 +1524,18 @@ MODULE src_dust
           ! feff = MIN(feff_z0(j,i) , feff_veg(j,i,tnow))
           ! veg_scheme = 2 (Okin integral): feff_veg = 1, vegetation acts on the wind (see below),
           !   feff contains only the roughness drag partition
-          IF (fc_z0 > 0.) THEN
-            ! EXPERIMENTAL: the roughness drag partition is faded out with increasing vegetation
-            ! cover, it is irrelevant once the vegetation dominates (z0 data containing vegetation
-            ! would otherwise count the vegetation twice)
-            feff = (1. - (1. - feff_z0(j,i)) * MAX(0._8, 1. - veg(j,i,tnow)/fc_z0)) * feff_veg(j,i,tnow)
+          IF (veg_scheme == VEG_OKIN_INTEGRAL .AND. lz0_mu_blend) THEN
+            ! The roughness elements between the plants (z0, constant bare-soil value) only matter
+            ! while the gaps are long compared with the wakes: weight 1 - 1/mu with
+            ! mu = gap/(c1*h); full without plants (mu < 0), off for mu <= 1.
+            IF (okin_mu(j,i,tnow) < 0.) THEN
+              wz0 = 1.
+            ELSE IF (okin_mu(j,i,tnow) > 1.) THEN
+              wz0 = 1. - 1./okin_mu(j,i,tnow)
+            ELSE
+              wz0 = 0.
+            END IF
+            feff = (1. - (1. - feff_z0(j,i)) * wz0) * feff_veg(j,i,tnow)
           ELSE
             feff = feff_z0(j,i) * feff_veg(j,i,tnow)
           END IF

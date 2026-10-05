@@ -60,9 +60,7 @@ MODULE mo_dust
     moistinc, &    ! time increment of soil moisture
     z0synop,  &
     z0const,  &
-    SSR_min,  &
-    fc_z0          ! EXPERIMENTAL: FCOVER above which the roughness drag partition feff_z0 is
-                   ! faded out linearly (feff_z0 -> 1); 0 = off (default)
+    SSR_min
 
   !-- parameters of the Okin vegetation schemes (veg_scheme = 2 and 3)
   !   defaults reproduce the former hard-coded values
@@ -78,6 +76,8 @@ MODULE mo_dust
                           !                     2 = mean free path, L = pi*r/(4*FCOVER) (Faust, thesis Eq. 3.8)
 
   LOGICAL :: &
+    lz0_mu_blend = .TRUE., & ! veg_scheme = 2: weight the roughness drag partition with 1 - 1/mu
+                             ! (full without plants, off for mu <= 1, i.e. when the wakes cover the gaps)
     lokin_chain = .TRUE.  ! veg_scheme = 2: wakes of successive plants superpose (sheltering chain)
                           !   .FALSE.: every plant sees the undisturbed wind (original Okin 2008)
 
