@@ -1375,7 +1375,10 @@ MODULE src_dust
     REAL(8) :: &
       fluxtot (ntrace), &
       fluxbin (ntrace), &
-      fluxbin_m (ntrace,17) !mineralogical flux
+      em_m              ! mineral emission of one dust bin and mineral
+
+    LOGICAL :: &
+      lemit             ! any size class of the current cell emits
 
     real    ::  T1,T2
 
@@ -1525,7 +1528,7 @@ MODULE src_dust
 
           hflux = 0.
           fluxbin = 0.
-          fluxbin_m = 0.
+          lemit = .FALSE.
 
           ! soil mode weights and total basal surface of this cell (see tab_srel)
           w = soilmap(j,i,1:nmode)
@@ -1567,6 +1570,7 @@ MODULE src_dust
               END IF
               ! soltation bombardment
               IF (hflux > 0.) THEN
+                  lemit = .TRUE.
 
                   ! Vertical dust flux
                   vflux = hflux * alpha(j,i)
@@ -1582,83 +1586,62 @@ MODULE src_dust
                   ! bin-wise integration
                   DO m = 1, DustBins
                     fluxbin(m) = fluxbin(m)+vflux * mbin(m)
-                    IF (mineralmaptype == 1) THEN
-                      !PRINT*, 'calculating flux mineral', fluxbin(m), 'dustbin', m
-                      DO mr=1,17
-                        fluxbin_m(m,mr) = fluxbin(m)*mineral_dist(mr,m)*mineralmapmod(j,i,mr)
-                      END DO
-                    END IF !mineral
                   END DO ! m
               END IF !hflux
             END DO ! n = 1, nclass
           END IF
 
+          ! +-+-+- mineral emissions -+-+-+
+          ! Fixed split of the (still unmasked) bulk emission of each dust bin by mineral_dist
+          ! and the local mineral fractions; then the same masks and units as the bulk emission,
+          ! except: the linear biome scheme uses feff_veg instead of veff, and online the
+          ! contributions to flux and EmiRate are not converted with ConvPart (as before).
+          ! Only set in cells where some size class emits (0 otherwise).
+          IF (mineralmaptype == 1) THEN
+            DO n=1,ntrace
+              DO mr=1,17
+                em_m = 0.
+                IF (lemit) THEN
+                  em_m = fluxbin(n)*mineral_dist(mr,n)*mineralmapmod(j,i,mr)
+                  IF (psrcType == 3) em_m = em_m * source(j,i)
+                  IF (veg_scheme == VEG_LIN_BIOME) em_m = em_m * feff_veg(j,i,tnow)
+                  em_m = em_m * 1.E3   ! [g m-2 s-1]
+                END IF
+#ifdef OFFLINE
+                DustEmis_m(j,i,n,mr) = em_m
+#else
+                DustEmis(j,i,DustInd(n,mr+1)) = em_m * ConvPart
+                flux(1,j,i,DustInd(n,mr+1)) = flux(1,j,i,DustInd(n,mr+1)) + em_m/dz(1,j,i)
+                EmiRate(EmiIndBio,j,i,DustInd(n,mr+1)) = EmiRate(EmiIndBio,j,i,DustInd(n,mr+1)) + em_m
+                EmiRate(EmiIndSum,j,i,DustInd(n,mr+1)) = EmiRate(EmiIndSum,j,i,DustInd(n,mr+1)) + em_m
+#endif
+              END DO
+            END DO
+          END IF
+
+          ! +-+-+- bulk emission -+-+-+
           DO n=1,ntrace
-            ! fluxtot: g/cm2/sec --> kg/m2/sec
-            !
-            !PRINT*,'bin number:', n
             ! Mask Effective area determined by preferential source fraction:
             ! only for psrcType = 3
-             IF (psrcType == 3) THEN
-               fluxbin(n) = fluxbin(n) * source(j,i)
-               IF (mineralmaptype == 1) THEN
-                 DO mr=1,17
-                   fluxbin_m(n,mr) = fluxbin_m(n,mr) * source(j,i)
-                 END DO
-               END IF
-             END IF
+            IF (psrcType == 3) fluxbin(n) = fluxbin(n) * source(j,i)
 
             ! Mask Effective area determined by vegetation fraction:
             ! only for the linear biome scheme
-            IF (veg_scheme == VEG_LIN_BIOME) THEN
-              fluxbin(n) = fluxbin(n) * veff(j,i,tnow)
-              IF (mineralmaptype == 1) THEN
-                DO mr=1,17
-                  fluxbin_m(n,mr) = fluxbin_m(n,mr) * feff_veg(j,i,tnow)
-                END DO
-              END IF
-            END IF
+            IF (veg_scheme == VEG_LIN_BIOME) fluxbin(n) = fluxbin(n) * veff(j,i,tnow)
 
             ! write output in [g m-2 s-1]
             fluxbin(n) = fluxbin(n) * 1.E3
-            IF (mineralmaptype == 1) THEN
-              DO mr=1,17
-                fluxbin_m(n,mr) = fluxbin_m(n,mr) * 1.E3
-              END DO
-            END IF
 
 #ifdef OFFLINE
             DustEmis(j,i,n) = fluxbin(n)
-            IF (mineralmaptype == 1) THEN
-              DO mr=1,17
-                DustEmis_m(j,i,n,mr) = fluxbin_m(n,mr)
-              END DO
-            END IF
 #else
             ! chemistry units (nradm=1): g/m2/s ==> g/m2/s * mol2part
             fluxbin(n) = fluxbin(n) * ConvPart
             DustEmis(j,i,DustInd(n,1)) = fluxbin(n)
-            IF (mineralmaptype == 1) THEN
-              DO mr=1,17
-                DustEmis(j,i,DustInd(n,mr+1)) = fluxbin_m(n,mr) * ConvPart
-              END DO
-            END IF
-
             flux(1,j,i,DustInd(n,1))   = flux(1,j,i,DustInd(n,1)) + fluxbin(n)/dz(1,j,i)
-            IF (mineralmaptype == 1) THEN
-              DO mr=1,17
-                flux(1,j,i,DustInd(n,mr+1))   = flux(1,j,i,DustInd(n,mr+1)) + fluxbin_m(n,mr)/dz(1,j,i)
-              END DO
-            END IF
             !---  summarize biogenic and total emission rates
             EmiRate(EmiIndBio,j,i,DustInd(n,1)) = EmiRate(EmiIndBio,j,i,DustInd(n,1)) + fluxbin(n)
             EmiRate(EmiIndSum,j,i,DustInd(n,1)) = EmiRate(EmiIndSum,j,i,DustInd(n,1)) + fluxbin(n)
-            IF (mineralmaptype == 1) THEN
-              DO mr=1,17
-                EmiRate(EmiIndBio,j,i,DustInd(n,mr+1)) = EmiRate(EmiIndBio,j,i,DustInd(n,mr+1)) + fluxbin_m(n,mr)
-                EmiRate(EmiIndSum,j,i,DustInd(n,mr+1)) = EmiRate(EmiIndSum,j,i,DustInd(n,mr+1)) + fluxbin_m(n,mr)
-              END DO
-            END IF
 #endif
           END DO
 
