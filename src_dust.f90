@@ -394,9 +394,10 @@ MODULE src_dust
       IF (veg_scheme == VEG_OKIN_MEAN .OR. veg_scheme == VEG_OKIN_INTEGRAL) THEN
         IF (okin_c1 <= 0. .OR. okin_rplant <= 0. .OR. okin_hc <= 0. .OR.  &
             okin_A < 0. .OR. okin_A >= 1. .OR.                              &
-            (okin_gap_type /= 1 .AND. okin_gap_type /= 2)) THEN
+            (okin_gap_type /= 1 .AND. okin_gap_type /= 2) .OR.             &
+            (okin_geom_type /= 1 .AND. okin_geom_type /= 2)) THEN
           ierr = 100011
-          yerr = 'invalid okin_* namelist parameter (c1,rplant,hc > 0; 0 <= A < 1; gap_type 1 or 2)'
+          yerr = 'invalid okin_* namelist parameter (c1,rplant,hc > 0; 0 <= A < 1; gap/geom_type 1 or 2)'
           PRINT*,'ERROR    src_dust "init" '
           PRINT*,'         #',ierr
           PRINT*,'         ',yerr
@@ -404,7 +405,8 @@ MODULE src_dust
         END IF
         IF (lddebug) THEN
           PRINT*, 'Okin vegetation: veg_scheme =', veg_scheme, ' c1 =', okin_c1,  &
-                  ' r =', okin_rplant, ' hc =', okin_hc, ' gap_type =', okin_gap_type
+                  ' r =', okin_rplant, ' hc =', okin_hc, ' gap_type =', okin_gap_type,  &
+                  ' geom_type =', okin_geom_type
           IF (veg_scheme == VEG_OKIN_MEAN)     PRINT*, '                 SSR_min =', SSR_min
           IF (veg_scheme == VEG_OKIN_INTEGRAL) PRINT*, '                 A =', okin_A, ' chain =', lokin_chain
         END IF
@@ -2601,7 +2603,9 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     REAL(8), PARAMETER :: pi = 3.14159265359
 
     REAL(8) :: &
-      rp,              &  ! plant radius [m]
+      rp,              &  ! plant radius [m] (namelist okin_rplant)
+      rc,              &  ! plant radius of the current cell [m]
+      np,              &  ! number of plants per area [m-2]
       spacing,         &  ! distance between plant centres (square grid) [m]
       gap, gap1, gap2, &  ! gap size between plants [m]
       hplant,          &  ! plant height [m]
@@ -2642,21 +2646,42 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
          okin_mu(j,i,vegnow)   = -1.
          okin_aeff(j,i,vegnow) = 1.
 
-         ! cover should be bigger than one plant
-         IF (veg(j,i,vegnow) > pi*rp**2 ) THEN
+         ! -- plant geometry: radius rc and number np, total plant area n*pi*r^2 = FCOVER --
+         SELECT CASE (okin_geom_type)
+         CASE (1)
+           ! fixed radius, the number of plants grows with the cover (e.g. shrubs)
+           rc = rp
+           np = veg(j,i,vegnow)/(pi*rp**2)
+         CASE (2)
+           ! fixed number (canopy closed at FCOVER = 1 with radius rp), the radius grows (crops)
+           rc = rp*SQRT(veg(j,i,vegnow))
+           np = 1./(pi*rp**2)
+         END SELECT
+
+         ! cover should be bigger than one plant (fixed radius) or > 0 (fixed number)
+         IF ((okin_geom_type == 1 .AND. veg(j,i,vegnow) > pi*rp**2) .OR.  &
+             (okin_geom_type == 2 .AND. veg(j,i,vegnow) > 0.)) THEN
 
            ! -- gap size (Matthias Faust) --
-           ! Uniform plants with radius rp, the total plant area is equal to FCOVER.
            SELECT CASE (okin_gap_type)
            CASE (1)
              ! plants on a square grid, gap = mean of row gap and diagonal gap
-             spacing = 1./(SQRT(veg(j,i,vegnow)/(pi*rp**2)) - 1.)
-             gap1 = spacing - 2.*rp
-             gap2 = SQRT(2.)*spacing - 2.*rp
+             ! (spacing formula as in the original code; note the -1 is not dimensionless)
+             IF (okin_geom_type == 1) THEN
+               spacing = 1./(SQRT(veg(j,i,vegnow)/(pi*rp**2)) - 1.)
+             ELSE
+               spacing = 1./(SQRT(np) - 1.)
+             END IF
+             gap1 = spacing - 2.*rc
+             gap2 = SQRT(2.)*spacing - 2.*rc
              gap  = (gap1+gap2)/2.
            CASE (2)
-             ! randomly distributed plants, mean free path L = 1/(4 r n_p), n_p = FCOVER/(pi r^2)
-             gap = pi*rp/(4.*veg(j,i,vegnow))
+             ! randomly distributed plants, mean free path L = 1/(4 r n_p)
+             IF (okin_geom_type == 1) THEN
+               gap = pi*rp/(4.*veg(j,i,vegnow))
+             ELSE
+               gap = 1./(4.*rc*np)
+             END IF
            END SELECT
            ! safety only: for FCOVER <= 1 the gap stays positive (row gap alone may be negative)
            gap = MAX(gap, 0._8)

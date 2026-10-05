@@ -419,6 +419,7 @@ SUBROUTINE read_namelist(ierr)
     okin_hc,           & ! Okin: plant height at canopy closure [m]
     okin_A,            & ! Okin: (u*s/u*) behind a single plant (veg_scheme = 2)
     okin_gap_type,     & ! Okin: 1 = square grid gap, 2 = mean free path gap
+    okin_geom_type,    & ! Okin: 1 = fixed plant radius, 2 = fixed plant number (radius grows with FCOVER)
     lokin_chain,       & ! Okin: sheltering chain on/off (veg_scheme = 2)
     z0File,            & ! Filename of Roughness Length (variable z0 in m; units attribute "cm" is converted)
     biomeFile,         & ! Filename of Vegetation Cover/Type Data
@@ -462,6 +463,7 @@ SUBROUTINE read_namelist(ierr)
   okin_hc         =  1.0         ! [m], 1.0 reproduces h = FCOVER
   okin_A          =  0.32        ! Okin (2008)
   okin_gap_type   =  1           ! square grid as before
+  okin_geom_type  =  1           ! fixed radius as before
   lokin_chain     = .TRUE.
   lwithz0         = .FALSE.
   lwithbiom       = .FALSE.

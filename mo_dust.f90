@@ -72,8 +72,11 @@ MODULE mo_dust
                           !   (Okin 2008 best fit 0.32; young crops may justify larger values)
 
   INTEGER :: &
-    okin_gap_type = 1     ! gap between plants: 1 = square grid, mean of row and diagonal gap
-                          !                     2 = mean free path, L = pi*r/(4*FCOVER) (Faust, thesis Eq. 3.8)
+    okin_gap_type = 1,  & ! gap between plants: 1 = square grid, mean of row and diagonal gap
+                          !                     2 = mean free path, L = 1/(4*r*n) (Faust, thesis Eq. 3.8)
+    okin_geom_type = 1    ! plant geometry: 1 = fixed radius r = okin_rplant, number n = FCOVER/(pi r^2)
+                          !   2 = fixed number n = 1/(pi okin_rplant^2) (canopy closed at FCOVER = 1),
+                          !       radius r = okin_rplant*sqrt(FCOVER)
 
   LOGICAL :: &
     lz0_mu_blend = .TRUE., & ! veg_scheme = 2: weight the roughness drag partition with 1 - 1/mu
