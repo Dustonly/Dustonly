@@ -198,6 +198,17 @@ MODULE src_dust
       ! Check consistency of namelist settings
 
 
+      ! alpha_mean need right values
+      IF (TRIM(alpha_mean) /= 'default' .AND. TRIM(alpha_mean) /= 'arithmetic' .AND. &
+          TRIM(alpha_mean) /= 'geometric' .AND. TRIM(alpha_mean) /= 'harmonic') THEN
+        ierr = 100014
+        yerr = 'wrong value for alpha_mean (default, arithmetic, geometric, harmonic)'
+        PRINT*,'ERROR    src_dust "init" '
+        PRINT*,'         #',ierr
+        PRINT*,'         ',TRIM(yerr)
+        STOP
+      END IF
+
       ! dust_scheme need right values
       IF (dust_scheme == 2) THEN
         ierr = 100001
@@ -1150,6 +1161,10 @@ MODULE src_dust
     INTEGER :: &
       i,j
 
+    REAL(8) :: &
+      amode(4), & ! alpha of each soil mode [cm-1]
+      wsum        ! sum of the soil mode weights
+
     REAL(8), POINTER ::  &
       alpha(:,:), &
       soiltype(:,:), &
@@ -1175,7 +1190,30 @@ MODULE src_dust
             alpha(j,i) = 0.
           END IF
 
-        ! alpha_type == 2 : calc from fraction
+        ! alpha_type == 2 : calc from fraction, explicitly chosen mean (alpha_mean)
+        ELSEIF (alpha_type == 2 .AND. TRIM(alpha_mean) /= 'default') THEN
+          IF (soilmaptype == 1) THEN
+            amode(1:4) = (/ 1.E-7, 1.E-6, 1.E-5, 1.E-6 /)
+            IF (soilmap(j,i,4) > 0.45) amode(4) = 1.E-7
+          ELSE
+            amode(1:3) = (/ 1.E-6, 1.E-5, 1.E-6 /)
+            IF (soilmap(j,i,3) > 0.45) amode(3) = 1.E-7
+          END IF
+          wsum = SUM(soilmap(j,i,1:nmode))
+          IF (wsum <= 0.) THEN
+            alpha(j,i) = 0.
+          ELSE
+            SELECT CASE (TRIM(alpha_mean))
+            CASE ('arithmetic')
+              alpha(j,i) = SUM(soilmap(j,i,1:nmode) * amode(1:nmode)) / wsum
+            CASE ('geometric')
+              alpha(j,i) = EXP(SUM(soilmap(j,i,1:nmode) * LOG(amode(1:nmode))) / wsum)
+            CASE ('harmonic')
+              alpha(j,i) = wsum / SUM(soilmap(j,i,1:nmode) / amode(1:nmode))
+            END SELECT
+          END IF
+
+        ! alpha_type == 2 : calc from fraction, default (arithmetic resp. geometric, unnormalised)
         ELSEIF (alpha_type == 2) THEN
           IF (soilmaptype == 1) THEN
             alpha(j,i) = soilmap(j,i,1) * 1.E-7 &

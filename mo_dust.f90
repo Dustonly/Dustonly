@@ -248,6 +248,12 @@ MODULE mo_dust
     ! !nclass = 392          ! amount of particule classes
     ! nclass = 14          ! amount of particule classes
 
+  !-- mean of the sandblasting efficiency alpha over the soil modes (init_alpha, alpha from fractions)
+  !   'default'    : arithmetic for soilmaptype 1, geometric for soilmaptype 2 (unnormalised weights)
+  !   'arithmetic', 'geometric', 'harmonic' : weighted means with weights normalised to sum 1
+  CHARACTER(12) :: &
+    alpha_mean = 'default'
+
   INTEGER :: &
     nmode          ! number of soil modes, depending on the soil data set
                    ! nmode = 3 for soilgrids data
