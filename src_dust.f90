@@ -595,10 +595,6 @@ MODULE src_dust
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:SoilFrac,1:dimveg))
         ALLOCATE(dust(ib1)%w_str(decomp(ib1)%iy0+1:decomp(ib1)%iy1,         &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
-        ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,        &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
-        ALLOCATE(dust(ib1)%d_emis_m(decomp(ib1)%iy0+1:decomp(ib1)%iy1,        &
-                decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt,17))
 
 
         ! Allocate dust_ini
@@ -642,16 +638,17 @@ MODULE src_dust
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
         ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt))
+        ! mineral arrays: zero size in the mineral dimension without mineralogy
         ALLOCATE(dust(ib1)%d_emis_m(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt,17))
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:nt,MERGE(17,0,mineralmaptype == 1)))
 
 
         ALLOCATE(dust(ib1)%soilmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1,nmode))
         ALLOCATE(dust(ib1)%mineralmap(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,12))                         !temporarily hardcoded to the minerals number on GMINER data
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,MERGE(12,0,mineralmaptype == 1)))  !GMINER minerals
         ALLOCATE(dust(ib1)%mineralmapmod(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
-                decomp(ib1)%ix0+1:decomp(ib1)%ix1,17))
+                decomp(ib1)%ix0+1:decomp(ib1)%ix1,MERGE(17,0,mineralmaptype == 1)))
 
         ALLOCATE(dust(ib1)%ustar(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))

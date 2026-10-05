@@ -240,13 +240,14 @@ SUBROUTINE def_grid(ierr)
 
 
   ALLOCATE(dust_flux(ntz,je_tot,ie_tot,nt))
-  ALLOCATE(dust_flux_m(ntz,je_tot,ie_tot,nt,miner))
+  ! mineral arrays: zero size in the mineral dimension without mineralogy
+  ALLOCATE(dust_flux_m(ntz,je_tot,ie_tot,nt,MERGE(miner,0,mineralmaptype == 1)))
   dust_flux=0.
   dust_flux_m=0.
 
   AllOCATE(dust_em_accum(je_tot,ie_tot,nt))
   dust_em_accum=0.
-  AllOCATE(dust_em_accum_m(je_tot,ie_tot,nt,miner))
+  AllOCATE(dust_em_accum_m(je_tot,ie_tot,nt,MERGE(miner,0,mineralmaptype == 1)))
   dust_em_accum_m=0.
 
   IF (lddebug) PRINT*, 'Leave def_grid, ierr=',ierr,''//NEW_LINE('')
