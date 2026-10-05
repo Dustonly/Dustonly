@@ -463,9 +463,9 @@ SUBROUTINE read_namelist(ierr)
   okin_rplant     =  0.05        ! [m]
   okin_hc         =  1.0         ! [m], 1.0 reproduces h = FCOVER
   okin_A          =  0.32        ! Okin (2008)
-  okin_gap_type   =  1           ! square grid as before
-  okin_geom_type  =  1           ! fixed radius as before
-  alpha_mean      = 'default'
+  okin_gap_type   =  2           ! mean free path (1 = square grid, former default)
+  okin_geom_type  =  2           ! fixed number of plants (1 = fixed radius, former default)
+  alpha_mean      = 'geometric'  ! ('default' = former behaviour)
   lokin_chain     = .TRUE.
   lwithz0         = .FALSE.
   lwithbiom       = .FALSE.
