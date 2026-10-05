@@ -397,7 +397,7 @@ SUBROUTINE read_namelist(ierr)
     lwithz0,           & ! =false without z0, =true with z0
     lwithbiom,         & ! =false without biomes, =true with biomes
     fricvelo_scheme,   & ! scheme to calc the friction velocity ustar
-    dust_scheme,       & ! 1=Tegen02
+    dust_scheme,       & ! 1 = tegen02 (default), 9 = legacy scheme
     threshold_scheme,  &
     veg_scheme,        & ! =0 no vegitation; =1 Okin scheme; =2 linear Tegen
     moist_scheme,      &
@@ -437,7 +437,7 @@ SUBROUTINE read_namelist(ierr)
   soiltypeFile    = 'without'   ! Soil Type Data
   psrcType        = 0           ! 0 : psrc, 1 : msgsrc, 2 : acDust  MF
   fricvelo_scheme = 1
-  dust_scheme     = 1           ! 1=Tegen02
+  dust_scheme     = DUST_TEGEN02  ! 1 = tegen02, 9 = legacy scheme
   threshold_scheme= 1
   veg_scheme      = 0           ! 0=no vegetation, 1=okin scheme, 2=linear (Tegen02)
   soilmaptype     = 1

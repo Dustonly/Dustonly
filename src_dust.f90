@@ -199,12 +199,31 @@ MODULE src_dust
 
 
       ! dust_scheme need right values
-      IF (dust_scheme < 0 .OR. dust_scheme > 2) THEN
+      IF (dust_scheme == 2) THEN
         ierr = 100001
-        yerr = 'wrong value for dust_scheme'
+        yerr = 'dust_scheme=2 (tegen02 in old versions) is invalid: schemes renumbered, use 1 and check veg_scheme'
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
-        PRINT*,'         ',yerr
+        PRINT*,'         ',TRIM(yerr)
+        STOP
+      ELSEIF (dust_scheme /= 0 .AND. dust_scheme /= DUST_TEGEN02 .AND. dust_scheme /= DUST_LEGACY) THEN
+        ierr = 100001
+        yerr = 'wrong value for dust_scheme (1 = tegen02, 9 = legacy)'
+        PRINT*,'ERROR    src_dust "init" '
+        PRINT*,'         #',ierr
+        PRINT*,'         ',TRIM(yerr)
+        STOP
+      END IF
+      IF (dust_scheme == DUST_TEGEN02) PRINT*, 'dust emission scheme: tegen02 (dust_scheme = 1)'
+      IF (dust_scheme == DUST_LEGACY)  PRINT*, 'dust emission scheme: legacy (dust_scheme = 9)'
+
+      ! the legacy scheme does not compute mineral emissions
+      IF (dust_scheme == DUST_LEGACY .AND. mineralmaptype == 1) THEN
+        ierr = 100012
+        yerr = 'mineralogy (mineralmaptype = 1) is only implemented in tegen02 (dust_scheme = 1)'
+        PRINT*,'ERROR    src_dust "init" '
+        PRINT*,'         #',ierr
+        PRINT*,'         ',TRIM(yerr)
         STOP
       END IF
 
@@ -350,9 +369,9 @@ MODULE src_dust
 
       ! veg_scheme == 3 acts on the wind inside the flux integral,
       ! which is only implemented in tegen02 (dust_scheme == 2)
-      IF (veg_scheme == 3 .AND. dust_scheme /= 2) THEN
+      IF (veg_scheme == 3 .AND. dust_scheme /= DUST_TEGEN02) THEN
         ierr = 100010
-        yerr = 'veg_scheme = 3 requires dust_scheme = 2'
+        yerr = 'veg_scheme = 3 requires dust_scheme = 1 (tegen02)'
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
         PRINT*,'         ',yerr
@@ -758,10 +777,10 @@ MODULE src_dust
 
 
         ! +-+-+- Sec 1.4.6 Dust Flux -+-+-+
-        IF (dust_scheme == 1) THEN
-          ! init of the dust emission sheme by Tegen et al. 2002
+        IF (dust_scheme == DUST_LEGACY) THEN
+          ! init of the legacy dust emission scheme
           CALL init_tegen(decomp(ib1),ndays=dimveg)!ierr,yerr)
-        ELSEIF (dust_scheme == 2) THEN
+        ELSEIF (dust_scheme == DUST_TEGEN02) THEN
           ! init of the dust emission sheme by Tegen et al. 2002
           CALL tegen02('init',decomp(ib1))!ierr,yerr)
         END IF
@@ -804,11 +823,11 @@ MODULE src_dust
 
 
 
-      IF (dust_scheme == 1) THEN
-        CALL emission_tegen(subdomain,flux)   !maybe add an IF for the minerals
+      IF (dust_scheme == DUST_LEGACY) THEN
+        CALL emission_tegen(subdomain,flux)   ! no mineral emissions (checked in init)
       END IF
 
-      IF (dust_scheme == 2) THEN
+      IF (dust_scheme == DUST_TEGEN02) THEN
         ! init of the dust emission sheme by Tegen et al. 2002
         CALL tegen02(yaction,subdomain,flux=flux)!ierr,yerr)
       END IF
@@ -1176,8 +1195,8 @@ MODULE src_dust
     END DO
     ! end lon-lat-loop
 
-    ! all alpha values are in [cm-1] but for for dust_scheme == 2 we need alpha in [m-1]
-    IF (dust_scheme == 2)  THEN
+    ! all alpha values are in [cm-1] but for tegen02 we need alpha in [m-1]
+    IF (dust_scheme == DUST_TEGEN02)  THEN
       alpha = alpha*100. !  [cm-1] = 100 [m-1]
     END IF
 

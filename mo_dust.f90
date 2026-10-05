@@ -30,9 +30,14 @@ MODULE mo_dust
     lwithz0,       & ! =false without z0, =true with z0
     lwithbiom        ! =false without biomes, =true with biomes
 
+  !-- dust emission schemes (dust_scheme)
+  INTEGER, PARAMETER :: &
+    DUST_TEGEN02 = 1, & ! Tegen et al. (2002), SUBROUTINE tegen02 (default)
+    DUST_LEGACY  = 9    ! legacy scheme, SUBROUTINEs init_tegen / emission_tegen
+
   INTEGER ::      &
     nDust,        & ! Flag for Dust Calculations
-    dust_scheme,  & ! 1=Tegen02
+    dust_scheme,  & ! DUST_TEGEN02 (1) or DUST_LEGACY (9); 2 (tegen02 in older versions) is rejected
     veg_scheme,   & ! =0 no vegitation; =1 Okin scheme; =2 linear Tegen
                     ! =3 Okin direct with sheltering chain (only dust_scheme = 2)
     moist_scheme, &
