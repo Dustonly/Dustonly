@@ -35,11 +35,19 @@ MODULE mo_dust
     DUST_TEGEN02 = 1, & ! Tegen et al. (2002), SUBROUTINE tegen02 (default)
     DUST_LEGACY  = 9    ! legacy scheme, SUBROUTINEs init_tegen / emission_tegen
 
+  !-- vegetation schemes (veg_scheme)
+  INTEGER, PARAMETER :: &
+    VEG_NONE          = 0, & ! no vegetation
+    VEG_LIN_FCOVER    = 1, & ! linear drag partition feff_veg = 1 - FCOVER/0.5 (threshold)
+    VEG_OKIN_INTEGRAL = 2, & ! Okin (2008) inside the flux integral (okin_A, lokin_chain), tegen02 only
+    VEG_OKIN_MEAN     = 3, & ! Okin (2008) mean drag partition feff_veg = sqrt(SSR) (threshold)
+    VEG_LIN_BIOME     = 9    ! legacy: linear effective area veff from FCOVER and biomes (flux)
+
   INTEGER ::      &
     nDust,        & ! Flag for Dust Calculations
     dust_scheme,  & ! DUST_TEGEN02 (1) or DUST_LEGACY (9); 2 (tegen02 in older versions) is rejected
-    veg_scheme,   & ! =0 no vegitation; =1 Okin scheme; =2 linear Tegen
-                    ! =3 Okin direct with sheltering chain (only dust_scheme = 2)
+    veg_scheme,   & ! 0 none, 1 linear FCOVER, 2 Okin integral, 3 Okin mean, 9 linear biome (legacy)
+                    ! with mineralogy only 0, 1 or 9
     moist_scheme, &
     fricvelo_scheme, & ! 1 calc from wind and z0;  2 pre-calculated
     psrcType,     & ! Flag for type of potential dust source
@@ -60,7 +68,7 @@ MODULE mo_dust
     okin_c1     = 4.8,  & ! e-folding length of the wake recovery in plant heights (Okin 2008)
     okin_rplant = 0.05, & ! radius of the idealised plant [m]
     okin_hc     = 1.0,  & ! plant height at canopy closure [m], h = okin_hc * FCOVER
-    okin_A      = 0.32    ! veg_scheme = 3: (u*s/u*) directly behind a single plant
+    okin_A      = 0.32    ! veg_scheme = 2: (u*s/u*) directly behind a single plant
                           !   (Okin 2008 best fit 0.32; young crops may justify larger values)
 
   INTEGER :: &
@@ -68,7 +76,7 @@ MODULE mo_dust
                           !                     2 = mean free path, L = pi*r/(4*FCOVER) (Faust, thesis Eq. 3.8)
 
   LOGICAL :: &
-    lokin_chain = .TRUE.  ! veg_scheme = 3: wakes of successive plants superpose (sheltering chain)
+    lokin_chain = .TRUE.  ! veg_scheme = 2: wakes of successive plants superpose (sheltering chain)
                           !   .FALSE.: every plant sees the undisturbed wind (original Okin 2008)
 
 
@@ -214,8 +222,8 @@ MODULE mo_dust
     alpha2   (:,:),      & ! ratio horiz/vertical flux
     feff_z0    (:,:),    & ! drag partition by roughness
     feff_veg   (:,:,:),    & ! drag partition by vegetation
-    okin_mu    (:,:,:),    & ! veg_scheme = 3: mean gap / (c1 * h), < 0: no vegetation
-    okin_aeff  (:,:,:),    & ! veg_scheme = 3: effective (u*s/u*) directly behind a plant
+    okin_mu    (:,:,:),    & ! veg_scheme = 2: mean gap / (c1 * h), < 0: no vegetation
+    okin_aeff  (:,:,:),    & ! veg_scheme = 2: effective (u*s/u*) directly behind a plant
     veff    (:,:,:),    &   ! effective vegetation
     mfac    (:,:),&          ! moisture factore
     ustar(:,:)          ! (j,i,)

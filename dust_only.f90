@@ -399,7 +399,7 @@ SUBROUTINE read_namelist(ierr)
     fricvelo_scheme,   & ! scheme to calc the friction velocity ustar
     dust_scheme,       & ! 1 = tegen02 (default), 9 = legacy scheme
     threshold_scheme,  &
-    veg_scheme,        & ! =0 no vegitation; =1 Okin scheme; =2 linear Tegen
+    veg_scheme,        & ! 0 none, 1 linear FCOVER, 2 Okin integral, 3 Okin mean, 9 linear biome (legacy)
     moist_scheme,      &
     psrcType,          & ! Flag for type of potential dust source ! 0 : psrc, 1 : msgsrc, 2 : acDust
     soilmaptype,       &
@@ -415,9 +415,9 @@ SUBROUTINE read_namelist(ierr)
     okin_c1,           & ! Okin: e-folding length of wake recovery [plant heights]
     okin_rplant,       & ! Okin: radius of the idealised plant [m]
     okin_hc,           & ! Okin: plant height at canopy closure [m]
-    okin_A,            & ! Okin: (u*s/u*) behind a single plant (veg_scheme = 3)
+    okin_A,            & ! Okin: (u*s/u*) behind a single plant (veg_scheme = 2)
     okin_gap_type,     & ! Okin: 1 = square grid gap, 2 = mean free path gap
-    lokin_chain,       & ! Okin: sheltering chain on/off (veg_scheme = 3)
+    lokin_chain,       & ! Okin: sheltering chain on/off (veg_scheme = 2)
     z0File,            & ! Filename of Roughness Length
     biomeFile,         & ! Filename of Vegetation Cover/Type Data
     moistFile,         &
@@ -439,7 +439,7 @@ SUBROUTINE read_namelist(ierr)
   fricvelo_scheme = 1
   dust_scheme     = DUST_TEGEN02  ! 1 = tegen02, 9 = legacy scheme
   threshold_scheme= 1
-  veg_scheme      = 0           ! 0=no vegetation, 1=okin scheme, 2=linear (Tegen02)
+  veg_scheme      = VEG_NONE      ! 0 none, 1 linear FCOVER, 2 Okin integral, 3 Okin mean, 9 linear biome
   soilmaptype     = 1
   mineralmaptype  = 0
   mineraltypeFile = 'without'

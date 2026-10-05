@@ -327,10 +327,10 @@ MODULE src_dust
         z0File = 'without'
       ENDIF
 
-      ! veg_scheme ==2 need biomes as input
-      IF (veg_scheme == 2 .AND. .NOT. lwithbiom) THEN
+      ! the linear biome scheme needs biomes as input
+      IF (veg_scheme == VEG_LIN_BIOME .AND. .NOT. lwithbiom) THEN
         PRINT*,'WARNING  src_dust "init" '
-        PRINT*,'         veg_scheme == 2 needs biomes as input but,'
+        PRINT*,'         veg_scheme == 9 needs biomes as input but,'
         PRINT*,'         lwithbiom = .FALSE.'
         PRINT*,' '
         PRINT*,'         CHANGING SETTINGS'
@@ -358,28 +358,40 @@ MODULE src_dust
       ENDIF
 
       ! veg_scheme need right values
-      IF (veg_scheme < 0 .OR. veg_scheme > 3) THEN
+      IF (veg_scheme /= VEG_NONE .AND. veg_scheme /= VEG_LIN_FCOVER .AND. veg_scheme /= VEG_OKIN_INTEGRAL &
+          .AND. veg_scheme /= VEG_OKIN_MEAN .AND. veg_scheme /= VEG_LIN_BIOME) THEN
         ierr = 100007
-        yerr = 'wrong value for veg_scheme'
+        yerr = 'wrong value for veg_scheme (0 none, 1 lin. FCOVER, 2 Okin integral, 3 Okin mean, 9 lin. biome)'
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
         PRINT*,'         ',yerr
         STOP
       END IF
 
-      ! veg_scheme == 3 acts on the wind inside the flux integral,
+      ! the Okin integral scheme acts on the wind inside the flux integral,
       ! which is only implemented in tegen02 (dust_scheme == 2)
-      IF (veg_scheme == 3 .AND. dust_scheme /= DUST_TEGEN02) THEN
+      IF (veg_scheme == VEG_OKIN_INTEGRAL .AND. dust_scheme /= DUST_TEGEN02) THEN
         ierr = 100010
-        yerr = 'veg_scheme = 3 requires dust_scheme = 1 (tegen02)'
+        yerr = 'veg_scheme = 2 (Okin integral) requires dust_scheme = 1 (tegen02)'
         PRINT*,'ERROR    src_dust "init" '
         PRINT*,'         #',ierr
         PRINT*,'         ',yerr
+        STOP
+      END IF
+
+      ! mineralogy is only combined with the linear vegetation schemes
+      IF (mineralmaptype == 1 .AND. veg_scheme /= VEG_NONE .AND. veg_scheme /= VEG_LIN_FCOVER &
+          .AND. veg_scheme /= VEG_LIN_BIOME) THEN
+        ierr = 100013
+        yerr = 'mineralogy (mineralmaptype = 1) requires veg_scheme = 0, 1 (linear FCOVER) or 9 (linear biome)'
+        PRINT*,'ERROR    src_dust "init" '
+        PRINT*,'         #',ierr
+        PRINT*,'         ',TRIM(yerr)
         STOP
       END IF
 
       ! parameters of the Okin scheme need valid values
-      IF (veg_scheme == 1 .OR. veg_scheme == 3) THEN
+      IF (veg_scheme == VEG_OKIN_MEAN .OR. veg_scheme == VEG_OKIN_INTEGRAL) THEN
         IF (okin_c1 <= 0. .OR. okin_rplant <= 0. .OR. okin_hc <= 0. .OR.  &
             okin_A < 0. .OR. okin_A >= 1. .OR.                              &
             (okin_gap_type /= 1 .AND. okin_gap_type /= 2)) THEN
@@ -393,8 +405,8 @@ MODULE src_dust
         IF (lddebug) THEN
           PRINT*, 'Okin vegetation: veg_scheme =', veg_scheme, ' c1 =', okin_c1,  &
                   ' r =', okin_rplant, ' hc =', okin_hc, ' gap_type =', okin_gap_type
-          IF (veg_scheme == 1) PRINT*, '                 SSR_min =', SSR_min
-          IF (veg_scheme == 3) PRINT*, '                 A =', okin_A, ' chain =', lokin_chain
+          IF (veg_scheme == VEG_OKIN_MEAN)     PRINT*, '                 SSR_min =', SSR_min
+          IF (veg_scheme == VEG_OKIN_INTEGRAL) PRINT*, '                 A =', okin_A, ' chain =', lokin_chain
         END IF
       END IF
 
@@ -787,9 +799,10 @@ MODULE src_dust
 
 
         ! +-+-+- Sec 1.4.7 Vegetation -+-+-+
-        IF (veg_scheme == 1 .OR. veg_scheme == 3) THEN
+        IF (veg_scheme == VEG_LIN_FCOVER .OR. veg_scheme == VEG_OKIN_MEAN .OR. &
+            veg_scheme == VEG_OKIN_INTEGRAL) THEN
           CALL okin_vegetation(decomp(ib1),dimveg)
-        ELSE IF (veg_scheme == 2) THEN
+        ELSE IF (veg_scheme == VEG_LIN_BIOME) THEN
           CALL linear_vegetation(decomp(ib1),dimveg)
         END IF
 
@@ -1506,7 +1519,7 @@ MODULE src_dust
           ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
           ! feff = MIN(feff_z0(j,i) , feff_veg(j,i,tnow))
-          ! veg_scheme = 3: feff_veg = 1, vegetation acts on the wind (see below),
+          ! veg_scheme = 2 (Okin integral): feff_veg = 1, vegetation acts on the wind (see below),
           !   feff contains only the roughness drag partition
           feff = feff_z0(j,i) * feff_veg(j,i,tnow)
 
@@ -1536,7 +1549,7 @@ MODULE src_dust
               ! and the moisture factor
               uthp = (uth(n)*u1fac)/feff * mfac(j,i)
 
-              IF (veg_scheme == 3) THEN
+              IF (veg_scheme == VEG_OKIN_INTEGRAL) THEN
                 ! Horizontal dust flux [one particle size], vegetation after Okin (2008, Eq. 1):
                 ! the local surface friction velocity behind the plants enters the flux and
                 ! the flux is averaged over the distances to the nearest upwind plant
@@ -1596,8 +1609,8 @@ MODULE src_dust
              END IF
 
             ! Mask Effective area determined by vegetation fraction:
-            ! only for veg_scheme = 2
-            IF (veg_scheme == 2) THEN
+            ! only for the linear biome scheme
+            IF (veg_scheme == VEG_LIN_BIOME) THEN
               fluxbin(n) = fluxbin(n) * veff(j,i,tnow)
               IF (mineralmaptype == 1) THEN
                 DO mr=1,17
@@ -2284,8 +2297,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
           END IF
 
           ! Mask Effective area determined by vegetation fraction:
-          ! only for veg_scheme = 2
-          IF (veg_scheme == 2) THEN
+          ! only for the linear biome scheme
+          IF (veg_scheme == VEG_LIN_BIOME) THEN
             fdust(j,i,nn) = fdust(j,i,nn) * veff(j,i,tnow)
           END IF
 
@@ -2541,12 +2554,16 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
   ! The fractional plant cover (FCOVER) (dust%veg(:,:,:)) is translated
   ! into the ratio of the mean gap between plants and the plant height.
   !
-  ! veg_scheme = 1:
+  ! veg_scheme = 1 (linear FCOVER):
+  !   Linear drag partition feff_veg = 1 - FCOVER/0.5, without the Okin geometry.
+  !   Legacy treatment, required with mineralogy.
+  !
+  ! veg_scheme = 3 (Okin mean):
   !   The shear stress ratio (SSR) of Okin is integrated over the gap
   !   distribution and used as drag partition, feff_veg = sqrt(SSR),
   !   which increases the threshold friction velocity.
   !
-  ! veg_scheme = 3:
+  ! veg_scheme = 2 (Okin integral):
   !   Only the geometry is prepared here (okin_mu, okin_aeff). The
   !   vegetation acts on the wind inside the flux calculation
   !   (tegen02 / okin_hflux_kernel), feff_veg = 1.
@@ -2641,7 +2658,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
            hplant    = okin_hc * veg(j,i,vegnow)
            gapheight = gap/(hplant + 1.E-8) ! + 1.E-8 to avoid division by zero
 
-           IF (veg_scheme == 1) THEN
+           IF (veg_scheme == VEG_OKIN_MEAN) THEN
              ! -- SSR (Okin), integrated over the exponential gap distribution
              ! SSR_min is adjustable in the namelist (Okin best fit 0.32, cropland tests 0.07)
              SSR = 1. - (1. - SSR_min)/(gapheight/okin_c1 + 1.)
@@ -2649,7 +2666,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
              ! the drag partition is defined as sqrt(SSR)
              feff_veg(j,i,vegnow) = SQRT(MAX(SSR, 0._8))
 
-           ELSE IF (veg_scheme == 3) THEN
+           ELSE IF (veg_scheme == VEG_OKIN_INTEGRAL) THEN
              ! -- geometry for the flux integral in tegen02
              mu = gapheight/okin_c1
              okin_mu(j,i,vegnow) = mu
@@ -2664,8 +2681,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
          END IF
 
-         ! as before: with mineralogy the Okin drag partition is replaced by a linear one
-         IF(veg_scheme == 1 .AND. mineralmaptype == 1) THEN
+         ! linear drag partition, independent of the plant geometry above
+         IF (veg_scheme == VEG_LIN_FCOVER) THEN
            feff_veg(j,i,vegnow) = 1.-(veg(j,i,vegnow))*1./0.5
          END IF
 
@@ -2689,7 +2706,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
   ! Description:
   ! Horizontal flux of one size class divided by (roa/g * s_rel), averaged
   ! over the distribution of distances x to the nearest upwind plant
-  ! (Okin 2008, Eq. 1), used with veg_scheme = 3.
+  ! (Okin 2008, Eq. 1), used with veg_scheme = 2 (Okin integral).
   !
   ! Local friction velocity behind a plant (Okin 2008, Eq. 4, with A_eff):
   !     u_s(x) = us * (1 - b*z),   b = 1 - aeff,   z = exp(-x/(c1*h))
