@@ -101,7 +101,7 @@ MODULE dust_tegen_param
   REAL(8), PARAMETER ::                       &
     a_rnolds    = 1331.647E0,                 & !Reynolds constant
     ! aeff        = 0.35E0,                     & !efficient fraction
-    aeff        = 0.7E0,                     & !efficient fraction
+    aeff        = 0.7E0,                     & !constant of the drag partition (Marticorena and Bergametti 1995: 0.35) [1]
     aw          = 1.121E0,                    & !soil moisture parameter
     abs_density = 2.6E0,                      & !absolute density of the soil (2.6 g/cm3)
     b_rnolds    = 0.38194E0,                  & !Reynolds constant
@@ -132,7 +132,7 @@ MODULE dust_tegen_param
     w0          = 99.E0,                      & !soil layer water content threshold
     xnu         = 0.146E0,                    & !cinematic viscosity (cm2.s-1)
     x_rnolds    = 1.561228E0,                 & !Reynolds constant
-    xeff        = 10.E0,                      & !efficient fraction
+    xeff        = 0.1E0,                      & !distance X of the drag partition (MB95: 10 cm) [m]
     ! xeff        = 12255.E0,                      & !efficient fraction
     ZZ          = 1000.E0                       !wind measurment height (cm)
 

@@ -420,14 +420,14 @@ SUBROUTINE read_namelist(ierr)
     okin_A,            & ! Okin: (u*s/u*) behind a single plant (veg_scheme = 2)
     okin_gap_type,     & ! Okin: 1 = square grid gap, 2 = mean free path gap
     lokin_chain,       & ! Okin: sheltering chain on/off (veg_scheme = 2)
-    z0File,            & ! Filename of Roughness Length
+    z0File,            & ! Filename of Roughness Length (variable z0 in m; units attribute "cm" is converted)
     biomeFile,         & ! Filename of Vegetation Cover/Type Data
     moistFile,         &
     uconst,            &
     vconst,            &
     ustconst,          &
-    z0const,           &
-    z0synop,           &
+    z0const,           & ! constant roughness length [m] (e.g. 1.E-3 for bare cropland)
+    z0synop,           & ! roughness length for u* from wind, fricvelo_scheme = 1 [m]
     dzconst,           &
     u_var_name,        & ! Name of u variable in Input file
     v_var_name,        & ! Name of v variable in Input file

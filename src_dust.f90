@@ -661,7 +661,7 @@ MODULE src_dust
         dust(ib1)%vmoist(:,:,:)=0.
         dust(ib1)%vegmin2(:,:)=0.
         dust(ib1)%soiltype(:,:)=0.
-        dust(ib1)%z0(:,:)=0.001 !cm
+        dust(ib1)%z0(:,:)=1.E-5 ! [m]
         dust(ib1)%source(:,:)=0.
         dust(ib1)%alpha2(:,:)=0.
         dust(ib1)%feff_z0(:,:)=1.
@@ -1901,7 +1901,7 @@ MODULE src_dust
           !   best emission properties (soiltype=10), to avoid an underestimation.
           IF(source(j,i) > 0.5) THEN
             soiltype(j,i) = 10
-            IF (z0(j,i) <= 0.) z0(j,i) = 0.001 ! [cm]
+            IF (z0(j,i) <= 0.) z0(j,i) = 1.E-5 ! [m]
           ENDIF
 
         ELSEIF (psrcType == 2) THEN ! MSG
@@ -1909,7 +1909,7 @@ MODULE src_dust
           IF(soiltype(j,i) < 13) soiltype(j,i) = 9
           IF(source(j,i) >= 2) THEN
             IF (soiltype(j,i) == 9) soiltype(j,i) = 10
-            IF (z0(j,i) <= 0.) z0(j,i) = 0.001 ! [cm]
+            IF (z0(j,i) <= 0.) z0(j,i) = 1.E-5 ! [m]
           ENDIF
 
         ENDIF
@@ -1925,7 +1925,7 @@ MODULE src_dust
         !alpha(j,i) = solspe(isoiltype,nmode*3+1)
 
         ! avoid z0 = 0. at any place
-        IF (z0(j,i) == 0.0) z0(j,i)=1.E-9
+        IF (z0(j,i) == 0.0) z0(j,i)=1.E-11 ! [m]
 
 
       END DO
@@ -2462,7 +2462,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
             IF (fricvelo_scheme == 1) THEN
 
               zl   = 0.5*dz(1,j,i)
-              ! z0l  = z0(j,i)/100.
+              ! z0l  = z0(j,i)   ! z0 in m
               ! z0l  = gz0(i+nboundlines,j+nboundlines)/9.81
               ! IF (z0l > 0.1) z0l = 0.1
               z0l  = z0synop
@@ -2481,7 +2481,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
               qvs  = qv_2m(i+nboundlines,j+nboundlines)
               shfl = lhfl_s(i+nboundlines,j+nboundlines)
               zl   = 0.5*dz(1,j,i)
-              ! z0l  = z0(j,i)/100.
+              ! z0l  = z0(j,i)   ! z0 in m
               ! z0l  = gz0(i+nboundlines,j+nboundlines)/9.81
               ! IF (z0l > 0.1) z0l = 0.1
               z0l  = z0synop
@@ -2957,7 +2957,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     IF (lddebug) PRINT*, 'Enter roughness'
 
     ! z0s  = dp / 30.
-    z0s  = 0.001 !! en cm, these Marticorena p.85
+    z0s  = 1.E-5 ! [m], 10 um, smooth roughness length (Marticorena thesis p. 85)
     ! d1   = 0.  !100
     local_feff = 0.
 
@@ -3395,6 +3395,9 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     CHARACTER(120)     :: &
       filename       ! name of variable that shoud be read
 
+    CHARACTER(20)     :: &
+      yunits         ! units attribute of the variable
+
     INTEGER            :: &
       ntimes         ! number of possible days in the model run
     LOGICAL           :: &
@@ -3784,6 +3787,18 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       END DO
 
     END DO
+
+    ! the roughness length is used in m; files in cm (e.g. Prigent et al. 2012) are converted
+    IF (infile == 'z0') THEN
+      yunits = ''
+      istat = nf90_get_att(ncID, varID, 'units', yunits)
+      IF (TRIM(yunits) == 'cm') THEN
+        outvar = outvar * 0.01
+        PRINT*, 'z0 file in cm, converted to m'
+      ELSEIF (TRIM(yunits) /= 'm') THEN
+        PRINT*, 'WARNING: z0 file without units attribute "m" or "cm", assumed to be in m'
+      END IF
+    END IF
 
     DEALLOCATE (var_read)
     IF (ntimes > 0) DEALLOCATE (times)
