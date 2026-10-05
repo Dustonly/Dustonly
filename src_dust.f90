@@ -1298,6 +1298,7 @@ MODULE src_dust
 
     INTEGER :: &
       i,j,n,m,mr,n_bomb, & ! loops
+      nmr,            & ! number of DustInd columns in use (1 without mineralogy)
       start_x,        &
       start_y,        &
       stop_x,         &
@@ -1635,10 +1636,14 @@ MODULE src_dust
         END DO ! j
       END DO ! i
       !find infinite values make them zero
+      ! without mineralogy only the bulk column of DustInd is set (OFFLINE init),
+      ! the mineral columns would index beyond the tracer dimension of flux
+      nmr = 1
+      IF (mineralmaptype == 1) nmr = 18
       DO i=1,subdomain%ntx
         DO j=1,subdomain%nty
           DO n=1,ntrace
-            DO mr=1,18
+            DO mr=1,nmr
               IF (ieee_is_nan(flux(1,j,i,DustInd(n,mr))).or..not.ieee_is_finite(flux(1,j,i,DustInd(n,mr)))) THEN
                 flux(1,j,i,DustInd(n,mr)) = 0.
               ELSE IF (ieee_is_nan(DustEmis(j,i,DustInd(n,mr))).or..not.ieee_is_finite(DustEmis(j,i,DustInd(n,mr)))) THEN
