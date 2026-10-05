@@ -1385,6 +1385,7 @@ MODULE src_dust
     REAL(8), POINTER :: mineralmapmod(:,:,:)
     REAL(8), POINTER :: feff_z0(:,:)
     REAL(8), POINTER :: feff_veg(:,:,:)
+    REAL(8), POINTER :: veg(:,:,:)
     REAL(8), POINTER :: okin_mu(:,:,:)
     REAL(8), POINTER :: okin_aeff(:,:,:)
     REAL(8), POINTER :: veff(:,:,:)
@@ -1407,6 +1408,7 @@ MODULE src_dust
     mineralmapmod  => dust(subdomain%ib)%mineralmapmod(:,:,:)
     feff_z0  => dust(subdomain%ib)%feff_z0(:,:)
     feff_veg => dust(subdomain%ib)%feff_veg(:,:,:)
+    veg      => dust(subdomain%ib)%veg(:,:,:)
     okin_mu  => dust(subdomain%ib)%okin_mu(:,:,:)
     okin_aeff=> dust(subdomain%ib)%okin_aeff(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
@@ -1521,7 +1523,14 @@ MODULE src_dust
           ! feff = MIN(feff_z0(j,i) , feff_veg(j,i,tnow))
           ! veg_scheme = 2 (Okin integral): feff_veg = 1, vegetation acts on the wind (see below),
           !   feff contains only the roughness drag partition
-          feff = feff_z0(j,i) * feff_veg(j,i,tnow)
+          IF (fc_z0 > 0.) THEN
+            ! EXPERIMENTAL: the roughness drag partition is faded out with increasing vegetation
+            ! cover, it is irrelevant once the vegetation dominates (z0 data containing vegetation
+            ! would otherwise count the vegetation twice)
+            feff = (1. - (1. - feff_z0(j,i)) * MAX(0._8, 1. - veg(j,i,tnow)/fc_z0)) * feff_veg(j,i,tnow)
+          ELSE
+            feff = feff_z0(j,i) * feff_veg(j,i,tnow)
+          END IF
 
           hflux = 0.
           fluxbin = 0.

@@ -60,9 +60,11 @@ MODULE mo_dust
     moistinc, &    ! time increment of soil moisture
     z0synop,  &
     z0const,  &
-    SSR_min
+    SSR_min,  &
+    fc_z0          ! EXPERIMENTAL: FCOVER above which the roughness drag partition feff_z0 is
+                   ! faded out linearly (feff_z0 -> 1); 0 = off (default)
 
-  !-- parameters of the Okin vegetation drag partition (veg_scheme = 1 and 3)
+  !-- parameters of the Okin vegetation schemes (veg_scheme = 2 and 3)
   !   defaults reproduce the former hard-coded values
   REAL :: &
     okin_c1     = 4.8,  & ! e-folding length of the wake recovery in plant heights (Okin 2008)

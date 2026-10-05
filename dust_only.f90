@@ -413,6 +413,7 @@ SUBROUTINE read_namelist(ierr)
     vegdayFile,        & ! Filename of daily vegetation cover
     vegminFile,        & ! Filename of min vegetation cover MF
     SSR_min,           & !
+    fc_z0,             & ! EXPERIMENTAL: fade out feff_z0 linearly up to FCOVER = fc_z0 (0 = off)
     okin_c1,           & ! Okin: e-folding length of wake recovery [plant heights]
     okin_rplant,       & ! Okin: radius of the idealised plant [m]
     okin_hc,           & ! Okin: plant height at canopy closure [m]
@@ -455,6 +456,7 @@ SUBROUTINE read_namelist(ierr)
   mineralmaptype  = 0
   mineraltypeFile = 'without'
   SSR_min         =  0.0
+  fc_z0           =  0.0         ! off
   okin_c1         =  4.8         ! Okin (2008)
   okin_rplant     =  0.05        ! [m]
   okin_hc         =  1.0         ! [m], 1.0 reproduces h = FCOVER
