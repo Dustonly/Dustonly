@@ -1517,8 +1517,11 @@ MODULE src_dust
           fluxbin = 0.
           fluxbin_m = 0.
 
-          IF(feff > 0. .AND. ustar(j,i) > 0. ) THEN
+          ! cells without dust source (psrcType = 3) are multiplied by source = 0 below: skip them
+          IF(feff > 0. .AND. ustar(j,i) > 0. .AND. (psrcType /= 3 .OR. source(j,i) > 0.)) THEN
             DO n = 1, nclass
+              ! size classes without basal surface give no flux
+              IF (srel_map(j,i,n) <= 0.) CYCLE
               dp = dp_meter(n)
 
               ! calculate the recent threshold friction velocity
@@ -2694,7 +2697,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       mu,   & ! mean gap / (c1 * h), < 0: no vegetation
       aeff    ! effective (u*s/u*) directly behind a plant
 
-    REAL(8) :: a, b, zc, usl, J0, J1, J2, J3
+    REAL(8) :: a, b, zc, za, usl, J0, J1, J2, J3
     REAL(8) :: Im(0:3)
     INTEGER :: m
 
@@ -2713,8 +2716,10 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       a  = 1./mu
       zc = MIN((1. - ut/us)/b, 1._8)
       IF (zc <= 0.) RETURN
+      ! zc**(a+m) = zc**a * zc**m: one real power instead of four (dominates the runtime)
+      za = zc**a
       DO m = 0, 3
-        Im(m) = a/(a+m) * zc**(a+m)
+        Im(m) = a/(a+m) * za * zc**m
       END DO
       J0 = Im(0)
       J1 = Im(0) -    b*Im(1)
