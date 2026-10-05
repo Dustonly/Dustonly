@@ -80,6 +80,17 @@ MODULE src_dust
   ! Local Variables
   PRIVATE
 
+  ! Soil size distribution tables of tegen02, one row per soil mode (see tegen02, 'init').
+  ! Per grid cell, the relative basal surface srel(n) and the mass fractions per dust bin of
+  ! the bombardment classes are ratios of linear combinations of the soil mode weights
+  ! w = soilmap(j,i,1:nmode), so they are evaluated on the fly instead of being stored for
+  ! every grid cell (formerly srel_map, mrel_map, mrel_sum, mrel_mx: ~14 kB per cell).
+  REAL(8), ALLOCATABLE :: &
+    tab_srel(:,:),   & ! (nmode,nclass)          basal surface per size class, unnormalised
+    tab_stot(:),     & ! (nmode)                 total basal surface
+    tab_msum(:,:),   & ! (nmode,nclass)          cumulative mass up to size class n
+    tab_mbin(:,:,:)    ! (nmode,nclass,DustBins) cumulative mass up to n within each dust bin
+
   ! subroutines for calling outside the module
   PUBLIC :: organize_dust,quick_nc,quick_ascii
 
@@ -614,10 +625,6 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%ustar(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
 
-        ALLOCATE(dust(ib1)%srel_map(decomp(ib1)%nty,decomp(ib1)%ntx,nclass))
-        ALLOCATE(dust(ib1)%mrel_map(decomp(ib1)%nty,decomp(ib1)%ntx,nclass))
-        ALLOCATE(dust(ib1)%mrel_sum(decomp(ib1)%nty,decomp(ib1)%ntx,nclass))
-        ALLOCATE(dust(ib1)%mrel_mx(decomp(ib1)%nty,decomp(ib1)%ntx,nclass,DustBins+1))
 
 
         dust(ib1)%biome(:,:)=0.
@@ -1297,7 +1304,7 @@ MODULE src_dust
 
 
     INTEGER :: &
-      i,j,n,m,mr,n_bomb, & ! loops
+      i,j,n,m,mr,     & ! loops
       nmr,            & ! number of DustInd columns in use (1 without mineralogy)
       start_x,        &
       start_y,        &
@@ -1307,9 +1314,7 @@ MODULE src_dust
 
     REAL(8) :: &
       dp,      & ! Current diameter
-      dp_bomb, & ! diameter of bombardment particles
       dM,      &   ! mass size distribution
-      stot,    &    ! total basal surface
       uwind,   &
       vwind,   &
       tot_wind,   &
@@ -1318,14 +1323,22 @@ MODULE src_dust
       uthp, &
       dmy_R, &
       s_rel,  &
-      m_rel,  &
-      m_rel_sum, &
       mtot,  &
       feff, &
       hflux, &
       vflux
 
       REAL(8),ALLOCATABLE :: m_rel_ar(:)
+
+    INTEGER :: &
+      kbin(nclass)    ! dust bin of each bombardment size class (> DustBins: not emitted)
+
+    REAL(8) :: &
+      w(nmode),         & ! soil mode weights of the current cell
+      wstot,            & ! total basal surface of the current cell
+      wmsum,            & ! cumulative mass up to the current size class
+      mbin(DustBins),   & ! mass fraction of each dust bin for the current size class
+      mrun(DustBins)      ! running mass per dust bin while building tab_mbin
 
     REAL(8) :: &
       fluxtot (ntrace), &
@@ -1349,10 +1362,6 @@ MODULE src_dust
     REAL(8), POINTER :: ustar(:,:)
     REAL(8), POINTER :: DustEmis(:,:,:)
     REAL(8), POINTER :: DustEmis_m(:,:,:,:)
-    REAL(8), POINTER :: srel_map(:,:,:)
-    REAL(8), POINTER :: mrel_map(:,:,:)
-    REAL(8), POINTER :: mrel_sum(:,:,:)
-    REAL(8), POINTER :: mrel_mx(:,:,:,:)
 
 #ifndef OFFLINE
     REAL(8), POINTER :: EmiRate(:,:,:,:)
@@ -1375,10 +1384,6 @@ MODULE src_dust
     ustar    => dust(subdomain%ib)%ustar(:,:)
     DustEmis => dust(subdomain%ib)%d_emis(:,:,:)
     DustEmis_m => dust(subdomain%ib)%d_emis_m(:,:,:,:)
-    srel_map => dust(subdomain%ib)%srel_map(:,:,:)
-    mrel_map => dust(subdomain%ib)%mrel_map(:,:,:)
-    mrel_sum => dust(subdomain%ib)%mrel_sum(:,:,:)
-    mrel_mx  => dust(subdomain%ib)%mrel_mx(:,:,:,:)
 
 
 #ifndef OFFLINE
@@ -1389,22 +1394,13 @@ MODULE src_dust
 
     IF (lddebug) PRINT*, 'Enter tegen02, yaction=',yaction
 
-    IF (yaction == 'init') THEN
-      call cpu_time(T1)
-
-      median_dp(nmode)   = median_dp_clay
-      median_dp(nmode-1) = median_dp_silt
-      median_dp(nmode-2) = median_dp_sand
-      IF (nmode == 4) median_dp(nmode-3) = median_dp_csand
-
-      mrel_mx = 0.
-      ! create a gap between the outer edge of the domain and the dust emission
-      ! emissions too close to the edge may are distorted by the boundary data
-      ! only in the online model
-      start_x = 1
-      start_y = 1
-      stop_x  = subdomain%ntx
-      stop_y  = subdomain%nty
+    ! create a gap between the outer edge of the domain and the dust emission
+    ! emissions too close to the edge may are distorted by the boundary data
+    ! only in the online model
+    start_x = 1
+    start_y = 1
+    stop_x  = subdomain%ntx
+    stop_y  = subdomain%nty
 
 #ifndef OFFLINE
     IF (my_cart_pos(1) == 0)        start_x = start_x + nboundlines
@@ -1413,73 +1409,55 @@ MODULE src_dust
     IF (my_cart_pos(2) == nprocy-1) stop_y  = stop_y  - nboundlines
 #endif
 
-!call quick_nc('mineral_map_init',var3dtime=mineralmapmass(:,:,:,:))
+    IF (yaction == 'init') THEN
+      call cpu_time(T1)
+
+      median_dp(nmode)   = median_dp_clay
+      median_dp(nmode-1) = median_dp_silt
+      median_dp(nmode-2) = median_dp_sand
+      IF (nmode == 4) median_dp(nmode-3) = median_dp_csand
+
       ! +-+-+- Sec xx srel calculation -+-+-+
-      ! start lon-lat-loop
-      DO i = start_x,stop_x
-        DO j = start_y,stop_y
+      ! Soil mass size distribution of one cell (Marticorena 95 eq. 29) is a weighted sum of
+      ! lognormal modes, dM(n) = sum_m w_m * g_m(n), w = soilmap(j,i,1:nmode). Hence
+      !   srel(n)       = sum_m w_m tab_srel(m,n)   / sum_m w_m tab_stot(m)      (eq. 30, 31)
+      !   mrel_mx(n,b)  = sum_m w_m tab_mbin(m,n,b) / sum_m w_m tab_msum(m,n)
+      ! (mass fraction of the bombardment classes 1..n that falls into dust bin b,
+      ! relative to their total mass). Only these per-mode tables are kept.
+      IF (.NOT. ALLOCATED(tab_srel)) THEN
+        ALLOCATE(tab_srel(nmode,nclass), tab_stot(nmode), tab_msum(nmode,nclass), &
+                 tab_mbin(nmode,nclass,DustBins))
+      END IF
 
-          stot = 0.
-          mtot = 0.
-          DO n = 1, nclass
-            dp = dp_meter(n)
+      ! dust bin of each bombardment size class, same rule as before:
+      ! the bin index advances by at most one per class, beyond DustBins nothing is emitted
+      m = 1
+      DO n = 1, nclass
+        IF (m <= DustBins) THEN
+          IF (dp_meter(n) > dustbin_top(m)) m = m+1
+        END IF
+        kbin(n) = m
+      END DO
 
-            ! calc soil mass size distribution Marticorena 95 eq(29)
-            dM = 0.
-            DO m = 1, nmode
-              dM = dM + (soilmap(j,i,m)/(SQRT(2. * pi) * LOG(sigma))) &
-                      * EXP((LOG(dp) - LOG(median_dp(m)))**2. / (-2. * LOG(sigma)**2.))
-            END DO  !nmode
-
-            ! size distribution of basal surface Marticorena 95 eq(30)
-            srel_map(j,i,n) = dM / (2./3. * rop * dp) * Dstep
-            ! mass size distribution per grid cell
-            mrel_map(j,i,n) = dM * Dstep
-
-            ! total basal surface Marticorena 95 eq(31)
-            stot = stot + srel_map(j,i,n)
-            mtot = mtot + mrel_map(j,i,n)
-            mrel_sum(j,i,n) = mtot
-          END DO ! n = 1, nclass
-
-          IF (stot > 0.) THEN
-            srel_map(j,i,:) = srel_map(j,i,:)/stot
-            mrel_map(j,i,:) = mrel_map(j,i,:)/mtot
-            mrel_sum(j,i,:) = mrel_sum(j,i,:)/mtot
-          ELSE
-            srel_map(j,i,:) = 0.
-            mrel_map(j,i,:) = 0.
-          END IF
-
-          DO n = 1, nclass
-            dp = dp_meter(n)
-            IF (mrel_sum(j,i,n) > 0.) THEN
-              m = 1
-               DO n_bomb = 1, n
-                 ! diameter of particles effected by soltation bombardment
-                 dp_bomb = dp_meter(n_bomb)
-                 ! scale horizontal flux with the relativ particle mass of dp_bomb
-                 m_rel     = mrel_map(j,i,n_bomb)
-                 m_rel_sum = mrel_sum(j,i,n)
-
-                  IF (m <= DustBins) THEN
-                    IF (dp_bomb > dustbin_top(m)) m = m+1
-                  END IF
-                  ! bin-wise integration
-                  IF (m <= DustBins) THEN
-                    mrel_mx(j,i,n,m) = mrel_mx(j,i,n,m) + m_rel/m_rel_sum
-                  ELSE
-                    mrel_mx(j,i,n,m) = 1.0 - SUM(mrel_mx(j,i,n,1:DustBins))
-                    EXIT
-                  END IF
-               END DO ! n_bomb
-             END IF
-          END DO ! n = 1, nclass
-        END DO ! j=1,subdomain%nty
-      END DO ! i=1,subdomain%ntx
-      !call quick_nc('mrel_map',var3d=mrel_map(:,:,:))
-      !call quick_nc('srel_map',var3d=srel_map(:,:,:))
-      !call quick_nc('mrel_mx',var3dtime=mrel_mx(:,:,:,:))
+      DO m = 1, nmode
+        tab_stot(m) = 0.
+        mtot = 0.
+        mrun = 0.
+        DO n = 1, nclass
+          dp = dp_meter(n)
+          ! lognormal mode m with unit weight
+          dM = (1./(SQRT(2. * pi) * LOG(sigma))) &
+               * EXP((LOG(dp) - LOG(median_dp(m)))**2. / (-2. * LOG(sigma)**2.))
+          ! size distribution of basal surface Marticorena 95 eq(30), without Dstep (cancels)
+          tab_srel(m,n) = dM / (2./3. * rop * dp)
+          tab_stot(m)   = tab_stot(m) + tab_srel(m,n)
+          ! cumulative mass, in total and per dust bin
+          mtot = mtot + dM
+          tab_msum(m,n) = mtot
+          IF (kbin(n) <= DustBins) mrun(kbin(n)) = mrun(kbin(n)) + dM
+          tab_mbin(m,n,:) = mrun
+        END DO ! n = 1, nclass
+      END DO ! m = 1, nmode
 
       call cpu_time(T2)
       print*, 'init time:',T2-T1
@@ -1517,11 +1495,20 @@ MODULE src_dust
           fluxbin = 0.
           fluxbin_m = 0.
 
+          ! soil mode weights and total basal surface of this cell (see tab_srel)
+          w = soilmap(j,i,1:nmode)
+          wstot = SUM(w * tab_stot)
+          ! no emission in the boundary gap (online model), see start_x etc.
+          IF (i < start_x .OR. i > stop_x .OR. j < start_y .OR. j > stop_y) wstot = 0.
+
           ! cells without dust source (psrcType = 3) are multiplied by source = 0 below: skip them
-          IF(feff > 0. .AND. ustar(j,i) > 0. .AND. (psrcType /= 3 .OR. source(j,i) > 0.)) THEN
+          IF(feff > 0. .AND. ustar(j,i) > 0. .AND. wstot > 0. .AND.        &
+             (psrcType /= 3 .OR. source(j,i) > 0.)) THEN
             DO n = 1, nclass
+              ! relative basal surface of size class n (Marticorena 95 eq. 30, 31)
+              s_rel = SUM(w * tab_srel(:,n)) / wstot
               ! size classes without basal surface give no flux
-              IF (srel_map(j,i,n) <= 0.) CYCLE
+              IF (s_rel <= 0.) CYCLE
               dp = dp_meter(n)
 
               ! calculate the recent threshold friction velocity
@@ -1529,7 +1516,6 @@ MODULE src_dust
               ! the drag partition from soil roughness and vegetation
               ! and the moisture factor
               uthp = (uth(n)*u1fac)/feff * mfac(j,i)
-              s_rel = srel_map(j,i,n)
 
               IF (veg_scheme == 3) THEN
                 ! Horizontal dust flux [one particle size], vegetation after Okin (2008, Eq. 1):
@@ -1552,9 +1538,18 @@ MODULE src_dust
 
                   ! Vertical dust flux
                   vflux = hflux * alpha(j,i)
+                  ! mass fraction per dust bin of the bombardment classes 1..n
+                  wmsum = SUM(w * tab_msum(:,n))
+                  IF (wmsum > 0.) THEN
+                    DO m = 1, DustBins
+                      mbin(m) = SUM(w * tab_mbin(:,n,m)) / wmsum
+                    END DO
+                  ELSE
+                    mbin = 0.
+                  END IF
                   ! bin-wise integration
                   DO m = 1, DustBins
-                    fluxbin(m) = fluxbin(m)+vflux * mrel_mx(j,i,n,m)
+                    fluxbin(m) = fluxbin(m)+vflux * mbin(m)
                     IF (mineralmaptype == 1) THEN
                       !PRINT*, 'calculating flux mineral', fluxbin(m), 'dustbin', m
                       DO mr=1,17

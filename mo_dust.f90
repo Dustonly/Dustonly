@@ -213,11 +213,7 @@ MODULE mo_dust
     okin_aeff  (:,:,:),    & ! veg_scheme = 3: effective (u*s/u*) directly behind a plant
     veff    (:,:,:),    &   ! effective vegetation
     mfac    (:,:),&          ! moisture factore
-    ustar(:,:),&          ! (j,i,)
-    srel_map(:,:,:),&          ! (j,i,nclass)
-    mrel_map(:,:,:),&          ! (j,i,nclass)
-    mrel_sum(:,:,:),&          ! (j,i,nclass)
-    mrel_mx(:,:,:,:)        ! (j,i,nclass,nclass)
+    ustar(:,:)          ! (j,i,)
   END TYPE dust_subdomain
   TYPE (dust_subdomain), ALLOCATABLE, TARGET :: dust(:)
 
