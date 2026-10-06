@@ -1553,7 +1553,10 @@ MODULE src_dust
 
           ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
-          ! feff = MIN(feff_z0(j,i) , feff_veg(j,i,tnow))
+          ! Drag partition of soil roughness and vegetation: the smaller (stronger) one applies,
+          ! MIN(feff_z0, feff_veg) (Faust 2022, 5797b96 'Merge soil and vegetation roughness').
+          ! The product feff_z0*feff_veg counts both on cropland and suppresses its emission; it
+          ! came back with the merge of the mineral branch in 2023.
           ! veg_scheme = 2 (Okin integral): feff_veg = 1, vegetation acts on the wind (see below),
           !   feff contains only the roughness drag partition
           IF (veg_scheme == VEG_OKIN_INTEGRAL .AND. lz0_mu_blend) THEN
@@ -1569,9 +1572,9 @@ MODULE src_dust
             END IF
             feff = (1. - (1. - feff_z0(j,i)) * wz0) * feff_veg(j,i,tnow)
           ELSE
-            feff = feff_z0(j,i) * feff_veg(j,i,tnow)
+            feff = MIN(feff_z0(j,i), feff_veg(j,i,tnow))
           END IF
-          feff_bare = feff_z0(j,i) * feff_veg(j,i,tnow)
+          feff_bare = MIN(feff_z0(j,i), feff_veg(j,i,tnow))
 
           hflux = 0.
           fluxbin = 0.
