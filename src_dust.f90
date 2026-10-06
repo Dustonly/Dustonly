@@ -97,6 +97,9 @@ MODULE src_dust
 
 
 
+  ! number of vegetation records (dimveg of organize_dust 'init'), used by veg_index
+  INTEGER :: nveg_records = 1
+
   ! subroutines in this module
   CONTAINS
   ! organize_dust
@@ -424,6 +427,7 @@ MODULE src_dust
       END IF
 
       ! any vegFile maybe necessary
+      lvegdaily = .FALSE.
       IF (veg_scheme > 0) THEN
         IF (TRIM(vegmonFile) == 'without' .AND. TRIM(vegdayFile) == 'without') THEN
           ierr = 100008
@@ -438,24 +442,24 @@ MODULE src_dust
           vegmonFile = 'without'
         ENDIF
         ! set flag for daily vegetation
-        lvegdaily = .FALSE.
         IF (TRIM(vegdayFile) /= 'without') lvegdaily = .TRUE.
       ELSE
         vegmonFile = 'without'
         vegdayFile = 'without'
       ENDIF
 
-      ! Init of vegitation time dimension
-      !   climatological or daily data
+      ! Number of vegetation records (time index: FUNCTION veg_index)
+      !   daily data:   one record per day from the day of ydate_ini (also for restarts) to the
+      !                 last day of the run (hstop counts from ydate_ini; 00 UTC may add one day)
+      !   monthly data: 12 records, January .. December
       IF (veg_scheme > 0 ) THEN
-        ! If there is no daily data monthly data will be used
         dimveg = 12
-        ! when daily data is available calc max number of days in the simulation
-        IF (lvegdaily) dimveg = CEILING(hstop/24) + 1 ! hardcoding at this point my be helpful for some tests 366 370!1096!1858!366!
+        IF (lvegdaily) dimveg = CEILING(hstop/24) + 1
       ELSE
         ! if no vegetation scheme is used then dimveg = 1
         dimveg = 1
       END IF
+      nveg_records = dimveg
 
       IF (lvegdaily) THEN
         ifile_num = ifile_num + 1
@@ -1392,8 +1396,6 @@ MODULE src_dust
       uwind,   &
       vwind,   &
       tot_wind,   &
-      time_start, &
-      time_now, &
       uthp, &
       dmy_R, &
       s_rel,  &
@@ -1542,20 +1544,8 @@ MODULE src_dust
     ELSEIF (yaction == 'calc') THEN
       ! +-+-+- Sec 1 Set the actually date -+-+-+
 
-      ! the drag partition (feff) has a dependency on time
-      IF (veg_scheme > 0) THEN
-        IF (lvegdaily) THEN
-          ! find the exact day and set "tnow" with the number of the actually day
-          READ(ydate_ini(9:10),*) time_start
-          time_now=time_start+ntstep*dt/3600.
-          tnow=time_now/24 + 1 ! convert to integer
-        ELSE ! if the drag partition has monthly values "tnow" is the number of the month
-          READ(StartDate,'(4x,i2)') tnow
-        END IF
-      ELSE
-        tnow = 1
-      END IF
-      !PRINT*, 'my veg month is:', tnow
+      ! record of the vegetation fields (day or month) at this time step
+      tnow = veg_index(ntstep)
 
       call cpu_time(T1)
       DO i=1,subdomain%ntx
@@ -2071,7 +2061,6 @@ MODULE src_dust
     REAL:: T1, T2
 
 
-    REAL(8) :: time_start,time_now
 
     REAL(8) :: &
       ustar_cm
@@ -2145,20 +2134,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
     ! +-+-+- Sec 1 Set the actually date -+-+-+
 
-    ! the drag partition (feff) has a dependency on time
-    IF (veg_scheme > 0) THEN
-      IF (lvegdaily) THEN
-        ! find the exact day and set "tnow" with the number of the actually day
-        READ(ydate_ini(9:10),*) time_start
-        time_start=time_start + hstart
-        time_now=time_start+ntstep*dt/3600.
-        tnow=time_now/24 + 1 ! convert to integer
-      ELSE ! if the drag partition has monthly values "tnow" is the number of the month
-        READ(StartDate,'(4x,i2)') tnow
-      END IF
-    ELSE
-      tnow = 1
-    END IF
+    ! record of the vegetation fields (day or month) at this time step
+    tnow = veg_index(ntstep)
 
 
     call cpu_time(T1)
@@ -3157,16 +3134,19 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
           IF (moist_scheme == 1) THEN
 
 #ifdef OFFLINE
+            ! offline the moisture file has one record per forcing time step (timeinc)
             moist = vmoist(j,i,timestep_now)
 
 #else
-            ! moist_new = vmoist(j,i,timestep_now)
-            moist_time_step = INT(timestep_now * dt / 3600)
+            ! records every moistinc hours from ydate_ini (record 1 = ydate_ini, also for restarts;
+            ! timestep_now counts from ydate_ini): linear interpolation between the records
+            ! moist_time_step+1 and +2; int_time_step = time steps since record moist_time_step+1
+            moist_time_step = INT(timestep_now * dt / (3600 * moistinc))
             int_time_step = timestep_now - moistinc * 3600 * moist_time_step / dt
 
             ! time interpolation
-            moist = (vmoist(j,i,moist_time_step+1) * (3600/dt - int_time_step)/(3600/dt) &
-                   + vmoist(j,i,moist_time_step+2) * (int_time_step)/(3600/dt))
+            moist = (vmoist(j,i,moist_time_step+1) * (moistinc*3600/dt - int_time_step)/(moistinc*3600/dt) &
+                   + vmoist(j,i,moist_time_step+2) * (int_time_step)/(moistinc*3600/dt))
 
 
           ELSE IF (moist_scheme == 2) THEN
@@ -3199,6 +3179,90 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     IF (lddebug) PRINT*, 'Leave fecan, yaction=',yaction,''//NEW_LINE('')
 
   END SUBROUTINE fecan
+
+  !+ veg_index
+  !---------------------------------------------------------------------
+  INTEGER FUNCTION veg_index(timestep)
+  !---------------------------------------------------------------------
+  ! Description:
+  !   Record of the vegetation fields (veg, feff_veg, okin_mu, okin_aeff, veff; 1..dimveg)
+  !   at the model time step `timestep`, counted from ydate_ini (COSMO ntstep, also after a
+  !   restart; offline ntstep).
+  !   - daily data (vegdayFile): record 1 is the day of ydate_ini (read_infile starts reading
+  !     at that date, also for restarts); the record changes at 00 UTC.
+  !   - monthly data (vegmonFile, records January .. December): the month of the model date.
+  !   - no vegetation scheme: 1.
+  !---------------------------------------------------------------------
+#ifndef OFFLINE
+    USE data_io,          ONLY : ydate_ini
+    USE data_modelconfig, ONLY : dt
+#else
+    USE offline_org
+#endif
+
+    IMPLICIT NONE
+
+    INTEGER, INTENT(IN) :: timestep
+
+    REAL(8) :: hour0, hours
+    INTEGER :: year, month, day
+
+    IF (veg_scheme == VEG_NONE) THEN
+      veg_index = 1
+      RETURN
+    END IF
+
+    READ(ydate_ini(9:10),*) hour0
+    hours = hour0 + timestep*dt/3600.   ! hours since 00 UTC of the day of ydate_ini
+
+    IF (lvegdaily) THEN
+      veg_index = INT(hours/24 + 1)
+    ELSE
+      READ(ydate_ini(1:4),*) year
+      READ(ydate_ini(5:6),*) month
+      READ(ydate_ini(7:8),*) day
+      CALL add_days(year, month, day, INT(hours/24))
+      veg_index = month
+    END IF
+
+    IF (veg_index < 1 .OR. veg_index > nveg_records) THEN
+      PRINT*,'ERROR    src_dust "veg_index": record ', veg_index, ' outside 1 ..', nveg_records
+      PRINT*,'         time step ', timestep, ', ydate_ini ', ydate_ini
+      STOP
+    END IF
+
+  END FUNCTION veg_index
+
+  !+ add_days
+  !---------------------------------------------------------------------
+  SUBROUTINE add_days(year, month, day, ndays)
+  !---------------------------------------------------------------------
+  ! Description:
+  !   Advance the date year-month-day by ndays (>= 0) days, Gregorian calendar.
+  !---------------------------------------------------------------------
+    IMPLICIT NONE
+
+    INTEGER, INTENT(INOUT) :: year, month, day
+    INTEGER, INTENT(IN)    :: ndays
+
+    INTEGER, PARAMETER :: mdays(12) = (/ 31,28,31,30,31,30,31,31,30,31,30,31 /)
+    INTEGER :: n, mlen
+
+    DO n = 1, ndays
+      mlen = mdays(month)
+      IF (month == 2 .AND. (MOD(year,4) == 0 .AND. (MOD(year,100) /= 0 .OR. MOD(year,400) == 0))) mlen = 29
+      day = day + 1
+      IF (day > mlen) THEN
+        day = 1
+        month = month + 1
+        IF (month > 12) THEN
+          month = 1
+          year = year + 1
+        END IF
+      END IF
+    END DO
+
+  END SUBROUTINE add_days
 
   !+ read_ascii
   !---------------------------------------------------------------------
@@ -3729,7 +3793,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
         RETURN
       ENDIF
 
-      ! transform date string to an integer
+      ! transform date string to an integer: daily files (timecheck) start at the day of
+      ! ydate_ini, also for restarts (see FUNCTION veg_index)
       READ(ydate_ini(1:8),*) idate
 
       ! istart -> fist read time step
