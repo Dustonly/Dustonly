@@ -3560,7 +3560,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
     ! local Vars
 
-    CHARACTER(15)     :: &
+    CHARACTER(30)     :: &
       varname(12),    & ! name of variable that shoud be read
       altname           ! alternative name, tried if varname is not in the file
 
