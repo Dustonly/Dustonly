@@ -420,6 +420,8 @@ SUBROUTINE read_namelist(ierr)
     okin_A,            & ! Okin: (u*s/u*) behind a single plant (veg_scheme = 2)
     okin_gap_type,     & ! Okin: 1 = square grid gap, 2 = mean free path gap
     okin_geom_type,    & ! Okin: 1 = fixed plant radius, 2 = fixed plant number (radius grows with FCOVER)
+    veg_classes,       & ! number of sub-grid FCOVER classes in vegdayFile (0 = cell mean FCOVER)
+    vegweight_name,    & ! class weights: 'FCOVER_WEIGHT' (of the source area) or 'FCOVER_CELL_WEIGHT'
     alpha_mean,        & ! mean of alpha over the soil modes: 'default', 'arithmetic', 'geometric', 'harmonic'
     lokin_chain,       & ! Okin: sheltering chain on/off (veg_scheme = 2)
     z0File,            & ! Filename of Roughness Length (variable z0 in m; units attribute "cm" is converted)
@@ -465,6 +467,8 @@ SUBROUTINE read_namelist(ierr)
   okin_A          =  0.32        ! Okin (2008)
   okin_gap_type   =  2           ! mean free path (1 = square grid, former default)
   okin_geom_type  =  2           ! fixed number of plants (1 = fixed radius, former default)
+  veg_classes     =  0           ! cell mean FCOVER
+  vegweight_name  = 'FCOVER_WEIGHT'
   alpha_mean      = 'geometric'  ! ('default' = former behaviour)
   lokin_chain     = .TRUE.
   lwithz0         = .FALSE.

@@ -165,6 +165,7 @@ MODULE src_dust
 
     INTEGER  ::  &
     dimveg,      & ! time dimension of vegetation  = 12 if monthly, = nSimuDays if daily
+    nvc,         & ! number of FCOVER classes per cell (MAX(1, veg_classes))
     dim            ! dimensions of input data
 
 
@@ -448,6 +449,19 @@ MODULE src_dust
         vegdayFile = 'without'
       ENDIF
 
+      ! sub-grid FCOVER classes: daily FCOVER_CLASS / FCOVER_WEIGHT, emission summed over the classes
+      ! in tegen02; only for the FCOVER schemes (1, 2, 3)
+      IF (veg_classes < 0 .OR. (veg_classes > 0 .AND. (.NOT. lvegdaily .OR.                  &
+          dust_scheme /= DUST_TEGEN02 .OR. (veg_scheme /= VEG_LIN_FCOVER .AND.              &
+          veg_scheme /= VEG_OKIN_INTEGRAL .AND. veg_scheme /= VEG_OKIN_MEAN)))) THEN
+        ierr = 100014
+        yerr = 'veg_classes > 0 requires vegdayFile, dust_scheme = 1 and veg_scheme = 1, 2 or 3'
+        PRINT*,'ERROR    src_dust "init" '
+        PRINT*,'         #',ierr
+        PRINT*,'         ',TRIM(yerr)
+        STOP
+      END IF
+
       ! Number of vegetation records (time index: FUNCTION veg_index)
       !   daily data:   one record per day from the day of ydate_ini (also for restarts) to the
       !                 last day of the run (hstop counts from ydate_ini; 00 UTC may add one day)
@@ -460,11 +474,19 @@ MODULE src_dust
         dimveg = 1
       END IF
       nveg_records = dimveg
+      ! with FCOVER classes the vegetation fields hold dimveg records per class:
+      ! record (k-1)*dimveg + t is class k on day t
+      nvc = MAX(1, veg_classes)
 
       IF (lvegdaily) THEN
         ifile_num = ifile_num + 1
         ifile(ifile_num) = 'vegday'
-        ifile_dim(ifile_num) = dimveg
+        ifile_dim(ifile_num) = dimveg*nvc
+        IF (veg_classes > 0) THEN
+          ifile_num = ifile_num + 1
+          ifile(ifile_num) = 'vegweight'
+          ifile_dim(ifile_num) = dimveg*nvc
+        END IF
       ELSEIF( .NOT. lvegdaily .AND. TRIM(vegmonFile) /= 'without') THEN
         ifile_num = ifile_num + 1
         ifile(ifile_num) = 'vegmon'
@@ -620,7 +642,7 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%cult(decomp(ib1)%iy0+1:decomp(ib1)%iy1,      &
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
         ALLOCATE(dust(ib1)%veg(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg*nvc))
 #ifdef OFFLINE
         ALLOCATE(dust(ib1)%vmoist(decomp(ib1)%iy0+1:decomp(ib1)%iy1,       &
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,1:lasttstep+1-firsttstep))
@@ -644,13 +666,15 @@ MODULE src_dust
         ALLOCATE(dust(ib1)%feff_z0(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
                  decomp(ib1)%ix0+1:decomp(ib1)%ix1))
         ALLOCATE(dust(ib1)%feff_veg(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg*nvc))
         ALLOCATE(dust(ib1)%okin_mu(decomp(ib1)%iy0+1:decomp(ib1)%iy1,      &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg*nvc))
         ALLOCATE(dust(ib1)%okin_aeff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,    &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg*nvc))
         ALLOCATE(dust(ib1)%veff(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
-                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg))
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg*nvc))
+        ALLOCATE(dust(ib1)%vegweight(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
+                 decomp(ib1)%ix0+1:decomp(ib1)%ix1,dimveg*nvc))
         ALLOCATE(dust(ib1)%mfac(decomp(ib1)%iy0+1:decomp(ib1)%iy1,     &
                 decomp(ib1)%ix0+1:decomp(ib1)%ix1))
         ALLOCATE(dust(ib1)%d_emis(decomp(ib1)%iy0+1:decomp(ib1)%iy1,   &
@@ -686,6 +710,7 @@ MODULE src_dust
         dust(ib1)%okin_mu(:,:,:)=-1.   ! no vegetation
         dust(ib1)%okin_aeff(:,:,:)=1.
         dust(ib1)%veff(:,:,:)=1.
+        dust(ib1)%vegweight(:,:,:)=1.
         dust(ib1)%mfac(:,:)=1.
         dust(ib1)%d_emis(:,:,:)=0.
         dust(ib1)%d_emis_m(:,:,:,:)=0.
@@ -746,6 +771,7 @@ MODULE src_dust
           IF (TRIM(ifile(i)) == 'biome')   copy2d => dust(ib1)%biome
           ! IF (filenum == 4) copy2d => dust(ib1)%biome
           IF (TRIM(ifile(i)) == 'vegday' ) copy3d => dust(ib1)%veg
+          IF (TRIM(ifile(i)) == 'vegweight') copy3d => dust(ib1)%vegweight
           IF (TRIM(ifile(i)) == 'vegmon' ) copy3d => dust(ib1)%veg
           ! IF (filenum == 6) copy3d => dust(ib1)%veg
           ! IF (filenum == 7) copy2d => dust(ib1)%vegmin2
@@ -815,7 +841,7 @@ MODULE src_dust
         ! +-+-+- Sec 1.4.7 Vegetation -+-+-+
         IF (veg_scheme == VEG_LIN_FCOVER .OR. veg_scheme == VEG_OKIN_MEAN .OR. &
             veg_scheme == VEG_OKIN_INTEGRAL) THEN
-          CALL okin_vegetation(decomp(ib1),dimveg)
+          CALL okin_vegetation(decomp(ib1),dimveg*nvc)
         ELSE IF (veg_scheme == VEG_LIN_BIOME) THEN
           CALL linear_vegetation(decomp(ib1),dimveg)
         END IF
@@ -1375,7 +1401,12 @@ MODULE src_dust
         flux(ntz,subdomain%nty,subdomain%ntx,nt), &
         flux_m(ntz,subdomain%nty,subdomain%ntx,nt,17)
 
+    INTEGER :: &
+      kc,           & ! FCOVER class (veg_classes > 0)
+      tk              ! vegetation record of class kc at this time step
+
     REAL(8) :: &
+      wk,           & ! area fraction of FCOVER class kc (1 without classes)
       wz0,          & ! weight of the roughness drag partition (lz0_mu_blend)
       feff_bare,    & ! drag partition without plants, full roughness (cap with lz0_mu_blend)
       hkernel         ! horizontal flux / (roa/g * s_rel), Okin integral scheme
@@ -1435,6 +1466,7 @@ MODULE src_dust
     REAL(8), POINTER :: okin_mu(:,:,:)
     REAL(8), POINTER :: okin_aeff(:,:,:)
     REAL(8), POINTER :: veff(:,:,:)
+    REAL(8), POINTER :: vegweight(:,:,:)
     REAL(8), POINTER :: mfac(:,:)
     REAL(8), POINTER :: z0(:,:)
     REAL(8), POINTER :: alpha(:,:)
@@ -1457,6 +1489,7 @@ MODULE src_dust
     okin_mu  => dust(subdomain%ib)%okin_mu(:,:,:)
     okin_aeff=> dust(subdomain%ib)%okin_aeff(:,:,:)
     veff     => dust(subdomain%ib)%veff(:,:,:)
+    vegweight => dust(subdomain%ib)%vegweight(:,:,:)
     mfac     => dust(subdomain%ib)%mfac(:,:)
     z0       => dust(subdomain%ib)%z0(:,:)
     alpha    => dust(subdomain%ib)%alpha2(:,:)
@@ -1553,29 +1586,6 @@ MODULE src_dust
 
           ! +-+-+- Sec 2 update of the meteorological variables -+-+-+
 
-          ! Drag partition of soil roughness and vegetation: the smaller (stronger) one applies,
-          ! MIN(feff_z0, feff_veg) (Faust 2022, 5797b96 'Merge soil and vegetation roughness').
-          ! The product feff_z0*feff_veg counts both on cropland and suppresses its emission; it
-          ! came back with the merge of the mineral branch in 2023.
-          ! veg_scheme = 2 (Okin integral): feff_veg = 1, vegetation acts on the wind (see below),
-          !   feff contains only the roughness drag partition
-          IF (veg_scheme == VEG_OKIN_INTEGRAL .AND. lz0_mu_blend) THEN
-            ! The roughness elements between the plants (z0, constant bare-soil value) only matter
-            ! while the gaps are long compared with the wakes: weight 1 - 1/mu with
-            ! mu = gap/(c1*h); full without plants (mu < 0), off for mu <= 1.
-            IF (okin_mu(j,i,tnow) < 0.) THEN
-              wz0 = 1.
-            ELSE IF (okin_mu(j,i,tnow) > 1.) THEN
-              wz0 = 1. - 1./okin_mu(j,i,tnow)
-            ELSE
-              wz0 = 0.
-            END IF
-            feff = (1. - (1. - feff_z0(j,i)) * wz0) * feff_veg(j,i,tnow)
-          ELSE
-            feff = MIN(feff_z0(j,i), feff_veg(j,i,tnow))
-          END IF
-          feff_bare = MIN(feff_z0(j,i), feff_veg(j,i,tnow))
-
           hflux = 0.
           fluxbin = 0.
           lemit = .FALSE.
@@ -1586,71 +1596,102 @@ MODULE src_dust
           ! no emission in the boundary gap (online model), see start_x etc.
           IF (i < start_x .OR. i > stop_x .OR. j < start_y .OR. j > stop_y) wstot = 0.
 
-          ! cells without dust source (psrcType = 3) are multiplied by source = 0 below: skip them
-          IF(feff > 0. .AND. ustar(j,i) > 0. .AND. wstot > 0. .AND.        &
-             (psrcType /= 3 .OR. source(j,i) > 0.)) THEN
-            DO n = 1, nclass
-              ! relative basal surface of size class n (Marticorena 95 eq. 30, 31)
-              s_rel = SUM(w * tab_srel(:,n)) / wstot
-              ! size classes without basal surface give no flux
-              IF (s_rel <= 0.) CYCLE
-              dp = dp_meter(n)
+          ! FCOVER classes (veg_classes > 0): flux = sum_k w_k * flux(class k), record tk of class k
+          DO kc = 1, MAX(1, veg_classes)
+            tk = tnow + (kc-1)*nveg_records
+            wk = 1.
+            IF (veg_classes > 0) wk = vegweight(j,i,tk)
+            IF (wk <= 0.) CYCLE
 
-              ! calculate the recent threshold friction velocity
-              ! from the particle thr. fric. velo.,
-              ! the drag partition from soil roughness and vegetation
-              ! and the moisture factor
-              uthp = (uth(n)*u1fac)/feff * mfac(j,i)
-
-              IF (veg_scheme == VEG_OKIN_INTEGRAL) THEN
-                ! Horizontal dust flux [one particle size], vegetation after Okin (2008, Eq. 1):
-                ! the local surface friction velocity behind the plants enters the flux and
-                ! the flux is averaged over the distances to the nearest upwind plant
-                hkernel = okin_hflux_kernel(ustar(j,i), uthp, okin_mu(j,i,tnow), okin_aeff(j,i,tnow))
-                IF (lz0_mu_blend) THEN
-                  ! the plants switch the roughness off, so cap the flux at the value of the bare
-                  ! soil (no plants) with the full roughness drag partition: vegetation never
-                  ! increases the emission (mu < 0 in the kernel = bare soil)
-                  IF (feff_bare > 0.) THEN
-                    hkernel = MIN(hkernel, okin_hflux_kernel(ustar(j,i),                    &
-                                  (uth(n)*u1fac)/feff_bare * mfac(j,i), -1._8, 1._8))
-                  ELSE
-                    hkernel = 0.
-                  END IF
-                END IF
-                hflux = roa/g * s_rel * hkernel
+            ! Drag partition of soil roughness and vegetation: the smaller (stronger) one applies,
+            ! MIN(feff_z0, feff_veg) (Faust 2022, 5797b96 'Merge soil and vegetation roughness').
+            ! The product feff_z0*feff_veg counts both on cropland and suppresses its emission; it
+            ! came back with the merge of the mineral branch in 2023.
+            ! veg_scheme = 2 (Okin integral): feff_veg = 1, vegetation acts on the wind (see below),
+            !   feff contains only the roughness drag partition
+            IF (veg_scheme == VEG_OKIN_INTEGRAL .AND. lz0_mu_blend) THEN
+              ! The roughness elements between the plants (z0, constant bare-soil value) only matter
+              ! while the gaps are long compared with the wakes: weight 1 - 1/mu with
+              ! mu = gap/(c1*h); full without plants (mu < 0), off for mu <= 1.
+              IF (okin_mu(j,i,tk) < 0.) THEN
+                wz0 = 1.
+              ELSE IF (okin_mu(j,i,tk) > 1.) THEN
+                wz0 = 1. - 1./okin_mu(j,i,tk)
               ELSE
-                IF (ustar(j,i) > uthp) THEN
-                  dmy_R = uthp/ustar(j,i)
-                ELSE
-                  dmy_R = 1
-                END IF
-
-                ! Horizontal dust flux [one particle size]
-                hflux = roa/g * ustar(j,i)**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
+                wz0 = 0.
               END IF
-              ! soltation bombardment
-              IF (hflux > 0.) THEN
-                  lemit = .TRUE.
+              feff = (1. - (1. - feff_z0(j,i)) * wz0) * feff_veg(j,i,tk)
+            ELSE
+              feff = MIN(feff_z0(j,i), feff_veg(j,i,tk))
+            END IF
+            feff_bare = MIN(feff_z0(j,i), feff_veg(j,i,tk))
 
-                  ! Vertical dust flux
-                  vflux = hflux * alpha(j,i)
-                  ! mass fraction per dust bin of the bombardment classes 1..n
-                  wmsum = SUM(w * tab_msum(:,n))
-                  IF (wmsum > 0.) THEN
-                    DO m = 1, DustBins
-                      mbin(m) = SUM(w * tab_mbin(:,n,m)) / wmsum
-                    END DO
-                  ELSE
-                    mbin = 0.
+            ! cells without dust source (psrcType = 3) are multiplied by source = 0 below: skip them
+            IF(feff > 0. .AND. ustar(j,i) > 0. .AND. wstot > 0. .AND.        &
+               (psrcType /= 3 .OR. source(j,i) > 0.)) THEN
+              DO n = 1, nclass
+                ! relative basal surface of size class n (Marticorena 95 eq. 30, 31)
+                s_rel = SUM(w * tab_srel(:,n)) / wstot
+                ! size classes without basal surface give no flux
+                IF (s_rel <= 0.) CYCLE
+                dp = dp_meter(n)
+
+                ! calculate the recent threshold friction velocity
+                ! from the particle thr. fric. velo.,
+                ! the drag partition from soil roughness and vegetation
+                ! and the moisture factor
+                uthp = (uth(n)*u1fac)/feff * mfac(j,i)
+
+                IF (veg_scheme == VEG_OKIN_INTEGRAL) THEN
+                  ! Horizontal dust flux [one particle size], vegetation after Okin (2008, Eq. 1):
+                  ! the local surface friction velocity behind the plants enters the flux and
+                  ! the flux is averaged over the distances to the nearest upwind plant
+                  hkernel = okin_hflux_kernel(ustar(j,i), uthp, okin_mu(j,i,tk), okin_aeff(j,i,tk))
+                  IF (lz0_mu_blend) THEN
+                    ! the plants switch the roughness off, so cap the flux at the value of the bare
+                    ! soil (no plants) with the full roughness drag partition: vegetation never
+                    ! increases the emission (mu < 0 in the kernel = bare soil)
+                    IF (feff_bare > 0.) THEN
+                      hkernel = MIN(hkernel, okin_hflux_kernel(ustar(j,i),                    &
+                                    (uth(n)*u1fac)/feff_bare * mfac(j,i), -1._8, 1._8))
+                    ELSE
+                      hkernel = 0.
+                    END IF
                   END IF
-                  ! bin-wise integration
-                  DO m = 1, DustBins
-                    fluxbin(m) = fluxbin(m)+vflux * mbin(m)
-                  END DO ! m
-              END IF !hflux
-            END DO ! n = 1, nclass
-          END IF
+                  hflux = roa/g * s_rel * hkernel
+                ELSE
+                  IF (ustar(j,i) > uthp) THEN
+                    dmy_R = uthp/ustar(j,i)
+                  ELSE
+                    dmy_R = 1
+                  END IF
+
+                  ! Horizontal dust flux [one particle size]
+                  hflux = roa/g * ustar(j,i)**3 * (1+dmy_R) * (1-dmy_R**2) * s_rel
+                END IF
+                ! soltation bombardment
+                IF (hflux > 0.) THEN
+                    lemit = .TRUE.
+
+                    ! Vertical dust flux
+                    vflux = hflux * alpha(j,i)
+                    ! mass fraction per dust bin of the bombardment classes 1..n
+                    wmsum = SUM(w * tab_msum(:,n))
+                    IF (wmsum > 0.) THEN
+                      DO m = 1, DustBins
+                        mbin(m) = SUM(w * tab_mbin(:,n,m)) / wmsum
+                      END DO
+                    ELSE
+                      mbin = 0.
+                    END IF
+                    ! bin-wise integration
+                    DO m = 1, DustBins
+                      fluxbin(m) = fluxbin(m) + wk * vflux * mbin(m)
+                    END DO ! m
+                END IF !hflux
+              END DO ! n = 1, nclass
+            END IF
+          END DO ! kc
 
           ! +-+-+- mineral emissions -+-+-+
           ! Fixed split of the (still unmasked) bulk emission of each dust bin by mineral_dist
@@ -3493,6 +3534,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     ! Modules
     USE netcdf
     USE mo_dust
+    USE, INTRINSIC :: ieee_arithmetic, ONLY : ieee_is_nan
 #ifndef OFFLINE
     USE data_io,  ONLY : ydate_ini    ! start of the forecast
 #endif
@@ -3535,7 +3577,8 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
 
 
     INTEGER  :: &
-      i,j,t,iv, &  ! loop
+      i,j,t,iv,k, &  ! loop
+      ncls,   &  ! > 0: variable with a class dimension (FCOVER_CLASS, FCOVER_WEIGHT)
       ary_size, &  ! array size
       varnum,   &  !
       istart,   &  ! index of the start date in the var file
@@ -3589,6 +3632,7 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
     ! Definitions
     varnum = 1
     ntimes = 0
+    ncls = 0
     altname = ''
     istart = 0
     istat = nf90_noerr
@@ -3638,6 +3682,19 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       filename = TRIM(vegdayFile)
       varname='FCOVER'
       ntimes = SIZE(outvar(1,1,:))
+      timecheck = .True.
+      IF (veg_classes > 0) THEN
+        ! class means FCOVER_CLASS(time,class,rlat,rlon), records (k-1)*ntimes + t
+        varname = 'FCOVER_CLASS'
+        ncls = veg_classes
+        ntimes = ntimes / ncls
+      END IF
+    ELSEIF (infile == 'vegweight') THEN
+      ! area fractions of the FCOVER classes, same layout as FCOVER_CLASS
+      filename = TRIM(vegdayFile)
+      varname = vegweight_name
+      ncls = veg_classes
+      ntimes = SIZE(outvar(1,1,:)) / ncls
       timecheck = .True.
     ELSEIF (infile == 'vegmon') THEN
       filename = TRIM(vegmonFile)
@@ -3894,6 +3951,42 @@ IF (lddebug) PRINT*, 'Enter emission_tegen'
       IF (ntimes == 0 .AND. ndims == 3) THEN
         var_start(3) = 1
         var_count(3) = 1
+      END IF
+
+      IF (ncls > 0) THEN
+        ! one read per class; NaN (empty class, no cropland) -> 0, i.e. class mean 0 with weight 0
+        istat = nf90_inq_dimid(ncID, 'class', dimID)
+        IF (istat == nf90_noerr) istat = nf90_inquire_dimension(ncID, dimID, len = dimlen)
+        IF (istat /= nf90_noerr .OR. dimlen /= ncls) THEN
+          ierror  = 10019
+          PRINT*,'ERROR reading ', TRIM(filename)
+          PRINT*,ierror
+          yerrmsg = 'Error reading '//TRIM(infile)//' file: no class dimension of length veg_classes'
+          RETURN
+        END IF
+        DO k = 1, ncls
+          istat = nf90_get_var(ncid, varID, var_read(:,:,1:ntimes), start=(/1, 1, k, istart/), &
+                               count=(/ie_tot, je_tot, 1, ntimes/))
+          IF (istat /= nf90_noerr) THEN
+            ierror  = 10017
+            PRINT*,'ERROR reading ', TRIM(filename)
+            PRINT*,ierror
+            yerrmsg = TRIM(nf90_strerror(istat))
+            RETURN
+          ENDIF
+          DO i=1,ie_tot
+            DO j=1,je_tot
+              DO t=1,ntimes
+                IF (ieee_is_nan(var_read(i,j,t))) THEN
+                  outvar(j,i,(k-1)*ntimes+t) = 0.
+                ELSE
+                  outvar(j,i,(k-1)*ntimes+t) = var_read(i,j,t)*var_scale+var_offset
+                END IF
+              END DO
+            END DO
+          END DO
+        END DO
+        CYCLE
       END IF
 
       PRINT*, shape(var_read), istart, ntimes

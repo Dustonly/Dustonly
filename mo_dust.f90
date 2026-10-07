@@ -78,6 +78,17 @@ MODULE mo_dust
                           !   (former default), 2 = fixed number n = 1/(pi okin_rplant^2) (canopy closed at
                           !   FCOVER = 1), radius r = okin_rplant*sqrt(FCOVER) (default)
 
+  !-- sub-grid FCOVER classes (dust-input-pipline FCOVER_CLASS / FCOVER_WEIGHT in vegdayFile)
+  INTEGER :: &
+    veg_classes = 0      ! number of FCOVER classes per cell, 0 = one FCOVER per cell (FCOVER)
+                         !   > 0: the emission of a cell is sum_k FCOVER_WEIGHT_k * E(FCOVER_CLASS_k)
+
+  CHARACTER(30) :: &
+    vegweight_name = 'FCOVER_WEIGHT'  ! variable with the class weights in vegdayFile:
+                         !   'FCOVER_WEIGHT' = fractions of the emitting area (sum 1, with psrcType = 3),
+                         !   'FCOVER_CELL_WEIGHT' = fractions of the cell (sum = emitting fraction, the
+                         !   rest does not emit; then without source map, psrcType = 0)
+
   LOGICAL :: &
     lz0_mu_blend = .TRUE., & ! veg_scheme = 2: weight the roughness drag partition with 1 - 1/mu
                              ! (full without plants, off for mu <= 1, i.e. when the wakes cover the gaps)
@@ -230,6 +241,7 @@ MODULE mo_dust
     okin_mu    (:,:,:),    & ! veg_scheme = 2: mean gap / (c1 * h), < 0: no vegetation
     okin_aeff  (:,:,:),    & ! veg_scheme = 2: effective (u*s/u*) directly behind a plant
     veff    (:,:,:),    &   ! effective vegetation
+    vegweight (:,:,:),  &   ! veg_classes > 0: area fraction of the FCOVER class (record as veg)
     mfac    (:,:),&          ! moisture factore
     ustar(:,:)          ! (j,i,)
   END TYPE dust_subdomain

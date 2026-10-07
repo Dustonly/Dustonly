@@ -21,3 +21,13 @@ v2.0 changes that by redistributing minerals to other sizes based on measurement
 
 * For a physical description of the changes, challenges, and validation, a preprint is avaliable at: [Gómez Maqueo Anaya et al., 2026](https://doi.org/10.5194/egusphere-2026-23)
 * For details on the changes on the init_mineralmap subroutine visit https://github.com/Dustonly/Dustonly/pull/1
+
+### Sub-grid FCOVER classes (`veg_classes`)
+With `veg_classes = K > 0` (requires `vegdayFile`, `dust_scheme = 1`, `veg_scheme = 1, 2` or `3`) the daily
+vegetation file holds the FCOVER distribution of each cell as written by
+[dust-input-pipline](https://github.com/Dustonly/dust-input-pipline): `FCOVER_CLASS(time,class,rlat,rlon)` (mean
+FCOVER of class k) and the class weights (`vegweight_name`, default `FCOVER_WEIGHT`); NaN (empty class) counts as
+weight 0. The emission of a cell is `sum_k w_k * E(FCOVER_CLASS_k)`, i.e. the flux is computed once per class.
+`FCOVER_WEIGHT` are fractions of the emitting area (sum 1, combined with the source map, `psrcType = 3`);
+`vegweight_name = 'FCOVER_CELL_WEIGHT'` takes fractions of the whole cell (sum = emitting fraction, the rest of
+the cell does not emit), to be used without source map. With `veg_classes = 0` (default) nothing changes.
